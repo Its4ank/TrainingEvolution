@@ -26,6 +26,9 @@ local tierCurrentName = treadTierFrame:WaitForChild("TierCurrentName")
 local tierNextName = treadTierFrame:WaitForChild("TierNextName")
 
 local tierCurrentIcon = treadTierFrame:WaitForChild("TierCurrentIcon")
+local tierNextIcon = treadmillFolder:WaitForChild("TierNextIcon")
+
+local tierCurrentBoost = treadTierFrame:WaitForChild("TierCurrentBoost")
 local tierNextBoost = treadTierFrame:WaitForChild("TierNextBoost")
 
 local energyRequirStatus = treadTierFrame:WaitForChild("EnergyRequirStatus")
@@ -36,9 +39,9 @@ local energyRequir = treadTierFrame:WaitForChild("EnergyRequir")
 local rebirthRequir = treadTierFrame:WaitForChild("RebirthRequir")
 local timeRequir = treadTierFrame:WaitForChild("TimeRequir")
 
-local energyBar = treadTierFrame:WaitForChild("FrameRequirCompl")
-local rebirthBar = treadTierFrame:WaitForChild("FrameRequirCompl")
-local timeBar = treadTierFrame:WaitForChild("FrameRequirCompl")
+local energyBar = energyRequir:WaitForChild("FrameRequirCompl")
+local rebirthBar = rebirthRequir:WaitForChild("FrameRequirCompl")
+local timeBar = timeRequir:WaitForChild("FrameRequirCompl")
 
 local tierUpButton = treadTierFrame:WaitForChild("TierUpButton")
 local tierBackButton = treadTierFrame:WaitForChild("TierBackButton")
@@ -112,16 +115,17 @@ treadWarningLabel.Visible = false
 --// Helpers
 local function setImage(object, imageId)
 	if object:IsA("ImageLabel") or object:IsA("ImageButton") then
-		object.Iamge = imageId or ""
+		object.Image = imageId or ""
 	end
 end
 
 local function setText(object, text)
 	if object:IsA("TextLabel") or object:IsA("TextButton") then
+		object.Text = text
 		return
 	end
 	
-	local label = object:FindFirstChildWhichIsa("TextLabel", true)
+	local label = object:FindFirstChildWhichIsA("TextLabel", true)
 	if label then 
 		label.Text = text
 	end
@@ -190,7 +194,7 @@ local function tweenRequirementBar(bar, progress)
 	
 	TweenService:Create( 
 		bar,
-		TweenInfo.New(0.25),
+		TweenInfo.new(0.25),
 		{ 
 			Position = UDim2.new(x, 0, 0.625, 0)
 		}
@@ -229,7 +233,7 @@ local function updateChoiceIcons()
 			end
 		end
 		
-		setImage(choices[1], imageId)
+		setImage(choices[i], imageId)
 	end
 end
 
@@ -254,7 +258,11 @@ local function buildMissingText(info)
 	end
 	
 	if missing.Rebirth and missing.Rebirth > 0 then
-		table.insert(parts, formatShort(missing.Time) .. " Training Time")
+		table.insert(parts, formatShort(missing.Rebirth) .. " Rebirth")
+	end
+	
+	if missing.Time and missing.Time > 0 then
+		table.insert(parts, formatTime(missing.Time) .. " Training Time")
 	end
 	
 	if #parts <= 0 then
@@ -332,7 +340,7 @@ local function updateDetails(info)
 	end
 	
 	lockedTreadFrame.Visible = false
-	treadmillDFeatils.Visible = true 
+	treadmillDfeatils.Visible = true 
 	
 	treadStageName.Text = info.StageName or "Unknown"
 	treadStageNumber.Text = "Stage " .. tostring(info.Stage)
