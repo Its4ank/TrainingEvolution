@@ -65,7 +65,7 @@ local function getTreadmillPosition(treadmillId)
 		return treadmillObject.Position
 	end
 	
-	local part = treadmillObject:FindFirstChild("BasePart", true)
+	local part = treadmillObject:FindFirstChildWichIsA("BasePart", true)
 	if part then 
 		return part.Position
 	end
@@ -337,7 +337,7 @@ treadmillRequestEvent.OnServerEvent:Connect(function(player, action, treadmillId
 	if action == "StartTraining" then 
 		startTraining(player, treadmillId)
 		
-	elseif action == "StopTrtaining" then 
+	elseif action == "StopTraining" then 
 		cleanupTraining(player)
 		
 	elseif action == "ToggleTraining" then
@@ -399,7 +399,7 @@ local function getTreadmillInfo(player, treadmillId)
 		
 		StageMaxLevel = stageMaxLevel,
 		MaxLevel = TreadmillModule.MAX_LEVEL,
-		MaxStage = TreadmillModule.MAX_SATGE,
+		MaxStage = TreadmillModule.MAX_STAGE,
 		
 		LevelPrice = levelPrice,
 		
