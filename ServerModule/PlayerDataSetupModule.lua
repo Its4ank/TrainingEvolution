@@ -53,7 +53,6 @@ function PlayerDataSetupModule.setup(player)
 	
 	--// Main folder
 	getOrCreateFolder(player, "Upgrades")
-	getOrCreateFolder(player, "TrainingTiers")
 	getOrCreateFolder(player, "Items")
 	getOrCreateFolder(player, "Pets")
 	getOrCreateFolder(player, "Trails")
@@ -63,6 +62,18 @@ function PlayerDataSetupModule.setup(player)
 	getOrCreateFolder(player, "Potions")
 	getOrCreateFolder(player, "PotionTimers")
 	getOrCreateFolder(player, "BoostData")
+	
+	local treadmillTier = getOrCreateFolder(player, "Treadmills")
+	
+	for i = 1, 3 do 
+		local treadmillFolder = getOrCreateFolder(treadmillTier, "Treadmills" .. i)
+		
+		getOrCreateValue(treadmillFolder, "IntValue", "Level", 0)
+		getOrCreateValue(treadmillFolder, "IntValue", "Stage", 1)
+		getOrCreateValue(treadmillFolder, "NumberValue", "TrainingTime", 0)
+	end
+	
+	getOrCreateValue(player, "IntValue", "CurrentTreadmill", 0)
 end
 
 return PlayerDataSetupModule
