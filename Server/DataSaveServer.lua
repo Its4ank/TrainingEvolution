@@ -26,7 +26,7 @@ local foldersToSave = {
 	"leaderstats",
 	"PlayerData",
 	"Upgrades",
-	"TrainingTiers",
+	"Treadmills",
 	"Items",
 	"Pets",
 	"Trails",
