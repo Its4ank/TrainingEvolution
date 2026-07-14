@@ -26,7 +26,7 @@ local tierCurrentName = treadTierFrame:WaitForChild("TierCurrentName")
 local tierNextName = treadTierFrame:WaitForChild("TierNextName")
 
 local tierCurrentIcon = treadTierFrame:WaitForChild("TierCurrentIcon")
-local tierNextIcon = treadmillFolder:WaitForChild("TierNextIcon")
+local tierNextIcon = treadTierFrame:WaitForChild("TierNextIcon")
 
 local tierCurrentBoost = treadTierFrame:WaitForChild("TierCurrentBoost")
 local tierNextBoost = treadTierFrame:WaitForChild("TierNextBoost")
@@ -340,7 +340,7 @@ local function updateDetails(info)
 	end
 	
 	lockedTreadFrame.Visible = false
-	treadmillDfeatils.Visible = true 
+	treadmillDetails.Visible = true 
 	
 	treadStageName.Text = info.StageName or "Unknown"
 	treadStageNumber.Text = "Stage " .. tostring(info.Stage)
