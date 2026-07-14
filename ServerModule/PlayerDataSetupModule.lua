@@ -63,10 +63,10 @@ function PlayerDataSetupModule.setup(player)
 	getOrCreateFolder(player, "PotionTimers")
 	getOrCreateFolder(player, "BoostData")
 	
-	local treadmillTier = getOrCreateFolder(player, "Treadmills")
+	local treadmills = getOrCreateFolder(player, "Treadmills")
 	
 	for i = 1, 3 do 
-		local treadmillFolder = getOrCreateFolder(treadmillTier, "Treadmills" .. i)
+		local treadmillFolder = getOrCreateFolder(treadmills, "Treadmills" .. i)
 		
 		getOrCreateValue(treadmillFolder, "IntValue", "Level", 0)
 		getOrCreateValue(treadmillFolder, "IntValue", "Stage", 1)
