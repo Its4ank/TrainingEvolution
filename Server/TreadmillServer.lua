@@ -65,7 +65,7 @@ local function getTreadmillPosition(treadmillId)
 		return treadmillObject.Position
 	end
 	
-	local part = treadmillObject:FindFirstChildWichIsA("BasePart", true)
+	local part = treadmillObject:FindFirstChildWhichIsA("BasePart", true)
 	if part then 
 		return part.Position
 	end
