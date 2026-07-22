@@ -1,3 +1,5 @@
+--// TrainerServer
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +18,7 @@ local trainerStageUpEvent = trainerEventFolder:WaitForChild("TrainerStageUpEvent
 local trainerStageResultEvent = trainerEventFolder:WaitForChild("TrainerStageResultEvent")
 local closeTrainerMenuEvent = trainerEventFolder:WaitForChild("CloseTrainerMenuEvent")
 local playerDataLoadedEvent = trainerEventFolder:WaitForChild("PlayerDataLoadedEvent")
+local trainerEquipResultEvent = trainerEventFolder:WaitForChild("TrainerEquipResultEvent")
 
 local backPart = workspace:WaitForChild("TrainerPosBack")
 
@@ -63,6 +66,18 @@ local function getTrainerFolder(player)
 	return folder
 end
 
+local function getOrCreateValue(parent, className, valueName, defaultValue)
+	local value = parent:FindFirstChild(valueName)
+	
+	if not value then
+		value = Instance.new(className)
+		value.Name = valueName
+		value.Value = defaultValue
+		value.Parent = parent
+	end
+	return value
+end
+
 local function updateTrainerBillboard(player, trainerName)
 	local model = equippedTrainers[player]
 	if not model then return end
@@ -93,77 +108,138 @@ end
 
 local function setupTrainerData(player, trainerName)
 	local data = TRAINERS[trainerName]
-	if not data then
+	
+	if not data then 
 		warn("No trainer data:", trainerName)
-		return
+		return nil
 	end
 	
 	local trainersFolder = getTrainerFolder(player)
 	
 	local trainerFolder = trainersFolder:FindFirstChild(trainerName)
+	
 	if not trainerFolder then
 		trainerFolder = Instance.new("Folder")
 		trainerFolder.Name = trainerName
 		trainerFolder.Parent = trainersFolder
 	end
 	
-	local owned = trainerFolder:FindFirstChild("Owned")
-	if not owned then
-		owned = Instance.new("BoolValue")
-		owned.Name = "Owned"
-		owned.Value = false
-		owned.Parent = trainerFolder
+	getOrCreateValue(
+		trainerFolder,
+		"BoolValue",
+		"Owned",
+		false
+	)
+	
+	getOrCreateValue( 
+		trainerFolder,
+		"BoolValue",
+		"Equipped",
+		false
+	)
+	
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Level",
+		1
+	)
+	
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"XP",
+		0
+	)
+	
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Evolution",
+		0
+	)
+	
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Stage",
+		1
+	)
+	
+	local progreassFolder = trainerFolder:FindFirstChild(
+		"RequirementProgress"
+	)
+	
+	if not progreassFolder then
+		progreassFolder = Instance.new("Folder")
+		progreassFolder.Name = "RequirementProgress"
+		progreassFolder.Parent = trainerFolder
 	end
 	
-	local equipped = trainerFolder:FindFirstChild("Equipped")
-	if not equipped then
-		equipped = Instance.new("BoolValue")
-		equipped.Name = "Equipped"
-		equipped.Value = false
-		equipped.Parent = trainerFolder
-	end
-	
-	local level = trainerFolder:FindFirstChild("Level")
-	if not level then
-		level = Instance.new("IntValue")
-		level.Name = "Level"
-		level.Value = 1
-		level.Parent = trainerFolder
-	end
-	
-	local xp = trainerFolder:FindFirstChild("XP")
-	if not xp then
-		xp = Instance.new("IntValue")
-		xp.Name = "XP"
-		xp.Value = 0
-		xp.Parent = trainerFolder
-	end
-	
-	local evolution = trainerFolder:FindFirstChild("Evolution")
-	if not evolution then
-		evolution = Instance.new("IntValue")
-		evolution.Name = "Evolution"
-		evolution.Value = 0
-		evolution.Parent = trainerFolder
-	end
-	
-	local stage = trainerFolder:FindFirstChild("Stage")
-	if not stage then
-		stage = Instance.new("IntValue")
-		stage.Name = "Stage"
-		stage.Value = 1
-		stage.Parent = trainerFolder
-	end
-	
-	local treadmillTime = trainerFolder:FindFirstChild("TreadmillTimeAfterMaxLevel")
-	if not treadmillTime then
-		treadmillTime = Instance.new("NumberValue")
-		treadmillTime.Name = "TreadmillTimeAfterMaxLevel"
-		treadmillTime.Value = 0
-		treadmillTime.Parent = trainerFolder
+	if trainerName == "LedyTrainer" then
+		getOrCreateValue(
+			progreassFolder,
+			"NumberValue",
+			"Energy",
+			0
+		)
+		
+		getOrCreateValue(
+			progreassFolder,
+			"NumberValue",
+			"TrainerTreadmillTime",
+			0
+		)
+		
+	elseif trainerName == "BellaTrainer" then
+		getOrCreateValue(
+			progreassFolder,
+			"NumberValue",
+			"Money",
+			0
+		)
+		
+		getOrCreateValue(
+			progreassFolder,
+			"NumberValue",
+			"TrainerTreadmillTime",
+			0
+		)
+		
+	elseif trainerName == "MonikaTrainer" then
+		getOrCreateValue(
+			progreassFolder,
+			"IntValue",
+			"EggHatched",
+			0
+		)
+		
+		getOrCreateValue(
+			progreassFolder,
+			"IntValue",
+			"PetRarity",
+			0
+		)
+		
+	elseif trainerName == "JoeTrainer" then
+		getOrCreateValue(
+			progreassFolder,
+			"IntValue",
+			"Rebirth",
+			0
+		)
+		
+		getOrCreateValue(
+			progreassFolder,
+			"IntValue",
+			"RaceRewards",
+			0
+		)
 	end
 	
 	updateTrainerBillboard(player, trainerName)
+	
+	return trainerFolder
 end
 
 local function setupAllTrainers(player)
@@ -280,8 +356,8 @@ local function equipTrainer(player, trainerName)
 			return
 		end
 		
-		local targerCFrame = playerHrp.CFrame * CFrame.new(FOLLOW_SIDE_OFFSET, 0, FOLLOW_DISTANCE)
-		local targetPosition = targerCFrame.Position
+		local followCFrame = playerHrp.CFrame * CFrame.new(FOLLOW_SIDE_OFFSET, 0, FOLLOW_DISTANCE)
+		local targetPosition = followCFrame.Position
 		
 		local distance = (trainerHrp.Position - targetPosition).Magnitude
 		
@@ -313,7 +389,7 @@ local function equipTrainer(player, trainerName)
 	updateTrainerBillboard(player, trainerName)
 end
 
-local function equipSevedTrainer(player)
+local function equipSavedTrainer(player)
 	local trainerFolder = getTrainerFolder(player)
 	
 	for _, trainerData in ipairs(trainerFolder:GetChildren()) do 
@@ -326,8 +402,16 @@ local function equipSevedTrainer(player)
 	end
 end
 
+local function connectCharacter(player)
+	player.CharacterAdded:Connect(function()
+		task.wait(1)
+		equipSavedTrainer(player)
+	end)
+end
+
 Players.PlayerAdded:Connect(function(player)
 	setupAllTrainers(player)
+	connectCharacter(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
@@ -336,6 +420,7 @@ end)
 
 for _, player in ipairs(Players:GetPlayers()) do
 	setupAllTrainers(player)
+	connectCharacter(player)
 	
 	if player.Character then
 		task.wait(1)
@@ -360,128 +445,174 @@ end
 
 local function buyTrainer(player, trainerName)
 	local data = TRAINERS[trainerName]
-	if not data or not data.Enabled then return false end
+	if not data or not data.Enabled then
+		return false, "InvalidTrainer"
+	end
 	
 	local trainerFolder = getTrainerFolder(player):FindFirstChild(trainerName)
-	if not trainerFolder then return false end
+	if not trainerFolder then
+		return false, "TrainerFolderMissing"
+	end
 	
 	local owned = trainerFolder:FindFirstChild("Owned")
-	if owned and owned.Value == true then 
-		return true
+	if not owned then
+		return false, "OwnedValueMissing"
+	end
+	
+	if owned.Value == true then 
+		return true, "AlreadyOwned"
+	end
+	
+	if data.UnlockType == "PetHatched" then
+		return false, "ComingSoon"
 	end
 	
 	if data.UnlockType == "Currency" then
 		local currency = getPlayerStat(player, data.Currency)
-		if not currency then return false
+		if not currency then
+			return false, "CurrencyMissing"
 		end
 		
-		if currency.Value < data.Price then
-			return false
+		local price = tonumber(data.Price) or 0
+		
+		if currency.Value < price then
+			return false, "NotEnoughCurrency"
 		end
 		
-		currency.Value -= data.Price
+		currency.Value -= price
 		owned.Value = true
-		return true
+		
+		return true, "Purchased"
 	end
-	
-	if data.UnlockType == "PetHatched" then
-		return false
-	end
-	
-	updateTrainerBillboard(player, trainerName)
-	return false
+	return false, "UnsupportedUnlockType"
 end
 
-local function hasEnoughRequirement(player, requirement, trainerFolder)
+local function getSpendableStat(player, requirementType)
+	if requirementType == "Energy" then 
+		local leaderstats = player:FindFirstChild("leaderstats")
+		
+		return leaderstats and leaderstats:FindFirstChild("Energy")
+	end
+	
+	if requirementType == "Money" then
+		local playerData = player:FindFirstChild("PlayerData")
+		
+		if playerData then 
+			local money = playerData:FindFirstChild("Money")
+			
+			if money then 
+				return money
+			end
+		end
+		
+		local leaderstats = player:FindFirstChild("leaderstats")
+		
+		return leaderstats and leaderstats:FindFirstChild("Money")
+	end
+	
+	if requirementType == "Rebirth" then 
+		local leaderstats = player:FindFirstChild("leaderstats")
+		
+		return leaderstats and leaderstats:FindFirstChild("Rebirth")
+	end
+	return nil
+end
+
+local function getRequirementCurrentValue(player, trainerName, requirement)
+	if not requirement then 
+		return 0
+	end
+	
+	local requirementType = requirement.Type
+	
+	if requirementType == "Level" then
+		local trainerFolder = TrainerModule.getTrainerPlayerFolder(player, trainerName)
+		
+		local level = trainerFolder and trainerFolder:FindFirstChild("Level")
+		
+		return level and level.Value or 0
+	end
+	
+	return TrainerModule.getRequirementProgress(player, trainerName, requirementType)
+end
+
+local function checkStageRequirements(player, trainerName, stageValue)
+	
+	local requirements = TrainerModule.getStageRequirements(trainerName, stageValue)
+	
 	local missing = {}
+	local allCompleted = true 
 	
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local playerData = player:FindFirstChild("PlayerData")
-	
-	if requirement.Energy then
-		local energy = leaderstats and leaderstats:FindFirstChild("Energy")
-		local current = energy and energy.Value or 0
+	for index, requirement in ipairs(requirements) do
+		local requirementType = requirement.Type
+		local need = tonumber(requirement.Need) or 0
 		
-		if current < requirement.Energy then
-			missing.Energy = {
-				Current = current,
-				Need = requirement.Energy,
-			}
+		if requirement.Placeholder == true then
+			continue
 		end
-	end
-	
-	if requirement.Money then
-		local money = playerData and playerData:FindFirstChild("Money")
-		local current = money and money.Value or 0
-
-		if current < requirement.Money then
-			missing.Money = {
-				Current = current,
-				Need = requirement.Money,
-			}
-		end
-	end
-	
-	if requirement.Rebirth then
-		local rebirth = leaderstats and leaderstats:FindFirstChild("Rebirth")
-		local current = rebirth and rebirth.Value or 0
-
-		if current < requirement.Rebirth then
-			missing.Rebirth = {
-				Current = current,
-				Need = requirement.Rebirth,
-			}
-		end
-	end
-	
-	if requirement.TreadmillTime then
-		local treadmillTime = trainerFolder:FindFirstChild("TreadmillTimeAfterMaxLevel")
-		local current = treadmillTime and treadmillTime.Value or 0
 		
-		if current < requirement.TreadmillTime then
-			missing.TreadmillTime = {
+		local current = getRequirementCurrentValue(player, trainerName, requirement)
+		
+		local progressCompleted = current >= need
+		local balanceCompleted = true 
+		local balanceCurrent = nil
+		
+		if requirement.Spend == true then 
+			local spendableStat = getSpendableStat(player, requirementType)
+			
+			balanceCurrent = spendableStat and spendableStat.Value or 0
+			
+			balanceCompleted = balanceCurrent >= need
+		end
+		
+		if not progressCompleted or not balanceCompleted then 
+			allCompleted = false
+			
+			missing[index] = {
+				Index = index,
+				Type = requirementType,
+				
 				Current = current,
-				Need = requirement.TreadmillTime,
+				Need = need,
+				
+				ProgressCompleted = progressCompleted,
+				
+				Spend = requirement.Spend == true,
+				BalanceCurrent = balanceCurrent,
+				BalanceCompleted = balanceCompleted,
 			}
 		end
 	end
 	
-	
-	return next(missing) == nil, missing
+	return allCompleted, missing
 end
 
-local function spendRequirement(player, requirement, trainerFolder)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then return end
+local function spendStageRequirements(player, trainerName, stageValue)
+	local requirements = TrainerModule.getStageRequirements(trainerName, stageValue)
 	
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return end
-	
-	if requirement.Energy then
-		local energy = leaderstats:FindFirstChild("Energy")
-		if energy then
-			energy.Value -= requirement.Energy
+	for _, requirement in ipairs(requirements) do
+		if requirement.Placeholder == true then
+			continue
+		end
+		
+		if requirement.Spend == true then 
+			local stat = getSpendableStat(player, requirement.Type)
+			
+			local need = tonumber(requirement.Need) or 0
+			
+			if stat and need > 0 then
+				stat.Value = math.max(0, stat.Value - need)
+			end
 		end
 	end
+end
+
+local function resetStageRequirementProgress(player, trainerName, stageValue)
+	local requirements = TrainerModule.getStageRequirements(trainerName, stageValue)
 	
-	if requirement.Money then
-		local money = playerData:FindFirstChild("Money")
-		if money then
-			money.Value -= requirement.Money
-		end
-	end
-	
-	if requirement.Rebirth then
-		local rebirth = leaderstats:FindFirstChild("Rebirth")
-		if rebirth then
-			rebirth.Value -= requirement.Rebirth
-		end
-	end
-	
-	if requirement.TreadmillTime then
-		local treadmillTime = trainerFolder:FindFirstChild("TreadmillTimeAfterMaxLevel")
-		if treadmillTime then
-			treadmillTime.Value -= requirement.TreadmillTime
+	for _, requirement in ipairs(requirements) do
+		if requirement.ResetOnRankUp == true then
+			TrainerModule.resetRequirementProgress(player, trainerName, requirement.Type)
 		end
 	end
 end
@@ -490,7 +621,7 @@ playerDataLoadedEvent.Event:Connect(function(player)
 	task.wait(0.5)
 	
 	if player.Character then
-		equipSevedTrainer(player)
+		equipSavedTrainer(player)
 	end
 end)
 
@@ -506,23 +637,34 @@ end)
 
 trainerEquipEvent.OnServerEvent:Connect(function(player, action, trainerName)
 	local data = TRAINERS[trainerName]
-	if not data or not data.Enabled then return end 
+	
+	if not data or not data.Enabled then
+		trainerEquipResultEvent:FireClient(player, false, trainerName, "InvalidTrainer")
+		return
+	end 
 	
 	setupTrainerData(player, trainerName)
 	
 	local trainerFolder = getTrainerFolder(player):FindFirstChild(trainerName)
-	if not trainerFolder then return end
+	if not trainerFolder then
+		return
+	end
 	
 	local owned = trainerFolder:FindFirstChild("Owned")
 	local equipped = trainerFolder:FindFirstChild("Equipped")
 	
 	if action == "Equip" then
 		if not owned or owned.Value == false then
-			local bought = buyTrainer(player, trainerName)
-			if not bought then return end
+			local bought, resultType = buyTrainer(player, trainerName)
+			if not bought then
+				trainerEquipResultEvent:FireClient(player, false, trainerName, resultType)
+				return
+			end
 		end
 		
 		equipTrainer(player, trainerName)
+		
+		trainerEquipResultEvent:FireClient(player, true, trainerName, "Equipped")
 		return
 	end
 	
@@ -530,6 +672,8 @@ trainerEquipEvent.OnServerEvent:Connect(function(player, action, trainerName)
 		if equipped and equipped.Value == true then
 			removeTrainer(player)
 			equipped.Value = false
+			
+			trainerEquipResultEvent:FireClient(player, true, trainerName, "Unequipped")
 		end
 		return
 	end
@@ -575,56 +719,72 @@ end)
 
 trainerStageUpEvent.OnServerEvent:Connect(function(player, trainerName)
 	local data = TRAINERS[trainerName]
-	if not data or not data.Enabled then return end 
+	
+	if not data or not data.Enabled then 
+		return
+	end
 	
 	setupTrainerData(player, trainerName)
 	
 	local trainerFolder = getTrainerFolder(player):FindFirstChild(trainerName)
-	if not trainerFolder then return end
+	
+	if not trainerFolder then 
+		return
+	end
 	
 	local owned = trainerFolder:FindFirstChild("Owned")
 	local level = trainerFolder:FindFirstChild("Level")
 	local stage = trainerFolder:FindFirstChild("Stage")
 	
-	if not owned or owned.Value == false then return end 
-	if not level or not stage then return end 
+	if not owned or owned.Value == false then
+		trainerStageResultEvent:FireClient(player, false, trainerName, "NotOwned", {})
+		return
+	end
+	
+	if not level or not stage then
+		return 
+	end
 	
 	local currentStage = stage.Value
-	local stageData = TrainerModule.getStageData(currentStage)
 	
 	if currentStage >= 5 then
-		
 		trainerStageResultEvent:FireClient(player, false, trainerName, "MaxStage", {})
 		return
 	end
 	
+	local stageData = TrainerModule.getStageData(currentStage)
+	
+	if not stageData then
+		warn("Stage data not found:", currentStage)
+		return
+	end
+	
 	if level.Value < stageData.MaxLevel then
-		
 		trainerStageResultEvent:FireClient(player, false, trainerName, "NeedLevel", {
+			CurrentLevel = level.Value,
 			NeedLevel = stageData.MaxLevel,
-			CurrentLevel = level.Value
 		})
 		return
 	end
 	
-	local requirement = TrainerModule.getStageRequirement(trainerName, currentStage)
-	local enough, missing = hasEnoughRequirement(player, requirement, trainerFolder)
+	local completed, missing = checkStageRequirements(player, trainerName, currentStage)
 	
-	if not enough then
-		
+	if not completed then
 		trainerStageResultEvent:FireClient(player, false, trainerName, "MissingRequirements", missing)
 		return
 	end
 	
-	spendRequirement(player, requirement, trainerFolder)
+	spendStageRequirements(player, trainerName, currentStage)
+	resetStageRequirementProgress(player, trainerName, currentStage)
 	
 	stage.Value += 1
 	level.Value = 1
 	
 	updateTrainerBillboard(player, trainerName)
-	
 	trainerStageResultEvent:FireClient(player, true, trainerName, "StageUpSuccess", {
+		OldStage = currentStage,
 		NewStage = stage.Value,
+		NewStageName = TrainerModule.getStageName(stage.Value),
 	})
 end)
 
