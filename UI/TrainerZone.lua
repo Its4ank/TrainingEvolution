@@ -1,3 +1,5 @@
+--//TrainerZone
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -15,8 +17,8 @@ local guiFolder = raceGui:WaitForChild("GuiFolder")
 
 local trainerFolder = guiFolder:WaitForChild("TrainerFolder")
 
-local trainerMenu = trainerFolder:WaitForChild("TrainerMenu")
-MenuManager.register("Trainer", trainerMenu)
+local trainerHost = trainerFolder:WaitForChild("TrainerHost")
+MenuManager.register("Trainer", trainerHost)
 
 local radius = 6
 local inside = false
@@ -30,7 +32,7 @@ RunService.RenderStepped:Connect(function()
 	if distance <= radius then
 		if not inside then
 			inside = true
-			MenuManager.toggleFull("Trainer")
+			MenuManager.openFull("Trainer")
 		end
 	else
 		if inside then
