@@ -22,23 +22,23 @@ TreadmillModule.Treadmills = {
 		BaseEnergy = 1,
 		EnergyPerLevel = 0.2,
 		
-		LevelPriceBase = 1000,
-		LevelPriceMultiplier = 1.45,
+		LevelPriceBase = 100,
+		LevelPriceMultiplier = 1.4,
 	},
 	
 	[2] = {
 		Name = "Treadmill 2",
-		BaseEnergy = 5,
-		EnergyPerLevel = 1,
+		BaseEnergy = 300,
+		EnergyPerLevel = 20,
 		
-		LevelPriceBase = 5000,
+		LevelPriceBase = 300,
 		LevelPriceMultiplier = 1.5,
 	},
 	
 	[3] = {
 		Name = "Treadmill 3",
-		BaseEnergy = 25,
-		EnergyPerLevel = 5,
+		BaseEnergy = 124,
+		EnergyPerLevel = 8,
 		
 		LevelPriceBase = 25000,
 		LevelPriceMultiplier = 1.55,
@@ -79,17 +79,17 @@ TreadmillModule.Stages = {
 
 TreadmillModule.TierRequirements = { 
 	[1] = { -- Treadmill 1
-		[1] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 1 > 2
-		[2] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 2 > 3
-		[3] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 3 > 4
-		[4] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 4 > 5
+		[1] = {Energy = 1000, Rebirth = 25, Time = 300}, -- Stage 1 > 2
+		[2] = {Energy = 15000, Rebirth = 100, Time = 900}, -- Stage 2 > 3
+		[3] = {Energy = 50000, Rebirth = 150, Time = 1800}, -- Stage 3 > 4
+		[4] = {Energy = 100000, Rebirth = 200, Time = 2700}, -- Stage 4 > 5
 	},
 	
 	[2] = { -- Treadmill 2
-		[1] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 1 > 2
-		[2] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 2 > 3
-		[3] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 3 > 4
-		[4] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 4 > 5
+		[1] = {Energy = 500000, Rebirth = 500, Time = 400}, -- Stage 1 > 2
+		[2] = {Energy = 1000000, Rebirth = 750, Time = 800}, -- Stage 2 > 3
+		[3] = {Energy = 1500000, Rebirth = 1000, Time = 1900}, -- Stage 3 > 4
+		[4] = {Energy = 2500000, Rebirth = 1500, Time = 3000}, -- Stage 4 > 5
 	},
 	
 	[3] = { -- Treadmill 3
@@ -245,6 +245,20 @@ function TreadmillModule.AddTrainingTime(player, treadmillId, dt)
 	if not data then return end
 	
 	data.TrainingTime.Value += dt 
+end
+
+function TreadmillModule.AddTrainerTrainingTime(player, dt)
+	dt = tonumber(dt) or 0
+	
+	if dt <= 0 then 
+		return false
+	end
+	
+	return TrainerModule.addEquippedTrainerProgress( 
+		player,
+		"TrainerTreadmillTime",
+		dt
+	)
 end
 
 function TreadmillModule.ResetTrainingTime(player, treadmillId)
