@@ -7,6 +7,8 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 --// Modules
 local TreadmillModule = require(ServerScriptService.Modules.TreadmillModule)
+local TrainerModule = require(ServerScriptService.Modules.TrainerModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
 --// RemopteEvents
 local treadmillEventsFolder = ReplicatedStorage:FindFirstChild("TreadmillEvents")
@@ -39,6 +41,13 @@ end
 
 --// Optional old RunEvent for effects/UI
 local runEvent = ReplicatedStorage:FindFirstChild("RunEvent")
+
+local energyPopupEvent = ReplicatedStorage:FindFirstChild("EnergyPopupEvent")
+if not energyPopupEvent then 
+	energyPopupEvent = Instance.new("RemoteEvent")
+	energyPopupEvent.Name = "EnergyPopupEvent"
+	energyPopupEvent.Parent = ReplicatedStorage
+end
 
 --// Setting
 local MAX_DISTANCE_TO_START = 15
@@ -73,22 +82,8 @@ local function getTreadmillPosition(treadmillId)
 	return nil
 end
 
-local function getUpgradeLevel(player, upgradeName)
-	local upgrades = player:FindFirstChild("Upgrades")
-	if not upgrades then return 0 end 
-	
-	local upgrade = upgrades:FindFirstChild(upgradeName)
-	if not upgrade then return 0 end 
-	
-	return upgrade.Value
-end
-
 local function getTrainingInterval(player)
-	local speedTrainingLevel = getUpgradeLevel(player, "SpeedTraining")
-	
-	local interval = 1 - (speedTrainingLevel * 0.05)
-	
-	return math.max(0.2, interval)
+	return UpgradeModule.GetTrainingInterval(player, 1)
 end
 
 local function fireResponse(player, action, success, reason, info)
@@ -283,6 +278,8 @@ local function startTraining(player, treadmillId)
 			
 			TreadmillModule.AddTrainingTime(player, data.TreadmillId, dt)
 			
+			TreadmillModule.AddTrainerTrainingTime(player, dt)
+			
 			local interval = getTrainingInterval(player)
 			
 			if now - data.LastEnergyTick >= interval then 
@@ -301,6 +298,9 @@ local function startTraining(player, treadmillId)
 					end
 					
 					energy.Value += gainedEnergy
+					
+					TrainerModule.addEquippedTrainerProgress(player, "Energy", gainedEnergy)
+					energyPopupEvent:FireClient(player, gainedEnergy)
 				end
 			end
 			
