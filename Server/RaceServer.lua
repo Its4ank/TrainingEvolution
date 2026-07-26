@@ -1,4 +1,4 @@
---Services
+--RaceServer
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,7 @@ local XPModule = require(game.ServerScriptService.Modules.XPModule)
 local TrainerModule = require(game.ServerScriptService.Modules.TrainerModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
+local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 
 
@@ -194,7 +195,7 @@ local function getRaceSpeedFromEnergy(player)
 		return MIN_SPEED
 	end
 
-	local value = energy.Value
+	local value = UpgradeModule.GetRaceEnergy(player, energy.Value)
 	if value <= 0 then
 		return MIN_SPEED
 	end
@@ -288,16 +289,6 @@ end
 
 
 --Main race function
-local function getUpgradeLevel(player, upgradeName)
-	local upgrades = player:FindFirstChild("Upgrades")
-	if not upgrades then return 0 end
-
-	local upgrade = upgrades:FindFirstChild(upgradeName)
-	if not upgrade then return 0 end
-
-	return upgrade.Value
-end
-
 local function startRace(player)
 	if not raceOpen then
 		return
@@ -340,11 +331,13 @@ local function startRace(player)
 		local currentSpeed = speedValue.Value
 
 		--Upgrade: Acceleration
-		local accelerationLevel = getUpgradeLevel(player, "Acceleration")
+		local upgradeAccelerationMultiplier = UpgradeModule.GetAccelerationMultiplier(player)
 		local trainerAccelerationMultiplier = TrainerModule.getAccelerationMultiplier(player)
-		local accelerationMultiplier = (1 + (accelerationLevel * 0.15)) * trainerAccelerationMultiplier
+		local accelerationMultiplier = upgradeAccelerationMultiplier * trainerAccelerationMultiplier
 
-		local delta = ACCELERATION_PER_SECOND * accelerationMultiplier * dt currentSpeed = math.min(currentSpeed + delta, targetSpeed)
+		local delta = ACCELERATION_PER_SECOND * accelerationMultiplier * dt 
+		
+		currentSpeed = math.min(currentSpeed + delta, targetSpeed)
 
 		speedValue.Value = currentSpeed
 		currentHrp.AssemblyLinearVelocity = startLine.CFrame.LookVector * currentSpeed
@@ -463,8 +456,7 @@ local function connectRewardTouch(reward)
 			end
 
 			--Upgrade: Money
-			local moneyUpgradeLevel = getUpgradeLevel(player, "Money")
-			local moneyUpgradeMultiplier = 1 + (moneyUpgradeLevel * 0.10)
+			local moneyUpgradeMultiplier = UpgradeModule.GetMoneyUpgradeMultiplier(player)
 
 			local trainerMoneyMultiplier = TrainerModule.getMoneyMultiplier(player)
 			
@@ -499,13 +491,9 @@ local function connectRewardTouch(reward)
 		print(player.Name, "got base reward", rewardAmount, "from", reward.Name)
 
 		-- UPGRADE: GemChance + GemMore
-		local gemChanceLevel = getUpgradeLevel(player, "GemChance")
-		local gemMoreLevel = getUpgradeLevel(player, "GemMore")
+		local finalGemChance = UpgradeModule.GetFinalGemChance(player, GEM_CHANCE)
 
-		local finalGemChance = GEM_CHANCE + (gemChanceLevel * 0.02)
-		finalGemChance = math.clamp(finalGemChance, 0, 1)
-
-		local finalGemReward = GEM_REWARD + gemMoreLevel
+		local finalGemReward = UpgradeModule.GetFinalGemAmount(player, GEM_REWARD)
 
 		if math.random() < finalGemChance then
 			local playerData = player:FindFirstChild("PlayerData")
