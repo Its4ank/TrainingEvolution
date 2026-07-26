@@ -6,9 +6,9 @@ local TreadmillModule = {}
 local PetModule = require(ServerScriptService.Modules.PetModule)
 local TrainerModule = require(ServerScriptService.Modules.TrainerModule)
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
-
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
 TreadmillModule.MAX_TREADMILLS = 3
 TreadmillModule.MAX_STAGE = 5
@@ -130,16 +130,6 @@ local function getLeaderstats(player, name)
 	if not leaderstats then return nil end
 	
 	return leaderstats:FindFirstChild(name)
-end
-
-local function getUpgradeLevel(player, upgradeName)
-	local upgrades = player:FindFirstChild("Upgrades")
-	if not upgrades then return 0 end
-	
-	local upgrade = upgrades:FindFirstChild(upgradeName)
-	if not upgrade then return 0 end
-	
-	return upgrade.Value
 end
 
 local function getGamepassEnergyMultiplier(player)
@@ -291,8 +281,8 @@ function TreadmillModule.GetPlayerEnergyMultiplier(player)
 	multiplier *= petEnergyMultiplier
 	
 	--// Улучшение енергии
-	local energyUpgradeLevel = getUpgradeLevel(player, "Energy")
-	local energyUpgradeMultiplier = 1 + (energyUpgradeLevel * 0.10)
+	local energyUpgradeMultiplier = UpgradeModule.GetEnergyMultiplier(player)
+	
 	multiplier *= energyUpgradeMultiplier
 	
 	--// Тренер
