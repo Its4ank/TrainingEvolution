@@ -1,3 +1,7 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+
 local RebirthModule = {}
 
 RebirthModule.BaseCost = 250
@@ -65,13 +69,7 @@ function RebirthModule.GetEnergyMultiplier(player)
 end
 
 function RebirthModule.IsMoneyMultiplierUnlocked(player)
-	local upgradesFolder = player:FindFirstChild("Upgrades")
-	if not upgradesFolder then return false end
-
-	local moneyUnlock = upgradesFolder:FindFirstChild("RebirthMultiplierMoney")
-	if not moneyUnlock then return false end
-
-	return moneyUnlock.Value >= 1
+	return UpgradeModule.IsMoneyMultiplierUnlocked(player)
 end
 
 function RebirthModule.GetMoneyMultiplier(player)
