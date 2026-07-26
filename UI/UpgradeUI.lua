@@ -1,293 +1,549 @@
---// UpgradeUI LocalScript
+--// UpgradeUI
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
-local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
-
-local raceGui = script.Parent
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
+local raceGui = script.Parent
 
-local guiFolder = raceGui:WaitForChild("GuiFolder")
-local upgradeFolderUI = guiFolder:WaitForChild("UpgradeFolder")
+--// Modules
+local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 
+ClientDataModule.WaitUntilReady(player)
+MenuManager.init(raceGui)
 
-local upgradeEvent = ReplicatedStorage:WaitForChild("UpgradeEvent")
+--// RemoteEvent
+local upgradeEvents = ReplicatedStorage:WaitForChild("UpgradeEvents")
 
-local upgradeMenu = upgradeFolderUI:WaitForChild("UPGRADEMenu")
-local upgradesFrame = upgradeMenu:WaitForChild("UpgradesFrame"):WaitForChild("ScrollingFrame")
+local upgradeEvent = upgradeEvents:WaitForChild("UpgradeEvent")
+assert(upgradeEvent:IsA("RemoteEvent"), "UpgradeEvents.UpgradeEvent должен быть RemoteEvent")
 
-local gemsStat = ClientDataModule.GetGems(player)
-
+--// PLayer Data
+local gemsValue = ClientDataModule.GetGems(player)
 local upgradesFolder = ClientDataModule.GetUpgrades(player)
 
-local UpgradeConfig = {
-	Money = {
-		DisplayName = "Money",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Multiplier",
-	},
+--// UI paths
+local guiFolder = raceGui:WaitForChild("GuiFolder")
+local upgradeFolder = guiFolder:WaitForChild("UpgradeFolder")
+local upgradeHost = upgradeFolder:WaitForChild("UpgradeHost")
 
-	Energy = {
-		DisplayName = "Energy",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Multiplier",
-	},
+local upgScrollFrame = upgradeHost:WaitForChild("UpgScrollFrame")
+local upgCurrentStatsFrame = upgradeHost:WaitForChild("UpgCurrentStatsFrame")
+local upgCurrentFrame = upgradeHost:WaitForChild("UpgCurrentFrame")
+local upgLeaderstats = upgradeHost:WaitForChild("UpgLeaderstats")
+local upgWarningLabel = upgradeHost:WaitForChild("UpgWarningLabel")
+local upgCloseButton = upgradeHost:WaitForChild("UpgCloseButton")
 
-	GemChance = {
-		DisplayName = "Gem Chance",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Percent",
-	},
+MenuManager.register("Upgrade", upgradeHost)
 
-	GemMore = {
-		DisplayName = "Gem More",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.55,
-		BonusPerLevel = 1,
-		BonusType = "Number",
-	},
+--// CurrentStats
+local upgStatsIcon = upgCurrentStatsFrame:WaitForChild("UpgStatsIcon")
+local upgStatsCurMult = upgCurrentStatsFrame:WaitForChild("UpgStatsCurMult")
+local upgStatsLvl = upgCurrentStatsFrame:WaitForChild("UpgStatsLvl")
+local upgStatsName = upgCurrentStatsFrame:WaitForChild("UpgStatsName")
+local upgStatsNextLvl = upgCurrentStatsFrame:WaitForChild("UpgStatsNextLvl")
+local upgStatsNextMult = upgCurrentStatsFrame:WaitForChild("UpgStatsNextMult")
+local upgStatsInfo = upgCurrentStatsFrame:WaitForChild("UpgStatsInfo")
 
-	SpeedTraining = {
-		DisplayName = "Speed Training",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Multiplier",
-	},
+--// LevelContainer
+local upgContainerScroll = upgCurrentFrame:WaitForChild("UpgContainerScroll")
+local upgButtonContainer = upgContainerScroll:WaitForChild("UpgButtonContainer")
 
-	PetLuck = {
-		DisplayName = "Pet Luck",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Percent",
-	},
+--// Gems
+local gemsLabel = upgLeaderstats:WaitForChild("GemsLabel")
 
-	Acceleration = {
-		DisplayName = "Acceleration",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Multiplier",
-	},
+--// Settings
+local visibleSlotCount = UpgradeModule.VISIBLE_LEVEL_SLOTS
+local centerLevelSlot = UpgradeModule.CENTER_LEVEL_SLOT
 
-	RacePower = {
-		DisplayName = "Race Power",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Multiplier",
-	},
+local DEFAULT_UPGRADE = "Energy"
+local WARNING_TIME = 2.5
 
-	RebirthMultiplierMoney = {
-		DisplayName = "Rebirth Money",
-		MaxLevel = 1,
-		BasePrice = 10,
-		PriceMultiplier = 1,
-		BonusType = "Unlock",
-	},
+--// Runtime data
+local selectedUpgradeName = nil
+local levelFrames = {}
+local levelControls = {}
+local upgradeSelectionButtons = {}
 
-	RebirthButton = {
-		DisplayName = "Rebirth Button",
-		MaxLevel = 6,
-		BasePrice = 5,
-		PriceMultiplier = 1.45,
-		BonusType = "Unlock",
-	},
+local warningVersion = 0
 
-	HatLuck = {
-		DisplayName = "Hat Luck",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Percent",
-		ComingSoon = true,
-	},
-
-	RelicsLuck = {
-		DisplayName = "Relics Luck",
-		MaxLevel = 10,
-		BasePrice = 1,
-		PriceMultiplier = 1.45,
-		BonusPerLevel = 0.10,
-		BonusType = "Percent",
-		ComingSoon = true,
-	},
-}
-
-local function getUpgradePrice(upgradeName, currentLevel)
-	local config = UpgradeConfig[upgradeName]
-	if not config then return 0 end
-
-	return math.floor(config.BasePrice * (config.PriceMultiplier ^ currentLevel))
-end
-
-local function getUpgradeBonusText(upgradeName, level)
-	local config = UpgradeConfig[upgradeName]
-	if not config then return "" end
-
-	if config.ComingSoon then
-		return "Soon"
-	end
-
-	if config.BonusType == "Multiplier" then
-		local multiplier = 1 + (level * config.BonusPerLevel)
-		return "x" .. string.format("%.2f", multiplier)
-	end
-
-	if config.BonusType == "Percent" then
-		local percent = level * config.BonusPerLevel * 100
-		return "+" .. string.format("%.0f", percent) .. "%"
-	end
-
-	if config.BonusType == "Number" then
-		local base = 1
-		local total = base + (level * config.BonusPerLevel)
-		return "+" .. tostring(total) .. " Gems"
+--// Helpers
+local function formatNumber(value)
+	value = math.floor(tonumber(value) or 0)
+	
+	local sign = ""
+	
+	if value < 0 then 
+		sign = "-"
+		value = math.abs(value)
 	end
 	
-	if upgradeName == "RebirthButton" then
-		local nextButtons = {
-			[0] = "Unlock +5",
-			[1] = "Unlock +10",
-			[2] = "Unlock +15",
-			[3] = "Unlock +20",
-			[4] = "Unlock +25",
-			[5] = "Unlock +30",
-			[6] = "Unlock +35",
+	local text = tostring(value)
+	local formatted = text
+	
+	while true do
+		local newText, replacements = formatted:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+		formatted = newText
+		
+		if replacements == 0 then
+			break
+		end
+	end
+	return sign .. formatted
+end
+
+local function clearWarning()
+	warningVersion += 1
+	upgWarningLabel.Visible = false
+end
+
+local function showWarning(message)
+	warningVersion += 1
+	local currentVersion = warningVersion
+	
+	upgWarningLabel.Text = message
+	upgWarningLabel.Visible = true
+	
+	task.delay(WARNING_TIME, function()
+		if warningVersion ~= currentVersion then
+			return
+		end
+		
+		upgWarningLabel.Visible = false
+	end)
+end
+
+local function updateGemsLabel()
+	gemsLabel.Text = formatNumber(gemsValue.Value)
+end
+
+--// Получаем 10 готовых UpgLvlFrame
+local function collectLevelFrames()
+	table.clear(levelFrames)
+	
+	for _, child in ipairs(upgButtonContainer:GetChildren()) do
+		if child.Name == "UpgLvlFrame" and child:IsA("GuiObject") then
+			table.insert(levelFrames, child)
+		end
+	end
+	
+	table.sort(levelFrames, function(firstFrame, secondFrame)
+		return firstFrame.LayoutOrder < secondFrame.LayoutOrder
+	end)
+	
+	assert(#levelFrames >= visibleSlotCount, "B UpgButtonContainer должно находится минимум "
+		.. tostring(visibleSlotCount) .. " обьектов UpgLvlFrame")
+	
+	for index = visibleSlotCount + 1, #levelFrames do
+		levelFrames[index].Visible = false
+	end
+end
+
+print("UPGRADE UI: level frames collected", #levelFrames)
+
+--// получаем обьекты каждого слота
+local function collectLevelControls()
+	table.clear(levelControls)
+	
+	for slotIndex = 1, visibleSlotCount do
+		local levelFrame = levelFrames[slotIndex]
+		
+		
+		local currentIcon = levelFrame:WaitForChild("UpgLvlCurrentIcon")
+		local successIcon = levelFrame:WaitForChild("UpgLvlSuccessIcon")
+		local bonusLabel = levelFrame:WaitForChild("UpgLvlCurBonus")
+		local levelLabel = levelFrame:WaitForChild("UpgLvlLevel")
+		local improvedButton = levelFrame:WaitForChild("UpgLvlImprovedButton")
+		local upButton = levelFrame:WaitForChild("UpgLvlUpButton")
+		local lockedButton = levelFrame:WaitForChild("UpgLvlLockedButton")
+		local priceLabel = upButton:WaitForChild("UpgLvlPrice")
+		
+		for _, button in ipairs({
+			improvedButton,
+			upButton,
+			lockedButton,}) do
+			button.Active = true
+			button.Interactable = true
+			button.ZIndex = 50
+		end
+		
+		levelControls[levelFrame] = {
+			CurrentIcon = currentIcon,
+			SuccessIcon = successIcon,
+			
+			BonusLabel = bonusLabel,
+			LevelLabel = levelLabel,
+			PriceLabel = priceLabel,
+			
+			ImprovedButton = improvedButton,
+			UpButton = upButton,
+			LockedButton = lockedButton,
 		}
-		return nextButtons[level] or "All unlocked"
+		
+		levelFrame:SetAttribute("SlotIndex", slotIndex)
+		levelFrame:SetAttribute("DisplayedLevel", 0)
+		levelFrame:SetAttribute("LevelState", "Hidden")
 	end
-	
-	if upgradeName == "RebirthMultiplierMoney" then
-		if level <= 0 then
-			return "Money boost locked"
-		else
-			return "Money boost unlocked"
-		end
-	end
-
-	if config.BonusType == "Unlock" then
-		if level <= 0 then
-			return "Locked"
-		else
-			return "Unlocked"
-		end
-	end
-
-	return ""
 end
 
-local function updateUpgradeRow(upgradeName)
-	local config = UpgradeConfig[upgradeName]
-	if not config then return end
+print("UPGRADE UI: level controls collected")
 
-	local upgradeValue = upgradesFolder:FindFirstChild(upgradeName)
-	if not upgradeValue then
-		warn("Upgrade value not found:", upgradeName)
-		return
+--// Определяем перовый уровень видимого окна
+local function getFirstDisplayedLevel(currentLevel, maxLevel)
+	if maxLevel <= visibleSlotCount then
+		return 1
 	end
+	
+	local nextLevel = math.min(currentLevel + 1, maxLevel)
+	local maximumStartLevel = math.max(1, maxLevel - visibleSlotCount + 1)
+	local desiredStartLevel = nextLevel - centerLevelSlot + 1
+	
+	return math.clamp(desiredStartLevel, 1, maximumStartLevel)
+end
 
-	local row = upgradesFrame:FindFirstChild(upgradeName .. "Upgrade")
-	if not row then
-		warn("Upgrade row not found:", upgradeName .. "Upgrade")
+--// Обновление одной карточки уровня
+local function updateLevelFrame(levelFrame, upgradeName, displayedLevel, currentLevel, maxLevel)
+	local controls = levelControls[levelFrame]
+	
+	if not controls then 
 		return
 	end
 	
-	local nameLabel = row:WaitForChild("NameLabel")
-	local bonusLabel = row:WaitForChild("BonusLabel")
-	local levelLabel = row:WaitForChild("LevelLabel")
-	local upgradeButton = row:WaitForChild("UpgradeButton")
-
-	local level = upgradeValue.Value
-
-	nameLabel.Text = config.DisplayName
-	bonusLabel.Text = getUpgradeBonusText(upgradeName, level)
-	levelLabel.Text = "Level: " .. tostring(level) .. "/" .. tostring(config.MaxLevel)
-
-	if config.ComingSoon then
-		upgradeButton.Text = "Coming Soon"
-		upgradeButton.Active = false
-		upgradeButton.AutoButtonColor = false
-		upgradeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	if displayedLevel < 1 or displayedLevel > maxLevel then
+		levelFrame.Visible = false
+		
+		levelFrame:SetAttribute("DisplayedLevel", 0)
+		levelFrame:SetAttribute("LevelState", "Hidden")
 		return
 	end
-
-	if level >= config.MaxLevel then
-		upgradeButton.Text = "MAX"
-		upgradeButton.Active = false
-		upgradeButton.AutoButtonColor = false
-		upgradeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	
+	levelFrame.Visible = true
+	
+	levelFrame:SetAttribute("UpgradeName", upgradeName)
+	levelFrame:SetAttribute("DisplayedLevel", displayedLevel)
+	
+	controls.LevelLabel.Text = "Lvl. " .. tostring(displayedLevel)
+	controls.BonusLabel.Text = UpgradeModule.GetBonusText(upgradeName, displayedLevel)
+	
+	local defaultIcon = UpgradeModule.GetIcon(upgradeName, "Default")
+	local selectedIcon = UpgradeModule.GetIcon(upgradeName, "Selected")
+	
+	local defaultFrameImage = UpgradeModule.GetLevelFrameImage("Default")
+	local selectedFrameImage = UpgradeModule.GetLevelFrameImage("Selected")
+	
+	if displayedLevel <= currentLevel then
+		levelFrame:SetAttribute("LevelState", "Improved")
+		levelFrame.Image = defaultFrameImage
+		
+		controls.CurrentIcon.Image = selectedIcon
+		
+		controls.SuccessIcon.Visible = true
+		controls.ImprovedButton.Visible = true
+		
+		controls.UpButton.Visible = false
+		controls.LockedButton.Visible = false
+		
+		controls.PriceLabel.Text = ""
 		return
 	end
+	
+	if displayedLevel == currentLevel + 1 and currentLevel < maxLevel then 
+		levelFrame:SetAttribute("LevelState", "Available")
+		levelFrame.Image = selectedFrameImage
+		
+		controls.CurrentIcon.Image = selectedIcon
+		
+		controls.SuccessIcon.Visible = false
+		controls.ImprovedButton.Visible = false
+		
+		controls.UpButton.Visible = true
+		controls.LockedButton.Visible = false
+		
+		local price = UpgradeModule.GetLevelPrice(upgradeName, displayedLevel)
+		if type(price) == "number" then
+			controls.PriceLabel.Text = formatNumber(price)
+		else
+			controls.PriceLabel.Text = "?"
+		end
+		return
+	end
+	
+	levelFrame:SetAttribute("LevelState", "Locked")
+	levelFrame.Image = defaultFrameImage
+	
+	controls.CurrentIcon.Image = defaultIcon
+	
+	controls.SuccessIcon.Visible = false
+	controls.ImprovedButton.Visible = false 
+	
+	controls.UpButton.Visible = false
+	controls.LockedButton.Visible = true
+	
+	controls.PriceLabel.Text = ""
+end
 
-	local price = getUpgradePrice(upgradeName, level)
+--// Статистика выбранного апгрейда
+local function updateCurrentStats(upgradeName, currentLevel)
+	local config = UpgradeModule.GetConfig(upgradeName)
+	
+	if not config then
+		return
+	end
+	
+	upgStatsIcon.Image = UpgradeModule.GetIcon(upgradeName, "Stats")
+	upgStatsName.Text = config.DisplayName
+	upgStatsInfo.Text = config.Description or ""
+	upgStatsLvl.Text = tostring(currentLevel) .. "/" .. tostring(config.MaxLevel)
+	upgStatsCurMult.Text = UpgradeModule.GetCurrentBonusText(upgradeName, currentLevel)
+	
+	if currentLevel >= config.MaxLevel then
+		upgStatsNextLvl.Text = "MAX LEVEL"
+		upgStatsNextMult.Text = "MAX"
+		
+		return
+	end
+	
+	local nextLevel = currentLevel + 1
+	
+	upgStatsNextLvl.Text = "NEXT LEVEL " .. tostring(nextLevel)
+	
+	upgStatsNextMult.Text = UpgradeModule.GetNextBonusText(upgradeName, currentLevel)
+end
 
-	upgradeButton.Text = tostring(price) .. " Gems"
-	upgradeButton.Active = true
-	upgradeButton.AutoButtonColor = true
-
-	if gemsStat.Value >= price then
-		upgradeButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-	else
-		upgradeButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+--// обновляем 10 визуальных слотов 
+local function updateVisibleLevels(upgradeName, currentLevel)
+	local config = UpgradeModule.GetConfig(upgradeName)
+	
+	if not config then 
+		return
+	end
+	
+	local firstDisplayedLevel = getFirstDisplayedLevel(currentLevel, config.MaxLevel)
+	
+	for slotIndex = 1, visibleSlotCount do
+		local levelFrame = levelFrames[slotIndex]
+		
+		local displayedLevel = firstDisplayedLevel + slotIndex - 1
+		
+		updateLevelFrame( 
+			levelFrame,
+			upgradeName,
+			displayedLevel,
+			currentLevel,
+			config.MaxLevel
+		)
 	end
 end
 
-local function updateAllUpgradesUI()
-	for upgradeName, _ in pairs(UpgradeConfig) do
-		updateUpgradeRow(upgradeName)
+--// Полное обновление выбранного апгрейда
+local function refreshSelectedUpgrade()
+	if not selectedUpgradeName then
+		return
 	end
+	
+	local config = UpgradeModule.GetConfig(selectedUpgradeName)
+	
+	if not config then 
+		return
+	end
+	
+	local upgradeValue = upgradesFolder:FindFirstChild(selectedUpgradeName)
+	
+	if not upgradeValue then 
+		return
+	end
+	
+	local currentLevel = math.clamp(math.floor(tonumber(upgradeValue.Value) or 0), 0, config.MaxLevel)
+	
+	updateCurrentStats(selectedUpgradeName, currentLevel)
+	updateVisibleLevels(selectedUpgradeName, currentLevel)
 end
 
-local function setupUpgradeButtons()
-	for upgradeName, config in pairs(UpgradeConfig) do
-		local row = upgradesFrame:FindFirstChild(upgradeName .. "Upgrade")
-
-		if row then
-			local upgradeButton = row:WaitForChild("UpgradeButton")
-
-			upgradeButton.MouseButton1Click:Connect(function()
-				if config.ComingSoon then return end
-
-				local upgradeValue = upgradesFolder:FindFirstChild(upgradeName)
-				if not upgradeValue then return end
-
-				if upgradeValue.Value >= config.MaxLevel then return end
-
-				upgradeEvent:FireServer(upgradeName)
-			end)
-
-			local upgradeValue = upgradesFolder:FindFirstChild(upgradeName)
-			if upgradeValue then
-				upgradeValue.Changed:Connect(function()
-					updateUpgradeRow(upgradeName)
-				end)
+--// Выбор апгрейда
+local function updateUpgradeSelectionButtons()
+	for _, upgradeName in ipairs(UpgradeModule.GetUpgradeNames()) do
+		local button = upgradeSelectionButtons[upgradeName]
+		
+		if button and button:IsA("ImageButton") then
+			if upgradeName == selectedUpgradeName then
+				button.Image = UpgradeModule.GetButtonImage(upgradeName, "Selected")
+			else 
+				button.Image = UpgradeModule.GetButtonImage(upgradeName, "Default")
 			end
 		end
 	end
 end
 
-gemsStat.Changed:Connect(updateAllUpgradesUI)
+local function selectUpgrade(upgradeName)
+	if not UpgradeModule.IsValidUpgrade(upgradeName) then
+		return
+	end
+	
+	selectedUpgradeName = upgradeName
+	
+	updateUpgradeSelectionButtons()
+	clearWarning()
+	refreshSelectedUpgrade()
+end
 
-setupUpgradeButtons()
-updateAllUpgradesUI()
+print("BLA")
+
+local function setupLevelFrameButtons()
+	for slotIndex = 1, visibleSlotCount do
+		local levelFrame = levelFrames[slotIndex]
+		local controls = levelControls[levelFrame]
+		
+		controls.UpButton.Activated:Connect(function()
+			print("UPGRADE BUTTON PRESSED", slotIndex, levelFrame:GetAttribute("LevelState"), levelFrame:GetAttribute("UpgradeName"))
+			local state = levelFrame:GetAttribute("LevelState")
+			local upgradeName = levelFrame:GetAttribute("UpgradeName")
+			
+			if state ~= "Available" then
+				return
+			end
+			
+			if type(upgradeName) ~= "string" then 
+				return
+			end
+			
+			clearWarning()
+			
+			upgradeEvent:FireServer(upgradeName)
+		end)
+		
+		controls.ImprovedButton.Activated:Connect(function()
+			showWarning("Этот уровень уже улучшен")   
+		end)
+		
+		controls.LockedButton.Activated:Connect(function()
+			showWarning("Этот уровень закрыт")
+		end)
+	end
+end
+
+print("UPGRADE UI: level buttons connected")
+
+--// Кнопка выбора апгрейда
+local function setupUpgradeSelectionButtons()
+	for _, upgradeName in ipairs(UpgradeModule.GetUpgradeNames()) do
+		local config = UpgradeModule.GetConfig(upgradeName)
+		
+		if config then
+			local button = upgScrollFrame:WaitForChild(config.ButtonName)
+			assert(button:IsA("GuiButton"), config.ButtonName .. " должен быть ImageButton или TextButton")
+			
+			upgradeSelectionButtons[upgradeName] = button
+			
+			button.Activated:Connect(function()
+				selectUpgrade(upgradeName)
+			end)
+		end
+	end
+end
+
+--// Слудим за изменением уровней
+local function connectUpgradeValues()
+	for _, upgradeName in ipairs(UpgradeModule.GetUpgradeNames()) do
+		local upgradeValue = upgradesFolder:WaitForChild(upgradeName, 15)
+		
+		if upgradeValue then 
+			upgradeValue:GetPropertyChangedSignal("Value"):Connect(function()
+				if selectedUpgradeName == upgradeName then
+					refreshSelectedUpgrade()
+				end
+			end)
+		else
+			warn("Upgrade value not fount:", upgradeName)
+		end
+	end
+end
+
+--// Ответ сервер
+local function getFailureMessage(result)
+	local code = result.Code
+	
+	if code == "NotEnoughGems" then
+		local missingGems = tonumber(result.MissingGems) or 0
+		
+		return "Для улучшения вам не хватает " .. formatNumber(missingGems) .. " гемов"
+	end
+	
+	if code == "MaxLevel" then
+		return "Достигнут максимальный уровень"
+	end
+	
+	if code == "DataNotReady" then
+		return "Данные игрока еще загружаются"
+	end
+	
+	if code == "PurchaseBusy" then
+		return "Предыдущая покупка еще обрабатывается"
+	end
+	
+	if code == "CurrencyMissing" then
+		return "Баланс гемов не найден"
+	end
+	
+	if code == "InvalidPrice" then
+		return "Не удалось определить цену улучшения"
+	end
+	
+	if code == "InvalidUpgrade" or code == "InvalidRequest" then
+		return "Апгрейд не найден"
+	end
+	
+	if code == "UpgradeValueMissing" then 
+		return "Данные апгрейда не найдены"
+	end
+	
+	return "Не удалось улучшить уровень"
+end
+
+upgCloseButton.MouseButton1Click:Connect(function()
+	MenuManager.close("Upgrade")
+end)
+
+upgradeEvent.OnClientEvent:Connect(function(result)
+	if type(result) ~= "table" then
+		return
+	end
+	
+	if result.Success == true then
+		clearWarning()
+		
+		if type(result.UpgradeName) == "string" and UpgradeModule.IsValidUpgrade(result.UpgradeName) then
+			selectedUpgradeName = result.UpgradeName
+		end
+		
+		refreshSelectedUpgrade()
+		return
+	end
+	showWarning(getFailureMessage(result))
+end)
+
+--// Changed
+gemsValue:GetPropertyChangedSignal("Value"):Connect(updateGemsLabel)
+
+--// Start
+upgWarningLabel.Visible = false
+
+collectLevelFrames()
+collectLevelControls()
+
+setupLevelFrameButtons()
+setupUpgradeSelectionButtons()
+connectUpgradeValues()
+
+updateGemsLabel()
+
+if UpgradeModule.IsValidUpgrade(DEFAULT_UPGRADE) then
+	selectUpgrade(DEFAULT_UPGRADE)
+else 
+	local upgradeNames = UpgradeModule.GetUpgradeNames()
+	
+	selectUpgrade(upgradeNames[1])
+end
 
 print("UpgradeUI loaded")
