@@ -6,6 +6,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
 local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
+local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 --// RemoteEvents 
 local rebirthEvent = ReplicatedStorage:WaitForChild("RebirthEvent")
@@ -26,6 +27,33 @@ local function getRebirth(player)
 	if not leaderstats then return nil end
 	
 	return leaderstats:FindFirstChild("Rebirth")
+end
+
+local function getRebirthButtonNameFromAmount(amount)
+	amount = tonumber(amount)
+	
+	if not amount then
+		return nil
+	end
+	
+	amount = math.floor(amount)
+	
+	for buttonName, buttonAmount in pairs(RebirthModule.Buttons) do
+		if buttonAmount == amount then
+			return buttonName
+		end
+	end
+	return nil
+end
+
+local function isRebirthAmountUnlocked(player, amount)
+	local buttonName = getRebirthButtonNameFromAmount(amount)
+	
+	if not buttonName then
+		return false
+	end
+	
+	return UpgradeModule.IsRebirthUnlocked(player, buttonName)
 end
 
 local function doRebirth(player, amount)
@@ -71,6 +99,12 @@ performRebirthEvent.OnServerEvent:Connect(function(player, amount)
 		return
 	end
 	
+	if not isRebirthAmountUnlocked(player, amount) then
+		warn("LOCKED REBIRTH BUTTON REQUEST:", player.Name, amount)
+		return
+	end
+	
+	
 	doRebirth(player, amount)
 end)
 
@@ -103,17 +137,8 @@ autoRebirthEvent.OnServerEvent:Connect(function(player, enabled, amount)
 		return
 	end
 	
-	local validButtons = { 
-		[1] = true,
-		[5] = true,
-		[25] = true,
-		[75] = true,
-		[150] = true,
-		[250] = true,
-		[500] = true,
-	}
-	
-	if not validButtons[amount] then 
+	if not isRebirthAmountUnlocked(player,amount) then
+		warn("LOCKED AUTO REBIRTH REQUEST:", player.Name, amount)
 		return
 	end
 	
@@ -142,7 +167,11 @@ task.spawn(function()
 					end
 				end
 			else 
-				doRebirth(player, amount)
+				if isRebirthAmountUnlocked(player, amount) then
+					doRebirth(player, amount)
+				else 
+					autoRebirthPlayers[player] = nil
+				end
 			end
 		end
 	end
