@@ -1,11 +1,12 @@
---Services
+--EggServer
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local PetModule = require(game.ServerScriptService.Modules.PetModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
-
+local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 
 -- RemoteEvent
@@ -63,22 +64,11 @@ local eggData = {
 
 
 --Roll logic
-local function getUpgradeLevel(player, upgradeName)
-	local upgrades = player:FindFirstChild("Upgrade")
-	if not upgrades then return 0 end
-	
-	local upgrade = upgrades:FindFirstChild(upgradeName)
-	if not upgrade then return 0 end
-	
-	return upgrade.Value
-end
-
 local function rollPetFromEgg(player, eggName)
 	local eggInfo = eggData[eggName]
 	if not eggInfo then return nil, nil end
 	
-	local petLuckLevel = getUpgradeLevel(player, "PetLuck")
-	local luckBonus = petLuckLevel * 0.10
+	local petLuckBonus = UpgradeModule.GetPetLuckBonus(player)
 	
 	local boostLuckMultiplier = BoostModule.GetLuckMultiplier(player)
 	
@@ -88,9 +78,10 @@ local function rollPetFromEgg(player, eggName)
 	for index, petInfo in ipairs(eggInfo.pets) do
 		local rarityPower = index - 1
 		
-		local finalChance = petInfo.chance * (1 + (luckBonus * rarityPower))
+		local finalChance = petInfo.chance
 		
 		if rarityPower > 0 then
+			finalChance *= 1 + (petLuckBonus * rarityPower)
 			finalChance *= boostLuckMultiplier
 		end
 		
