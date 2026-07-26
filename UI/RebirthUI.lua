@@ -9,10 +9,11 @@ local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule
 local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
 local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
+local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 local player = Players.LocalPlayer
 local gui = script.Parent
-ClientDataModule.WaitUntilReade(player)
+ClientDataModule.WaitUntilReady(player)
 MenuManager.init(gui)
 
 --// UI PATHS
@@ -28,6 +29,11 @@ local rebirthDetails = rebirthHost:WaitForChild("RebirthDetails")
 local rebirthFrame = rebirthHost:WaitForChild("RebirthFrame")
 local rebirthInfoFrame = rebirthHost:WaitForChild("RebirthInfoFrame")
 
+--// LeaderstatsUI
+local rebirthLeaderstatsUI = rebirthHost:WaitForChild("RebirthLeaderstatsUI")
+local energyLabel = rebirthLeaderstatsUI:WaitForChild("EnergyLabel")
+local rebirthLabel = rebirthLeaderstatsUI:WaitForChild("RebirthLabel")
+
 --// RemoteEvents 
 local rebirthEvent = ReplicatedStorage:WaitForChild("RebirthEvent")
 local performRebirthEvent = rebirthEvent:WaitForChild("PerformRebirthEvent")
@@ -36,6 +42,10 @@ local autoRebirthEvent = rebirthEvent:WaitForChild("AutoRebirthEvent")
 --// PlayerValues
 local energyValue = ClientDataModule.GetEnergy(player)
 local rebirthValue = ClientDataModule.GetRebirth(player)
+
+local upgradesFolder = ClientDataModule.GetUpgrades(player)
+local rebirthButtonUpgrade = upgradesFolder:WaitForChild("RebirthButton")
+local moneyMultiplierUpgrade = upgradesFolder:WaitForChild("MoneyMultiplier")
 
 local playerData = ClientDataModule.GetPlayerData(player)
 local gamepasses = ClientDataModule.GetGamepasses(player)
@@ -141,6 +151,28 @@ local rebirthMaxButton = rebirthFrame:WaitForChild("RebirthMaxButton")
 local rebirthMaxPriceLabel = rebirthMaxButton:WaitForChild("RebirthInfoPrice")
 local rebirthMaxStatusLabel = rebirthMaxButton:WaitForChild("StatusRebirthLabel")
 
+local function updateRebirthButtonUnlocks()
+	local selectedButtonUnlocked = true
+	
+	for buttonName, data in pairs(rebirthButtons) do
+		local unlocked = UpgradeModule.IsRebirthButtonUnlocked(player, buttonName)
+		
+		data.Button.Visible = unlocked
+		data.Button.Active = unlocked
+		data.Button.Interactable = unlocked
+		
+		if buttonName == selectedButtonName and not unlocked then
+			selectedButtonUnlocked = false
+		end
+	end
+	
+	if not isMaxSelected and not selectedButtonUnlocked then
+		selectedButtonName = "RebirthButton1"
+		selectedAmount = RebirthModule.Buttons.RebirthButton1
+		isMaxSelected = false
+	end
+end
+
 --// Helper 
 local function formatNumber(n)
 	if n >= 1e18 then
@@ -164,6 +196,11 @@ local function promptPass(passName)
 	if not passData.GamePassId or passData.GamePassId == 0 then return end 
 	
 	MarketplaceService:PromptGamePassPurchase(player, passData.GamePassId)
+end
+
+local function updateLeaderstatsUI()
+	energyLabel.Text = formatNumber(energyValue.Value)
+	rebirthLabel.Text = formatNumber(rebirthValue.Value)
 end
 
 local function hasAutoRebirthPass()
@@ -199,7 +236,11 @@ local function getEnergyMultiplier(rebirths)
 end
 
 local function getMoneyMultiplier(rebirths)
-	return RebirthModule.GetMoneyMultiplierFromRebirths(rebirthValue.Value)
+	if not UpgradeModule.IsMoneyMultiplierUnlocked(player) then
+		return 1
+	end
+	
+	return RebirthModule.GetMoneyMultiplierFromRebirths(rebirths)
 end
 
 local function getXpMultiplier(rebirths)
@@ -264,7 +305,7 @@ local function updateDetails()
 	totalRebirthLabel.Text = tostring(currentRebirths)
 	
 	energyBoostLabel.Text = "x" .. string.format("%.1f", RebirthModule.GetEnergyMultiplierFromRebirths(currentRebirths))
-	moneyBoostLabel.Text = "x" .. string.format("%.2f", RebirthModule.GetMoneyMultiplierFromRebirths(currentRebirths))
+	moneyBoostLabel.Text = "x" .. string.format("%.2f", getMoneyMultiplier(currentRebirths))
 	xpBoostLabel.Text = "x" .. string.format("%.2f", RebirthModule.GetXpMultiplierFromRebirths(currentRebirths))
 	
 	detailsPerformRebirthLabel.Text = "+" .. amount .. " Rebirth"
@@ -288,7 +329,10 @@ local function updateInfoFrame()
 	xpCurrentMult.Text = "x" .. string.format("%.2f", getXpMultiplier(currentRebirths))
 	
 	local addedEnergyMult = amount * RebirthModule.EnergyBonusPerRebirth 
-	local addedMoneyMult = amount * RebirthModule.MoneyBonusPerRebirth 
+	local addedMoneyMult = 0
+	if UpgradeModule.IsMoneyMultiplierUnlocked(player) then
+		addedMoneyMult = amount * RebirthModule.MoneyBonusPerRebirth
+	end
 	local addedXpMult = amount * RebirthModule.XpBonusPerRebirth 
 	
 	energyNextMult.Text = "+" .. string.format("%.1f", addedEnergyMult) .. "x"
@@ -342,6 +386,7 @@ local function updatePerformButtons()
 end
 
 local function updateRebirthUI()
+	updateRebirthButtonUnlocks()
 	updateSelectedImages()
 	updateButtonPrices()
 	updateDetails()
@@ -435,6 +480,9 @@ end
 --// Connections
 for buttonName, data in pairs(rebirthButtons) do 
 	data.Button.MouseButton1Click:Connect(function()
+		if not UpgradeModule.IsRebirthButtonUnlocked(player, buttonName) then 
+			return
+		end
 		selectRebirth(buttonName, data.Amount)
 	end)
 end
@@ -456,6 +504,10 @@ end)
 
 energyValue.Changed:Connect(updateRebirthUI)
 rebirthValue.Changed:Connect(updateRebirthUI)
+rebirthButtonUpgrade.Changed:Connect(updateRebirthUI)
+moneyMultiplierUpgrade.Changed:Connect(updateRebirthUI)
+energyValue.Changed:Connect(updateLeaderstatsUI)
+rebirthValue.Changed:Connect(updateLeaderstatsUI)
 
 task.spawn(function()
 	while true do 
@@ -463,6 +515,7 @@ task.spawn(function()
 		
 		if rebirthHost.Visible then 
 			updateRebirthUI()
+			updateLeaderstatsUI()
 		end
 	end
 end)
