@@ -53,9 +53,9 @@ end
 
 local function makeResponse(success, message, data)
 	return {
-		success = success == true,
-		message = message or "",
-		data = data,
+		Success = success == true,
+		Message = message or "",
+		Data = data,
 	}
 end
 
@@ -83,7 +83,7 @@ local function setupTrailData(player)
 		if config.Enabled then 
 			local trailFolder = getOrCreateFolder(trailsFolder, trailId)
 			if trailFolder then
-				getOrCreateValue(trailFolder, "BoolVlue", "Owned", false)
+				getOrCreateValue(trailFolder, "BoolValue", "Owned", false)
 				getOrCreateValue(trailFolder, "IntValue", "Level", DEFAULT_LEVEL)
 				getOrCreateValue(trailFolder, "IntValue", "Stage", DEFAULT_STAGE)
 			end
@@ -316,7 +316,7 @@ local function purchaseTrail(player, trailId)
 		return makeResponse(false, "Для трейла не указана стоимость покупки")
 	end
 	
-	local currencyName = purchaseConfig.CurrentName
+	local currencyName = purchaseConfig.Currencyre
 	local price = math.max(math.floor(tonumber(purchaseConfig.Price) or 0), 0)
 	
 	if currencyName ~= "Money" then
@@ -327,7 +327,7 @@ local function purchaseTrail(player, trailId)
 		return makeResponse(false, "Недостаточно денег", buildTrailSnapshot(player, trailId))
 	end
 	
-	resurces.Money.Value -= price
+	resources.Money.Value -= price
 	object.Owned.Value = true
 	
 	return makeResponse(true, "Трейл успешно куплен", buildTrailSnapshot(player, trailId))
@@ -371,7 +371,7 @@ local function upgradeTrail(player, trailId)
 		return makeResponse(false, "Недостаточно опыта", buildTrailSnapshot(player, trailId))
 	end
 	
-	resurces.Money.Value -= cost.Money
+	resources.Money.Value -= cost.Money
 	
 	local xpRemoved = XPModule.removeXP(player, cost.XP)
 	
@@ -381,9 +381,9 @@ local function upgradeTrail(player, trailId)
 		return makeResponse(false, "Не удалось списать опыт", buildTrailSnapshot(player, trailId))
 	end
 	
-	object.Level.Value = cost.TragetLevel
+	object.Level.Value = cost.TargetLevel
 	
-	return makeResponse(true, "Уровень списать опыт", buildTrailSnapshot(player, trailId))
+	return makeResponse(true, "Уровень трейла повышен", buildTrailSnapshot(player, trailId))
 end
 
 --// EQUIP / UNEQUIP
@@ -452,7 +452,7 @@ local function stageUpTrail(player, trailId)
 	end
 	
 	if requirements.SpendMoney == true then
-		resouces.Money.Value -= requiredMoney
+		resources.Money.Value -= requiredMoney
 	end
 	
 	if requirements.SpendRebirth == true then
@@ -466,7 +466,7 @@ end
 
 --// REMOTE HANDLER
 local function handleRequest(player, action, trailId)
-	if player:GetAttribute("DateReady") ~= true then
+	if player:GetAttribute("DataReady") ~= true then
 		return makeResponse(false, "Данные игрока еще загружаются")
 	end
 	
@@ -543,7 +543,7 @@ local function initializePlayer(player)
 	end)
 end
 
-Players.PlayerAdded:Conncet(initializePlayer)
+Players.PlayerAdded:Connect(initializePlayer)
 
 for _, player in ipairs(Players:GetPlayers()) do
 	task.spawn(initializePlayer, player)
