@@ -316,7 +316,7 @@ local function purchaseTrail(player, trailId)
 		return makeResponse(false, "Для трейла не указана стоимость покупки")
 	end
 	
-	local currencyName = purchaseConfig.Currencyre
+	local currencyName = purchaseConfig.Currency
 	local price = math.max(math.floor(tonumber(purchaseConfig.Price) or 0), 0)
 	
 	if currencyName ~= "Money" then
