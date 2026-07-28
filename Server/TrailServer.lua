@@ -1,765 +1,556 @@
+--// TrailServer 1.2v
+
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local XPModule = require(game.ServerScriptService.Modules.XPModule)
+local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
+local XPModule = require(ServerScriptService.Modules.XPModule)
 
-local buyTrailEvent = ReplicatedStorage:WaitForChild("BuyTrailEvent")
-local trailDataEvent = ReplicatedStorage:WaitForChild("TrailDataEvent")
-local tierUpTrailEvent = ReplicatedStorage:WaitForChild("TierUpTrailEvent")
-local UpgradeTrailEvent = ReplicatedStorage:WaitForChild("UpgradeTrailEvent")
-local upgradeTrailEvent = ReplicatedStorage:WaitForChild("UpgradeTrailEvent")
-local closeTrailMenuEvent = ReplicatedStorage:WaitForChild("CloseTrailMenuEvent")
-local requestTrailDataEvent = ReplicatedStorage:WaitForChild("RequestTrailDataEvent")
+--// REMOTES
+local trailEventFolder = ReplicatedStorage:WaitForChild("TrailEvent")
+local trailRequestFunction = trailEventFolder:WaitForChild("TrailRequestFunction")
 
-local backPart = workspace:WaitForChild("TrailPosBack")
+--// CONSTANTS
+local DEFAULT_LEVEL = 0
+local DEFAULT_STAGE = 1
 
-local TRAIL_CONFIG = {
-	BlueTrail = {
-		DisplayName = "Blue Trail",
-		Price = 1000,
-		
-		BaseAcceleration = 1.10,
-		BaseRacePower = 1.05,
-		
-		Tiers = {
-			[1] = {
-				Name = "Spark",
-				Multiplier = 1,
-				LevelBonus = 0.05,
-				XPPerReward = 1,
-				MaxLevel = 5,
-				TierUpCost = 1500,
-			},
-			
-			[2] = {
-				Name = "Flow",
-				Multiplier = 1.10,
-				LevelBonus = 0.05,
-				XPPerReward = 2,
-				MaxLevel = 10,
-				TierUpCost = 2500,
-			},
-			
-			[3] = {
-				Name = "Surge",
-				Multiplier = 1.25,
-				LevelBonus = 0.05,
-				XPPerReward = 3,
-				MaxLevel = 15,
-				TierUpCost = 3500,
-			},
-			
-			[4] = {
-				Name = "Hyper",
-				Multiplier = 1.35,
-				LevelBonus = 0.05,
-				XPPerReward = 4,
-				MaxLevel = 20,
-				TierUpCost = 4500,
-			},
-			
-			[5] = {
-				Name = "Ascended",
-				Multiplier = 1.45,
-				LevelBonus = 0.05,
-				XPPerReward = 5,
-				MaxLevel = 25,
-			},
-		},
+local playerRequestLocks = {}
+
+--// GEMERIC HELPERS
+local function getOrCreateFolder(parent, name)
+	local folder = parent:FindFirstChild(name)
+	
+	if folder and not folder:IsA("Folder") then
+		warn("TrailServer:", parent:GetFullName(), "уже содержит обьект", name, "не являющийся Folder")
+		return nil
+	end
+	
+	if not folder then 
+		folder = Instance.new("Folder")
+		folder.Name = name
+		folder.Parent = parent
+	end
+	return folder
+end
+
+local function getOrCreateValue(parent, className, name, defaultValue)
+	local valueObject = parent:FindFirstChild(name)
+	
+	if valueObject and not valueObject:IsA(className) then
+		warn("TrailServer:", valueObject:GetFullName(), "имеет неправильный ClassName")
+		return nil
+	end
+	
+	if not valueObject then 
+		valueObject = Instance.new(className)
+		valueObject.Name = name
+		valueObject.Value = defaultValue
+		valueObject.Parent = parent
+	end
+	return valueObject
+end
+
+local function makeResponse(success, message, data)
+	return {
+		success = success == true,
+		message = message or "",
+		data = data,
 	}
-}
-
-local function getOrCreateValue(parent, className, name, default)
-	local value = parent:FindFirstChild(name)
-	
-	if not value then
-		value = Instance.new(className)
-		value.Name = name
-		value.Value = default
-		value.Parent = parent
-	end
-	
-	return value
 end
 
-local function getTrailConfig(trailName)
-	return TRAIL_CONFIG[trailName]
-end
-
-local function calculateTrailState(trailName, level, tier)
-	local config = getTrailConfig(trailName)
-	if not config then
-		return 1, 1
+local function isValidTrailId(trailId)
+	if type(trailId) ~= "string" then
+		return false
 	end
 	
-	local tierData = config.Tiers[tier]
-	if not tierData then
-		return 1, 1
-	end
+	local config = TrailModule.GetTrailConfig(trailId)
 	
-	local levelBonus = level * tierData.LevelBonus
-	
-	local acceleration = (config.BaseAcceleration + levelBonus) * tierData.Multiplier
-	
-	local racePower = (config.BaseRacePower + levelBonus) * tierData.Multiplier
-	
-	return acceleration, racePower
+	return config ~= nil and config.Enabled == true
 end
 
-local function setupBlueTrail(player)
+--// PLAYER DATA SETUP
+local function setupTrailData(player)
+	local trailsFolder = getOrCreateFolder(player, "Trails")
+	
+	if not trailsFolder then
+		return nil
+	end
+	
+	local equippedTrail = getOrCreateValue(trailsFolder, "StringValue", "EquippedTrail", "")
+	
+	for trailId, config in pairs(TrailModule.Trails) do
+		if config.Enabled then 
+			local trailFolder = getOrCreateFolder(trailsFolder, trailId)
+			if trailFolder then
+				getOrCreateValue(trailFolder, "BoolVlue", "Owned", false)
+				getOrCreateValue(trailFolder, "IntValue", "Level", DEFAULT_LEVEL)
+				getOrCreateValue(trailFolder, "IntValue", "Stage", DEFAULT_STAGE)
+			end
+		end
+	end
+	return {
+		Folder = trailsFolder,
+		EquippedTrail = equippedTrail,
+	}
+end
+
+local function getTrailDataObject(player, trailId)
+	if not isValidTrailId(trailId) then
+		return nil
+	end
+	
 	local trailsFolder = player:FindFirstChild("Trails")
 	
 	if not trailsFolder then
-		trailsFolder = Instance.new("Folder")
-		trailsFolder.Name = "Trails"
-		trailsFolder.Parent = player
+		return nil
 	end
 	
-	local blueTrail = trailsFolder:FindFirstChild("BlueTrail")
+	local trailFolder = trailsFolder:FindFirstChild(trailId)
+	local equippedTrail = trailsFolder:FindFirstChild("EquippedTrail")
 	
-	if not blueTrail then
-		blueTrail = Instance.new("Folder")
-		blueTrail.Name = "BlueTrail"
-		blueTrail.Parent = trailsFolder
+	if not trailFolder or not trailFolder:IsA("Folder") then
+		return nil
 	end
-	
-	getOrCreateValue(blueTrail, "BoolValue", "Owned", false)
-	getOrCreateValue(blueTrail, "BoolValue", "Equipped", false)
-	
-	getOrCreateValue(blueTrail, "IntValue", "Level", 0)
-	getOrCreateValue(blueTrail, "IntValue", "XP", 0)
-	getOrCreateValue(blueTrail, "IntValue", "Tier", 1)
-	
-	getOrCreateValue(blueTrail, "NumberValue", "AccelerationMultiplier", 1)
-	getOrCreateValue(blueTrail, "NumberValue", "RacePowerMultiplier", 1)
-	
-	return blueTrail
-end
-
-local function updateTrailStats(player, trailName)
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
-	
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then return end
 	
 	local owned = trailFolder:FindFirstChild("Owned")
 	local level = trailFolder:FindFirstChild("Level")
-	local tier = trailFolder:FindFirstChild("Tier")
+	local stage = trailFolder:FindFirstChild("Stage")
 	
-	local accelerationValue = trailFolder:FindFirstChild("AccelerationMultiplier")
-	local racePowerValue = trailFolder:FindFirstChild("RacePowerMultiplier")
-	
-	if not owned or not level or not tier or not accelerationValue or not racePowerValue then
-		return
+	if not owned or not owned:IsA("BoolValue") then
+		return nil
 	end
 	
-	if not owned.Value then
-		accelerationValue.Value = 1
-		racePowerValue.Value = 1
-		return
+	if not level or not level:IsA("IntValue") then
+		return nil
 	end
 	
-	local acceleration, racePower = calculateTrailState(trailName, level.Value, tier.Value)
+	if not stage or not stage:IsA("IntValue") then
+		return nil
+	end
 	
-	accelerationValue.Value = acceleration
-	racePowerValue.Value = racePower
+	if not equippedTrail or not equippedTrail:IsA("StringValue") then
+		return nil
+	end
+	
+	return {
+		TrailsFolder = trailsFolder,
+		TrailFolder = trailFolder,
+		
+		Owned = owned,
+		Level = level,
+		Stage = stage,
+		
+		EquippedTrail = equippedTrail,
+	}
 end
 
-local function getXPNeeded(level)
-	return 5 + (level * 5)
-end
-
-local function sendTrailData(player, trailName)
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
-	
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then return end
-	
-	local config = getTrailConfig(trailName)
-	if not config then return end
-	
-	local tier = trailFolder:FindFirstChild("Tier")
-	local tierData = config.Tiers[tier.Value]
-	
-	local level = trailFolder:FindFirstChild("Level")
-	local playerXP = XPModule.getXP(player)
-	local xpNeeded = getXPNeeded(level.Value)
-	
-	local nextTierData = config.Tiers[tier.Value + 1]
-	
-	local moneyValue = 0
+local function getPlayerResources(player)
+	local leaderstats = player:FindFirstChild("leaderstats")
 	local playerData = player:FindFirstChild("PlayerData")
-	if playerData then
-		local money = playerData:FindFirstChild("Money")
-		if money then
-			moneyValue = money.Value
-		end
+	
+	if not leaderstats or not playerData then
+		return nil
 	end
 	
-	local isMaxTier = tier.Value >= 5
-	local canTierUp = false
+	local money = playerData:FindFirstChild("Money")
+	local rebirth = leaderstats:FindFirstChild("Rebirth")
 	
-	if not isMaxTier then
-		canTierUp = level.Value >= tierData.MaxLevel and moneyValue >= tierData.TierUpCost
+	if not money or not money:IsA("IntValue") then
+		return nil
 	end
 	
-	trailDataEvent:FireClient(player, trailName, {
+	if not rebirth or not rebirth:IsA("IntValue") then
+		return nil
+	end
+	
+	return {
+		Money = money,
+		Rebirth = rebirth,
+	}
+end
+
+--// AVAILABILITY
+local function isTrailAvailableForPlayer(player, trailId)
+	local config = TrailModule.GetTrailConfig(trailId)
+	
+	if not config or not config.Enabled then
+		return false, "Этот трейл недоступен"
+	end
+	
+	--сюда проверку новіх локаций
+	
+	return true, ""
+end
+
+--// SNAPSHOT FOR CLIENT
+local function buildTrailSnapshot(player, trailId)
+	local config = TrailModule.GetTrailConfig(trailId)
+	local object = getTrailDataObject(player, trailId)
+	local resources = getPlayerResources(player)
+	
+	if not config or not object or not resources then 
+		return nil
+	end
+	
+	local owned = object.Owned.Value
+	local level = object.Level.Value
+	local stage = object.Stage.Value
+	
+	local boostData = TrailModule.GetBoostData(trailId, level, stage)
+	
+	local purchaseData = {
+		Currency = config.Purchase.Currency,
+		Price = config.Purchase.Price,
+	}
+	
+	local upgradeCost = nil
+	
+	if owned then
+		upgradeCost = TrailModule.GetLevelUpgradeCost(trailId, level)
+	end
+	
+	local stageRequirements = TrailModule.GetStageRequirements(trailId, stage)
+	
+	local stageProgress = nil
+	
+	if stageRequirements then 
+		stageProgress = TrailModule.GetStageProgress(trailId, stage, level, resources.Money.Value, resources.Rebirth.Value)
+	end
+	
+	local available, unavailableReason = isTrailAvailableForPlayer(player, trailId)
+	
+	return {
+		TrailId = trailId,
+		
 		DisplayName = config.DisplayName,
-		Price = config.Price,
+		Description = config.Description,
+		Icon = config.Icon,
 		
-		Owned = trailFolder.Owned.Value,
-		Equipped = trailFolder.Equipped.Value,
+		Order = config.Order,
+		Era = config.Era,
+		Location = config.Location,
 		
-		Level = trailFolder.Level.Value,
-		XP = playerXP,
-		XPNeeded = xpNeeded,
+		Available = available,
+		UnavailableReason = unavailableReason,
 		
-		CanUpgrade = playerXP >= xpNeeded,
+		Owned = owned,
+		Equipped = object.EquippedTrail.Value == trailId,
 		
-		Tier = tier.Value,
-		TierName = tierData.Name,
+		Level = level,
+		MaxLevel = TrailModule.MAX_LEVEL,
 		
-		MaxLevel = tierData.MaxLevel,
-		TierUpCost = tierData.TierUpCost,
-		CanTierUp = canTierUp,
-		IsMaxTier = isMaxTier,
+		Stage = stage,
+		StageName = TrailModule.GetStageName(stage),
+		StageIcon = TrailModule.GetStageIcon(stage),
+		StageMaxLevel = TrailModule.GetStageMaxLevel(stage),
+		IsMaxStage = TrailModule.IsMaxStage(stage),
+		CanLevelUpAtStage = TrailModule.CanLevelUpAtStage(level, stage),
 		
-		NextTierName = nextTierData and nextTierData.Name or "MAX",
+		Purchase = purchaseData,
+		UpgradeCost = upgradeCost,
 		
-		AccelerationMultiplier = trailFolder.AccelerationMultiplier.Value,
-		RacePowerMultiplier = trailFolder.RacePowerMultiplier.Value,
-	})
+		Boosts = boostData,
+		
+		StageRequirements = stageRequirements,
+		StageProgress = stageProgress,
+		
+		PlayerResources = {
+			Money = resources.Money.Value,
+			Rebirth = resources.Rebirth.Value,
+			XP = XPModule.getXP(player),
+		},
+	}
 end
 
-local activeTrailOrbits = {}
-
-local function equipTrail(player, trailName)
+local function buildAllTrailsSnapshot(player)
+	local trails = {}
+	
+	for trailId, config in pairs(TrailModule.Trails) do
+		if config.Enabled then
+			trails[trailId] = buildTrailSnapshot(player, trailId)
+		end
+	end
+	
 	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
+	local equippedTrail = ""
 	
-	for _, trailFolder in ipairs(trailsFolder:GetChildren()) do
-		local equipped = trailFolder:FindFirstChild("Equipped")
-		if equipped then
-			equipped.Value = false
+	if trailsFolder then
+		local equippedValue = trailsFolder:FindFirstChild("EquippedTrail")
+		
+		if equippedValue and equippedValue:IsA("StringValue") then
+			equippedTrail = equippedValue.Value
 		end
 	end
 	
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then return end 
-	
-	local owned = trailFolder:FindFirstChild("Owned")
-	local equipped = trailFolder:FindFirstChild("Equipped")
-	
-	if owned and equipped and owned.Value then
-		equipped.Value = true
-	end
+	return {
+		Trails = trails,
+		EquippedTrail = equippedTrail,
+		DefaultTrailId = TrailModule.DEFAULT_TRAIL_ID,
+	}
 end
 
-local function removeVisualTrail(player)
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
+--// PURCHASE
+local function purchaseTrail(player, trailId)
+	local config = TrailModule.GetTrailConfig(trailId)
+	local object = getTrailDataObject(player, trailId)
+	local resources = getPlayerResources(player)
 	
-	local oldTrail = hrp:FindFirstChild("EquippedTrail")
-	if oldTrail then oldTrail:Destroy()
-	end
-	
-	local oldTrail2 = hrp:FindFirstChild("EquippedTrailSecond")
-	if oldTrail2 then oldTrail2:Destroy()
-	end
-
-	local oldAura = hrp:FindFirstChild("EquippedTrailAura")
-	if oldAura then oldAura:Destroy()
-	end
-
-	local oldA0 = hrp:FindFirstChild("EquippedAttachment0")
-	if oldA0 then oldA0:Destroy()
-	end
-
-	local oldA1 = hrp:FindFirstChild("TrailAttachment1")
-	if oldA1 then oldA1:Destroy()
+	if not config or not object or not resources then
+		return makeResponse(false, "Не удалось данным трейла")
 	end
 	
-	if activeTrailOrbits[player] then
-		if activeTrailOrbits[player].Connection then
-
-			activeTrailOrbits[player].Connection:Disconnect()
-		end
-
-		for _, orb in ipairs(activeTrailOrbits[player].Orbs) do
-			if orb and orb.Parent then
-				orb:Destroy()
-			end
-		end
-
-		activeTrailOrbits[player] = nil
+	if object.Owned.Value then
+		return makeResponse(false, "Этот трейл уже куплен", buildTrailSnapshot(player, trailId))
 	end
 	
-	for _, obj in ipairs(character:GetChildren()) do
-		if obj.Name == "TrailOrbitParticle" then
-			obj:Destroy()
-		end
+	local available, unavailableReason = isTrailAvailableForPlayer(player, trailId)
+	
+	if not available then
+		return makeResponse(false, unavailableReason, buildTrailSnapshot(player, trailId))
 	end
+	
+	local purchaseConfig = config.Purchase
+	
+	if not purchaseConfig then 
+		return makeResponse(false, "Для трейла не указана стоимость покупки")
+	end
+	
+	local currencyName = purchaseConfig.CurrentName
+	local price = math.max(math.floor(tonumber(purchaseConfig.Price) or 0), 0)
+	
+	if currencyName ~= "Money" then
+		return makeResponse(false, "Неизвестная валюта покупки: " .. tostring(currencyName))
+	end
+	
+	if resources.Money.Value < price then
+		return makeResponse(false, "Недостаточно денег", buildTrailSnapshot(player, trailId))
+	end
+	
+	resurces.Money.Value -= price
+	object.Owned.Value = true
+	
+	return makeResponse(true, "Трейл успешно куплен", buildTrailSnapshot(player, trailId))
 end
 
-local function createTrailOrbitParticles(player, hrp, character, count, color)
-	if count <= 0 then return end 
+--// LEVEL UPGRADE
+local function upgradeTrail(player, trailId)
+	local object = getTrailDataObject(player, trailId)
+	local resources = getPlayerResources(player)
 	
-	local orbs = {}
-	
-	for i = 1, count do 
-		local orb = Instance.new("Part")
-		orb.Name = "TrailOrbitParticle"
-		orb.Shape = Enum.PartType.Ball
-		orb.Material = Enum.Material.Neon
-		orb.Color = color
-		orb.Size = Vector3.new(0.2, 0.2, 0.2)
-		orb.Transparency = 0.15
-		orb.Anchored = true
-		orb.CanCollide = false
-		orb.Parent = character
-		table.insert(orbs, orb)
+	if not object or not resources then
+		return makeResponse(false, "Не удалось получить данные трейла")
 	end
 	
-	local startTime = tick()
+	if not object.Owned.Value then
+		return makeResponse(false, "Сначала купите этот трейл", buildTrailSnapshot(player, trailId))
+	end
 	
-	local connection 
-	connection = RunService.Heartbeat:Connect(function()
-		if not player.Parent or not hrp.Parent then
-			if connection then
-				connection:Disconnect()
-			end
+	local currentLevel = object.Level.Value
+	local currentStage = object.Stage.Value
+	
+	if currentLevel >= TrailModule.MAX_LEVEL then
+		return makeResponse(false, "Достигнут максимальный уровень трейла", buildTrailSnapshot(player, trailId))
+	end
+	
+	if not TrailModule.CanLevelUpAtStage(currentLevel, currentStage) then
+		return makeResponse(false, "Необходимо повысить стадию для открытия следующий уровень", buildTrailSnapshot(player, trailId))
+	end
+	
+	local cost = TrailModule.GetLevelUpgradeCost(trailId, currentLevel)
+	
+	if not cost then
+		return makeResponse(false, "Не удалось определить стоимости улучшения")
+	end
+	
+	if resources.Money.Value < cost.Money then
+		return makeResponse(false, "Недостаточно денег", buildTrailSnapshot(player, trailId))
+	end
+	
+	if not XPModule.hasXP(player, cost.XP) then
+		return makeResponse(false, "Недостаточно опыта", buildTrailSnapshot(player, trailId))
+	end
+	
+	resurces.Money.Value -= cost.Money
+	
+	local xpRemoved = XPModule.removeXP(player, cost.XP)
+	
+	if not xpRemoved then
+		resources.Money.Value += cost.Money
+		
+		return makeResponse(false, "Не удалось списать опыт", buildTrailSnapshot(player, trailId))
+	end
+	
+	object.Level.Value = cost.TragetLevel
+	
+	return makeResponse(true, "Уровень списать опыт", buildTrailSnapshot(player, trailId))
+end
+
+--// EQUIP / UNEQUIP
+local function toggleTrailEquip(player, trailId)
+	local object = getTrailDataObject(player, trailId)
+	
+	if not object then
+		return makeResponse(false, "Не удалось получить данные трейла")
+	end
+	
+	if not object.Owned.Value then
+		return makeResponse(false, "Сначала купите этот трейл", buildTrailSnapshot(player, trailId))
+	end
+	
+	if object.EquippedTrail.Value == trailId then
+		object.EquippedTrail.Value = ""
+		
+		return makeResponse(true, "Трейл снят", buildTrailSnapshot(player, trailId))
+	end
+	
+	object.EquippedTrail.Value = trailId
+	
+	return makeResponse(true, "Трейл надет", buildTrailSnapshot(player, trailId))
+end
+
+--// STAGE UP
+local function stageUpTrail(player, trailId)
+	local object = getTrailDataObject(player, trailId)
+	local resources = getPlayerResources(player)
+	
+	if not object or not resources then
+		return makeResponse(false, "Не удалось получить данные трейла")
+	end
+	
+	if not object.Owned.Value then
+		return makeResponse(false, "Сначала купите этот трейл", buildTrailSnapshot(player, trailId))
+	end
+	
+	local currentStage = object.Stage.Value
+	local currentLevel = object.Level.Value
+	
+	if TrailModule.IsMaxStage(currentStage) then
+		return makeResponse(false, "Достигнута максимальная стадия трейла", buildTrailSnapshot(player, trailId))
+	end
+	
+	local requirements = TrailModule.GetStageRequirements(trailId, currentStage)
+	
+	if not requirements then
+		return makeResponse(false, "Не удалось получить требования стадии")
+	end
+	
+	local requiredLevel = math.max(requirements.Level or 0, 0)
+	local requiredMoney = math.max(requirements.Money or 0, 0)
+	local requiredRebirth = math.max(requirements.Rebirth or 0, 0)
+	
+	if currentLevel < requiredLevel then
+		return makeResponse(false, "Недостаточный уровень трейла", buildTrailSnapshot(player, trailId))
+	end
+	
+	if resources.Money.Value < requiredMoney then
+		return makeResponse(false, "Недостаточно денег", buildTrailSnapshot(player, trailId))
+	end
+	
+	if resources.Rebirth.Value < requiredRebirth then
+		return makeResponse(false, "Недостаточно ребитхов", buildTrailSnapshot(player, trailId))
+	end
+	
+	if requirements.SpendMoney == true then
+		resouces.Money.Value -= requiredMoney
+	end
+	
+	if requirements.SpendRebirth == true then
+		resources.Rebirth.Value -= requiredRebirth
+	end
+	
+	object.Stage.Value += 1
+	
+	return makeResponse(true, "Стадия трейла повышена", buildTrailSnapshot(player, trailId))
+end
+
+--// REMOTE HANDLER
+local function handleRequest(player, action, trailId)
+	if player:GetAttribute("DateReady") ~= true then
+		return makeResponse(false, "Данные игрока еще загружаются")
+	end
+	
+	if type(action) ~= "string" then
+		return makeResponse(false, "Неверное действие")
+	end
+	
+	if action == "GetAllData" then
+		return makeResponse(true, "", buildAllTrailsSnapshot(player))
+	end
+	
+	if not isValidTrailId(trailId) then
+		return makeResponse(false, "Неизвестный трейл")
+	end
+	
+	if action == "GetTrailData" then
+		return makeResponse(true, "", buildTrailSnapshot(player, trailId))
+	end
+	
+	if action == "PurchaseTrail" then
+		return purchaseTrail(player, trailId)
+	end
+	
+	if action == "UpgradeTrail" then
+		return upgradeTrail(player, trailId)
+	end
+	
+	if action == "ToggleEquip" then
+		return toggleTrailEquip(player, trailId)
+	end
+	
+	if action == "StageUp" then
+		return stageUpTrail(player, trailId)
+	end
+	
+	return makeResponse(false, "Неизвестное действие: " .. action)
+end
+
+trailRequestFunction.OnServerInvoke = function(player, action, trailId)
+	if playerRequestLocks[player] then
+		return makeResponse(false, "Предыдущий запрос еще выполняется")
+	end
+	
+	playerRequestLocks[player] = true
+	
+	local success, result = pcall(handleRequest, player, action, trailId)
+	
+	playerRequestLocks[player] = nil
+	
+	if not success then
+		warn("TrailServer request error:", player.Name, action, trailId, result)
+		
+		return makeResponse(false, "Произошла серверная ошибка")
+	end
+	return result
+end
+
+--// PLAYER SETUP
+local function initializePlayer(player)
+	if player:GetAttribute("DataReady") == true then
+		setupTrailData(player)
+		return
+	end
+	
+	local connection
+	
+	connection = player:GetAttributeChangedSignal("DataReady"):Connect(function()
+		if player:GetAttribute("DataReady") ~= true then
 			return
 		end
 		
-		local t = tick() - startTime
-		
-		for i, orb in ipairs(orbs) do
-			if not orb.Parent then
-				continue
-			end
-			
-			local angle = (t * (3 + ( 1* 0.25))) + (i * (( math.pi * 2) / count))
-			
-			local baseOffset = CFrame.new(0, 0.35, 1.5)
-			
-			local orbitOffset = CFrame.new( 
-				math.cos(angle) * 1,
-				math.sin(angle * 1.5) * 0.6,
-				math.sin(angle) * 1
-			)
-			
-			orb.CFrame = hrp.CFrame * baseOffset * orbitOffset
-			
-			local pulse = 0.16 + math.abs(math.sin(t * 6 + i)) * 0.08
-			orb.Size = Vector3.new(pulse, pulse, pulse)
-			orb.Transparency = 0.1 + math.abs(math.sin(t * 5 + i)) * 0.25
-		end
+		connection:Disconnect()
+		setupTrailData(player)
 	end)
-	
-	activeTrailOrbits[player] = {
-		Connection = connection,
-		Orbs = orbs,
-	}
 end
 
-local function createBlueVisualTrail(player)
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end 
-	
-	local tierName = "Spark"
-	
-	local trailsFolder = player:FindFirstChild("Trails")
-	if trailsFolder then
-		local blueTrail = trailsFolder:FindFirstChild("BlueTrail")
-		if blueTrail then
-			local tier = blueTrail:FindFirstChild("Tier")
-			if tier then
-				local config = TRAIL_CONFIG.BlueTrail
-				local tierData = config.Tiers[tier.Value]
-				
-				if tierData then
-					tierName = tierData.Name
-				end
-			end
-		end
-	end
-	
-	local trailStyle = { 
-		Color = Color3.fromRGB(255, 255, 255),
-		SecondColor = nil,
-		LightEmission = 0.2,
-		Lifetime = 0.45,
-		WidthStart = 1,
-		WidthEnd = 0.2,
-		OrbitCount = 0,
-		OrbitColor = Color3.fromRGB(255, 255, 255),
-		Aura = false,
-	}
-	
-	if tierName == "Flow" then
-		trailStyle.OrbitCount = 2
-		trailStyle.OrbitColor = Color3.fromRGB(255, 255, 255)
-		trailStyle.LightEmission = 0.4
-		trailStyle.Lifetime = 0.6
-	elseif tierName == "Surge" then
-		trailStyle.OrbitCount = 4
-		trailStyle.OrbitColor = Color3.fromRGB(85, 255, 0)
-		trailStyle.LightEmission = 0.6
-		trailStyle.Lifetime = 0.75
-		trailStyle.WidthStart = 1.2
-	elseif tierName == "Hyper" then
-		trailStyle.Color = Color3.fromRGB(0, 80, 255)
-		trailStyle.SecondColor = Color3.fromRGB(255, 255, 255)
-		trailStyle.LightEmission = 0.8
-		trailStyle.Lifetime = 0.9
-		trailStyle.WidthStart = 1.4
-		trailStyle.OrbitCount = 6
-		trailStyle.OrbitColor = Color3.fromRGB(85, 0, 127)
-		trailStyle.Aura = true
-	elseif tierName == "Ascended" then
-		trailStyle.Color = Color3.fromRGB(0, 0, 255)
-		trailStyle.SecondColor = Color3.fromRGB(0, 170, 255)
-		trailStyle.LightEmission = 1
-		trailStyle.Lifetime = 1.1
-		trailStyle.WidthStart = 1.8
-		trailStyle.WidthEnd = 0.4
-		trailStyle.OrbitCount = 8
-		trailStyle.OrbitColor = Color3.fromRGB(255, 255, 0)
-		trailStyle.Aura = true
-	end
-
-	removeVisualTrail(player)
-
-	local attachment0 = Instance.new("Attachment")
-	attachment0.Name = "TrailAttachment0"
-	attachment0.Position = Vector3.new(0, 0.2, 0.5)
-	attachment0.Parent = hrp
-
-	local attachment1 = Instance.new("Attachment")
-	attachment1.Name = "TrailAttachment1"
-	attachment1.Position = Vector3.new(0, 0.2, -0.5)
-	attachment1.Parent = hrp
-
-	local trail = Instance.new("Trail")
-	trail.Name = "EquippedTrail"
-	trail.Attachment0 = attachment0
-	trail.Attachment1 = attachment1
-	trail.Color = ColorSequence.new(trailStyle.Color)
-	trail.LightEmission = trailStyle.LightEmission
-	trail.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.05),
-		NumberSequenceKeypoint.new(1, 0.8)
-	})
-	trail.Lifetime = trailStyle.Lifetime
-	trail.MinLength = 0.1
-	trail.FaceCamera = true
-	trail.WidthScale = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, trailStyle.WidthStart),
-		NumberSequenceKeypoint.new(1, trailStyle.WidthEnd)
-	})
-	trail.Enabled = true
-	trail.Parent = hrp
-	
-	if trailStyle.SecondColor then
-		local trail2 = Instance.new("Trail")
-		trail2.Name = "EquippedTrailSecond"
-		trail2.Attachment0 = attachment0
-		trail2.Attachment1 = attachment1
-		trail2.Color = ColorSequence.new(trailStyle.SecondColor)
-		trail2.LightEmission = 1
-		trail2.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.25),
-			NumberSequenceKeypoint.new(1, 0.9)
-		})
-		trail2.Lifetime = trailStyle.Lifetime
-		trail2.MinLength = 0.1
-		trail2.FaceCamera = true
-		trail2.WidthScale = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, trailStyle.WidthStart + 0.4),
-			NumberSequenceKeypoint.new(1, trailStyle.WidthEnd)
-			})
-		trail2.Enabled = true
-		trail2.Parent = hrp
-	end
-	
-	if trailStyle.Aura then
-		local aura = Instance.new("Trail")
-		aura.Name = "EquippedTrailAura"
-		aura.Attachment0 = attachment0
-		aura.Attachment1 = attachment1
-		aura.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255))
-		aura.LightEmission = 1
-		aura.Transparency = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, 0.55),
-			NumberSequenceKeypoint.new(1, 1)
-		})
-		aura.Lifetime = trailStyle.Lifetime + 0.25
-		aura.MinLength = 0.1
-		aura.FaceCamera = true
-		aura.WidthScale = NumberSequence.new({
-			NumberSequenceKeypoint.new(0, trailStyle.WidthStart + 1),
-			NumberSequenceKeypoint.new(1, 0)
-		})
-		aura.Enabled = true
-		aura.Parent = hrp
-	end
-	
-	createTrailOrbitParticles( 
-		player,
-		hrp,
-		character,
-		trailStyle.OrbitCount,
-		trailStyle.OrbitColor
-	)
-end
-
-local function applyEquippedVisualTrail(player)
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
-
-	local blueTrail = trailsFolder:FindFirstChild("BlueTrail")
-	if not blueTrail then return end
-
-	local owned = blueTrail:FindFirstChild("Owned")
-	local equipped = blueTrail:FindFirstChild("Equipped")
-
-	if owned and equipped and owned.Value and equipped.Value then
-		createBlueVisualTrail(player)
-	end
-end
-
-requestTrailDataEvent.OnServerEvent:Connect(function(player, trailName)
-	setupBlueTrail(player)
-	updateTrailStats(player, trailName)
-	sendTrailData(player, trailName)
-end)
-
-
-
---//OnServerEvent
-buyTrailEvent.OnServerEvent:Connect(function(player, trailName)
-	print("BUY TRAIL REQUEST:", player.Name, trailName)
-	
-	local config = getTrailConfig(trailName)
-	if not config then 
-		warn("NO TRAIL CONFIG:", trailName)
-		return 
-	end
-	print("2")
-	
-	setupBlueTrail(player)
-	print(3)
-	
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then
-		warn("NO TRAILS FOLDER")
-		return
-	end
-	print(4)
-
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then
-		warn("TRAIL FOLDER NOT FOUND:", trailName)
-		return
-	end
-	print(5)
-
-	local owned = trailFolder:FindFirstChild("Owned")
-	if not owned then
-		warn("OWNED VALUE NOT FOUND:", trailName)
-		return
-	end
-	print("6 OWNED OK:", owned.Value)
-	
-	if owned.Value then
-		sendTrailData(player, trailName)
-		return
-	end
-	print(7)
-	
-	local PlayerData = player:FindFirstChild("PlayerData")
-	if not PlayerData then return end 
-	
-	local money = PlayerData:FindFirstChild("Money")
-	if not money then return end
-	
-	if money.Value < config.Price then 
-		sendTrailData(player, trailName)
-		return
-	end
-	print(8)
-	
-	money.Value -= config.Price
-	
-	owned.Value = true
-	print("TRAIL OWNED SET TRUE:", trailName, owned.Value)
-	
-	equipTrail(player, trailName)
-	updateTrailStats(player, trailName)
-	applyEquippedVisualTrail(player)
-	sendTrailData(player, trailName)
-	
-	print(player.Name .. " купил " .. trailName)
-end)	
-
-tierUpTrailEvent.OnServerEvent:Connect(function(player, trailName)
-	local config = getTrailConfig(trailName)
-	if not config then return end
-
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
-
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then return end
-
-	local owned = trailFolder:FindFirstChild("Owned")
-	local level = trailFolder:FindFirstChild("Level")
-	local xp = trailFolder:FindFirstChild("XP")
-	local tier = trailFolder:FindFirstChild("Tier")
-
-	if not owned or not level or not xp or not tier then return end
-	if not owned.Value then return end
-
-	if tier.Value >= 5 then
-		sendTrailData(player, trailName)
-		return
-	end
-
-	local tierData = config.Tiers[tier.Value]
-	if not tierData then return end
-
-	if level.Value < tierData.MaxLevel then
-		sendTrailData(player, trailName)
-		return
-	end
-
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return end
-
-	local money = playerData:FindFirstChild("Money")
-	if not money then return end
-
-	if money.Value < tierData.TierUpCost then
-		sendTrailData(player, trailName)
-		return
-	end
-
-	money.Value -= tierData.TierUpCost
-
-	tier.Value += 1
-	level.Value = 0
-	xp.Value = 0
-	
-	if tier.Value >= 5 then
-		local playerData = player:FindFirstChild("PlayerData")
-		
-		if playerData then
-			local srRobux = playerData:FindFirstChild("SrRobux")
-			
-			if srRobux then
-				srRobux.Value += 1
-			end
-		end
-	end
-
-	updateTrailStats(player, trailName)
-	applyEquippedVisualTrail(player)
-	sendTrailData(player, trailName)
-
-	print(player.Name .. " повысил Tier " .. trailName .. " до " .. config.Tiers[tier.Value].Name)
-end)
-
-upgradeTrailEvent.OnServerEvent:Connect(function(player, trailName)
-	local trailsFolder = player:FindFirstChild("Trails")
-	if not trailsFolder then return end
-	
-	local trailFolder = trailsFolder:FindFirstChild(trailName)
-	if not trailFolder then return end
-	
-	local owned = trailFolder:FindFirstChild("Owned")
-	local level = trailFolder:FindFirstChild("Level")
-	local xp = trailFolder:FindFirstChild("XP")
-	local tier = trailFolder:FindFirstChild("Tier")
-	
-	if not owned or not level or not xp or not tier then return end
-	if not owned.Value then return end
-	
-	local config = getTrailConfig(trailName)
-	if not config then return end
-	
-	local tierData = config.Tiers[tier.Value]
-	if not tierData then return end
-	
-	if level.Value >= tierData.MaxLevel then
-		sendTrailData(player, trailName)
-		return
-	end
-	
-	local xpNeeded = getXPNeeded(level.Value)
-	
-	if not XPModule.hasXP(player, xpNeeded) then
-		sendTrailData(player, trailName)
-		return
-	end
-	
-	XPModule.removeXP(player, xpNeeded)
-	level.Value += 1
-	
-	updateTrailStats(player, trailName)
-	applyEquippedVisualTrail(player)
-	sendTrailData(player, trailName)
-	
-	print(player.Name .. " повысил уровень " .. trailName .. " до " .. level.Value)
-end)
-
-closeTrailMenuEvent.OnServerEvent:Connect(function(player)
-	local character = player.Character
-	if not character then return end
-	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	
-	hrp.CFrame = backPart.CFrame + Vector3.new(0, 3, 0)
-end)
-
-
-
-Players.PlayerAdded:Connect(function(player)
-	setupBlueTrail(player)
-	
-	task.delay(4, function()
-		if not player.Parent then return end 
-		
-		setupBlueTrail(player)
-		updateTrailStats(player, "BlueTrail")
-		applyEquippedVisualTrail(player)
-	end)
-	
-	player.CharacterAdded:Connect(function()
-		task.wait(4)
-		updateTrailStats(player, "BlueTrail")
-		applyEquippedVisualTrail(player)
-	end)
-end)
+Players.PlayerAdded:Conncet(initializePlayer)
 
 for _, player in ipairs(Players:GetPlayers()) do
-	setupBlueTrail(player)
-	updateTrailStats(player, "BlueTrail")
-	
-	player.CharacterAdded:Connect(function()
-		task.wait(0.5)
-		applyEquippedVisualTrail(player)
-	end)
+	task.spawn(initializePlayer, player)
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	playerRequestLocks[player] = nil
+end)
 
 print("TrailServer loaded")
