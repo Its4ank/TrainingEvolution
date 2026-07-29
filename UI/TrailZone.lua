@@ -14,9 +14,9 @@ MenuManager.init(raceGui)
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 
 local trailsFolder = guiFolder:WaitForChild("TrailsFolder")
-local trailMenu = trailsFolder:WaitForChild("TrailMenu")
+local trailHost = trailsFolder:WaitForChild("TrailHost")
 
-MenuManager.register("Trails", trailMenu)
+MenuManager.register("Trails", trailHost)
 
 local radius = 6
 local inside = false
