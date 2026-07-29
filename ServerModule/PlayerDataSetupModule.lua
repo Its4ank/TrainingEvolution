@@ -66,7 +66,7 @@ function PlayerDataSetupModule.setup(player)
 	local treadmills = getOrCreateFolder(player, "Treadmills")
 	
 	for i = 1, 3 do 
-		local treadmillFolder = getOrCreateFolder(treadmills, "Treadmills" .. i)
+		local treadmillFolder = getOrCreateFolder(treadmills, "Treadmill" .. i)
 		
 		getOrCreateValue(treadmillFolder, "IntValue", "Level", 0)
 		getOrCreateValue(treadmillFolder, "IntValue", "Stage", 1)
