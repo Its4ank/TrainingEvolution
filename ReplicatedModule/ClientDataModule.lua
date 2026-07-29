@@ -1,6 +1,6 @@
 local ClientDataModule = {}
 
-function ClientDataModule.WaitUntilReade(player)
+function ClientDataModule.WaitUntilReady(player)
 	while player:GetAttribute("DataReady") ~= true do 
 		task.wait()
 	end
