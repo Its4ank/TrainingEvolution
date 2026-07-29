@@ -14,9 +14,9 @@ MenuManager.init(raceGui)
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 
 local upgradeFolder = guiFolder:WaitForChild("UpgradeFolder")
-local menu = upgradeFolder:WaitForChild("UPGRADEMenu")
+local upgradeHost = upgradeFolder:WaitForChild("UpgradeHost")
 
-MenuManager.register("Upgrade", menu)
+MenuManager.register("Upgrade", upgradeHost)
 
 local radius = 6
 local inside = false
