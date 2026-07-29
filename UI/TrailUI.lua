@@ -106,7 +106,7 @@ local function setImage(guiObject, imageId)
 end
 
 local function setButtonEnabled(button, enabled)
-	if button:IsA("GuiButton") then
+	if not button:IsA("GuiButton") then
 		return
 	end
 	
@@ -292,7 +292,7 @@ local function renderSelectedTrail()
 	setImage(stageIcon, trailData.StageIcon)
 	setText(levelLabel, "LEVEL " .. tostring(trailData.Level) .. " / " .. tostring(trailData.StageMaxLevel))
 	
-	local boosts = trailData.Boost or {}
+	local boosts = trailData.Boosts or {}
 	
 	setText(powerBoostLabel, TrailModule.FormatPercent(boosts.PowerPercent or 0))
 	setText(accelerationBoostLabel, TrailModule.FormatPercent(boosts.AccelerationPercent or 0))
