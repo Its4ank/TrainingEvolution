@@ -1,6 +1,6 @@
---// TrailUI
+--// TrailUI 1.2v
 
-local Players = game:GetService("Player")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
@@ -45,10 +45,10 @@ local powerBoostLabel = trailStats:WaitForChild("TraStatPowerBoost")
 local accelerationBoostLabel = trailStats:WaitForChild("TraStatAccBoost")
 local levelLabel = trailStats:WaitForChild("TraStatLevel")
 local xpBar = trailStats:WaitForChild("TraStatXpBar")
-local xpLabel = trailStats:WaitForChild("TraStageXpLabel")
+local xpLabel = trailStats:WaitForChild("TraStatXpLabel")
 local equipButton = trailStats:WaitForChild("TraStatEquipInfo")
 local infoLabel = trailStats:WaitForChild("TraStatInfo")
-local buyUpgradeFrame = trailStage:WaitForChild("TraStatUpUpgLvl")
+local buyUpgradeFrame = trailStats:WaitForChild("TraStatUpUpgLvl")
 local buyUpgradeButton = buyUpgradeFrame:WaitForChild("TraStatBuy/Upg")
 local upgradePriceLabel = buyUpgradeFrame:WaitForChild("TraStatUpgPrice")
 local stageOpenButton = trailStats:WaitForChild("TraStatStageOpen")
@@ -106,12 +106,13 @@ local function setImage(guiObject, imageId)
 end
 
 local function setButtonEnabled(button, enabled)
+	if button:IsA("GuiButton") then
+		return
+	end
+	
 	button.Active = enabled
 	button.AutoButtonColor = enabled
-	
-	if button:IsA("GuiButton") then
-		button.Selected = enabled
-	end
+	button.Selectable = enabled
 end
 
 local function formatNumber(number)
@@ -210,7 +211,7 @@ local function connectResourceUpdates()
 	
 	local money = playerData:WaitForChild("Money")
 	local srRobux = playerData:WaitForChild("SrRobux")
-	local rebirth = leaderstats:WailForChild("Rebirth")
+	local rebirth = leaderstats:WaitForChild("Rebirth")
 	
 	money:GetPropertyChangedSignal("Value"):Connect(updateLeaderstatsGui)
 	srRobux:GetPropertyChangedSignal("Value"):Connect(updateLeaderstatsGui)
@@ -272,7 +273,7 @@ local function updateChoiceButtons()
 		local defaultImage = TrailModule.Icons.TrailList.Default
 		
 		if button:IsA("ImageButton") and selectedImage ~= "" and defaultImage ~= "" then
-			button.Image = isSelected and selectedImage and defaultImage
+			button.Image = isSelected and selectedImage or defaultImage
 		end
 	end
 end
@@ -291,10 +292,10 @@ local function renderSelectedTrail()
 	setImage(stageIcon, trailData.StageIcon)
 	setText(levelLabel, "LEVEL " .. tostring(trailData.Level) .. " / " .. tostring(trailData.StageMaxLevel))
 	
-	local boost = trailData.Boost or {}
+	local boosts = trailData.Boost or {}
 	
-	setText(powerBoostLabel, TrailModule.FormatPercent(boost.PowerPercent or 0))
-	setText(accelerationBoostLabel, TrailModule.FormatPercent(boost.AccelerationPercent or 0))
+	setText(powerBoostLabel, TrailModule.FormatPercent(boosts.PowerPercent or 0))
+	setText(accelerationBoostLabel, TrailModule.FormatPercent(boosts.AccelerationPercent or 0))
 	setText(infoLabel, trailData.Description or "")
 	
 	updateXPBar(trailData)
@@ -540,7 +541,7 @@ stageOpenButton.Activated:Connect(function()
 	
 	trailStage:SetAttribute("SelectedTrail", selectedTrail)
 	
-	trailStage.Vivible = true
+	trailStage.Visible = true
 	trailStageBlur.Visible = true
 end)
 
@@ -549,7 +550,7 @@ trailListNextButton.Activated:Connect(selectNextTrail)
 
 for _, buttonData in ipairs(trailChoiceButtons) do
 	buttonData.Button.Activated:Connect(function()
-		selectedTrail(buttonData.TrailId)
+		selectTrail(buttonData.TrailId)
 	end)
 end
 
