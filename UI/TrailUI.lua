@@ -1,458 +1,588 @@
-local Players = game:GetService("Players")
+--// TrailUI
+
+local Players = game:GetService("Player")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 
-local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
-local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
-
-local raceGui = script.Parent
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
-MenuManager.init(raceGui)
+local raceGui = script.Parent
 
-local guiFolder = raceGui:WaitForChild("GuiFolder")
-local trailsFolderUI = guiFolder:WaitForChild("TrailsFolder")
+--// MONULES
+local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 
+--// REMOTES
+local trailEventFolder = ReplicatedStorage:WaitForChild("TrailEvent")
+local trailRequestFunction = trailEventFolder:WaitForChild("TrailRequestFunction")
 
+--// GUI
+local trailFolder = raceGui:WaitForChild("TrailFolder")
+local trailHost = trailFolder:WaitForChild("TrailHost")
+local trailMenu = trailHost:WaitForChild("TrailMenu")
+local trailStage = trailHost:WaitForChild("TrailStage")
+local trailStageBlur = trailHost:WaitForChild("TraStageBlur")
+local warningLabel = trailHost:WaitForChild("TraWarningLabel")
 
---//RemoteEvent
-local buyTrailEvent = ReplicatedStorage:WaitForChild("BuyTrailEvent")
-local trailDataEvent = ReplicatedStorage:WaitForChild("TrailDataEvent")
-local updateTrailEvent = ReplicatedStorage:WaitForChild("UpdateTrailEvent")
-local upgradeTrailEvent = ReplicatedStorage:WaitForChild("UpgradeTrailEvent")
-local tierUpTrailEvent = ReplicatedStorage:WaitForChild("TierUpTrailEvent")
-local closeTrailMenuEvent = ReplicatedStorage:WaitForChild("CloseTrailMenuEvent")
-local requestTrailDataEvent = ReplicatedStorage:WaitForChild("RequestTrailDataEvent")
+--// LEADERSTATS
+local trailLeaderstats = trailHost:WaitForChild("TrailLeaderstats")
 
+local moneyLead = trailLeaderstats:WaitForChild("MoneyLead")
+local rebirthLead = trailLeaderstats:WaitForChild("RebirthLead")
+local srRobuxLead = trailLeaderstats:WaitForChild("SrRobuxLead")
 
+--// MAIN MENU
+local trailStats = trailMenu:WaitForChild("TrailStats")
+local trailPreviewFrame = trailMenu:WaitForChild("TrailPreviewFrame")
+local trailChoiceButton = trailMenu:WaitForChild("TrailChoiceButton")
+local trailListBackButton = trailMenu:WaitForChild("TrailListBackButton")
+local trailListNextButton = trailMenu:WaitForChild("TrailListNextButton")
+local trailClose = trailMenu:WaitForChild("TrailClose")
 
---// leaderstats
-local money = ClientDataModule.GetMoney(player)
-local srRobux = ClientDataModule.GetSrRobux(player)
+--// TRAIL STATS
+local trailNameLabel = trailStats:WaitForChild("TraStatTrailName")
+local stageIcon = trailStats:WaitForChild("TraStatStageIcon")
+local stageNameLabel = trailStats:WaitForChild("TraStatStageName")
+local powerBoostLabel = trailStats:WaitForChild("TraStatPowerBoost")
+local accelerationBoostLabel = trailStats:WaitForChild("TraStatAccBoost")
+local levelLabel = trailStats:WaitForChild("TraStatLevel")
+local xpBar = trailStats:WaitForChild("TraStatXpBar")
+local xpLabel = trailStats:WaitForChild("TraStageXpLabel")
+local equipButton = trailStats:WaitForChild("TraStatEquipInfo")
+local infoLabel = trailStats:WaitForChild("TraStatInfo")
+local buyUpgradeFrame = trailStage:WaitForChild("TraStatUpUpgLvl")
+local buyUpgradeButton = buyUpgradeFrame:WaitForChild("TraStatBuy/Upg")
+local upgradePriceLabel = buyUpgradeFrame:WaitForChild("TraStatUpgPrice")
+local stageOpenButton = trailStats:WaitForChild("TraStatStageOpen")
 
+--// STATE
+local selectedTrail = TrailModule.DEFAULT_TRAIL_ID
 
+local allTrailData = {}
+local orderedTrailIds = {}
 
---// Trail
-local trailMenu = trailsFolderUI:WaitForChild("TrailMenu")
+local selectedTrailIndex = 1
 
-local trailMenuFrame = trailMenu:WaitForChild("TrailMenuFrame")
+local requestBusy = false
+local warningToken = 0
 
-local closeTrailMenuButton = trailMenu:WaitForChild("CloseTrailMenuButton")
+--// TRAILO BUTTON CONFIGURATION
+local trailChoiceButtons = {
+	{
+		Button = trailChoiceButton,
+		TrailId = "TrailStone",
+	},
+}
 
-local blueTrailButton = trailMenuFrame:WaitForChild("BlueTrailButton")
---
-local trailDetailsFrame = trailMenu:WaitForChild("TrailDetailsFrame")
-
-local trailPreviewFrame = trailDetailsFrame:WaitForChild("TrailPreviewFrame")
-
-local tierUpButton = trailDetailsFrame:WaitForChild("TierUpButton")
-
-local trailNameLabel = trailDetailsFrame:WaitForChild("TrailNameLabel")
-local tierLabel = trailDetailsFrame:WaitForChild("TierLabel")
-local levelLabel = trailDetailsFrame:WaitForChild("LevelLabel")
-local xpLabel = trailDetailsFrame:WaitForChild("XPLabel")
-local racePowerLabel = trailDetailsFrame:WaitForChild("RacePowerLabel")
-local accelerationLabel = trailDetailsFrame:WaitForChild("AccelerationLabel")
-
-local buyButton = trailDetailsFrame:WaitForChild("BuyButton")
-local ownedButton = trailDetailsFrame:WaitForChild("OwnedButton")
-local upgradeButton = trailDetailsFrame:WaitForChild("UpgradeButton")
---
-local trailTierFrame = trailMenu:WaitForChild("TrailTierFrame")
-
-local currentTierLabel = trailTierFrame:WaitForChild("CurrentTierLabel")
-local nextTierLabel = trailTierFrame:WaitForChild("NextTierLabel")
-local requirementsLabel = trailTierFrame:WaitForChild("RequirementsLabel")
-
-local upButton = trailTierFrame:WaitForChild("UpButton")
-local closeTierFrameButton = trailTierFrame:WaitForChild("CloseTierFrameButton")
-
-
-
---//leaderstatsUI
-local leaderstatsUITrail = trailMenu:WaitForChild("leaderstatsUITrail")
-
-local moneyLabel = leaderstatsUITrail:WaitForChild("MoneyLabel")
-local srRobuxLabel = leaderstatsUITrail:WaitForChild("SRRobuxLabel")
-
-MenuManager.register("	Trail", trailMenu)
-
-
-
-
-local selectedTrail = nil
-local selectedTrailData = nil
-trailDetailsFrame.Visible = false
-
-
-
---// functions
-local function formatShort(n)
-	if n >= 1e15 then
-		return string.format("%.2fQ", n / 1e15)
-	elseif n >= 1e12 then
-		return string.format("%.2fT", n / 1e12)
-	elseif n >= 1e9 then
-		return string.format("%.2fB", n / 1e9)
-	elseif n >= 1e6 then
-		return string.format("%.2fM", n / 1e6)
-	elseif n >= 1e3 then
-		return string.format("%.2fK", n / 1e3)
-	else
-		return tostring(math.floor(n))
-	end
-end
-
-local function updateCurrencies()
-	moneyLabel.Text = formatShort(money.Value)
-	srRobuxLabel.Text = formatShort(srRobux.Value)
-end
-
-local function connectCurrencyUpdates()
-    moneyLabel.Text = formatShort(money.Value)
-	srRobuxLabel.Text = formatShort(srRobux.Value)
-	
-	if money then
-		money:GetPropertyChangedSignal("Value"):Connect(updateCurrencies)
-	end
-	
-	if srRobux then
-		srRobux:GetPropertyChangedSignal("Value"):Connect(updateCurrencies)
-	end
-	
-	updateCurrencies()
-end
-
-connectCurrencyUpdates()
-
-local previewConnection = nil
-
-local function clearTrailPreview()
-	if previewConnection then
-		previewConnection:Disconnect()
-		previewConnection = nil
-	end
-	
-	trailPreviewFrame:ClearAllChildren()
-end
-
-local function setupTrailPreview(tierName )
-	clearTrailPreview()
-	
-	local tierStyle = {
-		Color = Color3.fromRGB(255, 255, 255),
-		SecondColor = nil,
-		Transparency = 0.25,
-		Size = Vector3.new(1, 1, 5),
-		Neon = false,
-		OrbitCount = 0,
-		OrbitColor = Color3.fromRGB(255, 255, 255),
-	}
-
-	if tierName == "Flow" then
-		tierStyle.OrbitCount = 2
-		tierStyle.OrbitColor = Color3.fromRGB(255, 255, 255)
-	elseif tierName == "Surge" then
-		tierStyle.OrbitCount = 4
-		tierStyle.OrbitColor = Color3.fromRGB(85, 255, 0)
-		tierStyle.Transparency = 0.15
-	elseif tierName == "Hyper" then
-		tierStyle.OrbitCount = 6
-		tierStyle.OrbitColor = Color3.fromRGB(85, 0, 127)
-		tierStyle.Color = Color3.fromRGB(0, 80, 255)
-		tierStyle.SecondColor = Color3.fromRGB(0, 0, 255)
-		tierStyle.Transparency = 0.08
-		tierStyle.Neon = true
-	elseif tierName == "Ascended" then
-		tierStyle.OrbitCount = 8
-		tierStyle.OrbitColor = Color3.fromRGB(255, 255, 0)
-		tierStyle.Color = Color3.fromRGB(0, 0, 255)
-		tierStyle.SecondColor = Color3.fromRGB(0, 170, 255)
-		tierStyle.Transparency = 0
-		tierStyle.Size = Vector3.new(1.4, 1.4, 6)
-		tierStyle.Neon = true
-	end
-	
-	local character = player.Character
-	if not character then return end
-	
-	character.Archivable = true
-	local previewCharacter = character:Clone()
-	character.Archivable = false
-	
-	if not previewCharacter then return end
-	
-	local worldModel = Instance.new("WorldModel")
-	worldModel.Parent = trailPreviewFrame
-	
-	local camera = Instance.new("Camera")
-	camera.Parent = trailPreviewFrame
-	trailPreviewFrame.CurrentCamera = camera
-	
-	previewCharacter.Parent = worldModel
-	
-	local fakeTrail = Instance.new("Part")
-	fakeTrail.Name = "FakeTrail"
-	fakeTrail.Anchored = true
-	fakeTrail.CanCollide = false
-	fakeTrail.Material = tierStyle.Neon and Enum.Material.Neon or Enum.Material.SmoothPlastic
-	fakeTrail.Color = tierStyle.Color
-	fakeTrail.Transparency = tierStyle.Transparency
-	fakeTrail.Size = tierStyle.Size
-	fakeTrail.Parent = worldModel
-	
-	local orbitParts = {}
-	
-	for i = 1, tierStyle.OrbitCount do
-		local orb = Instance.new("Part")
-		orb.Name = "PreviewOrbitParticle"
-		orb.Shape = Enum.PartType.Ball
-		orb.Material = Enum.Material.Neon
-		orb.Color = tierStyle.OrbitColor
-		orb.Size = Vector3.new(0.22, 0.22, 0.22)
-		orb.Transparency = 0.15
-		orb.Anchored = true
-		orb.CanCollide = false
-		orb.Parent = worldModel
-		
-		table.insert(orbitParts, orb)
-	end
-	
-	local humanoid = previewCharacter:FindFirstChildOfClass("Humanoid")
-	local hrp = previewCharacter:FindFirstChild("HumanoidRootPart")
-	
-	if not humanoid or not hrp then
-		clearTrailPreview()
+--// GENERIC GUI HELPERS
+local function setText(guiObject, text)
+	if guiObject:IsA("TextLabel") or guiObject:IsA("TextButton") or guiObject:IsA("TextBox") then
+		guiObject.Text = tostring(text or "")
 		return
 	end
 	
-	for _, obj in ipairs(previewCharacter:GetDescendants()) do
-		if obj:IsA("Script") or obj:IsA("LocalScript") then
-			obj:Destroy()
-		elseif obj:IsA("Accessory") then
-			local handle = obj:FindFirstChild("Handle")
-			local accessoryType = obj.AccessoryType
-			
-			if accessoryType == Enum.AccessoryType.Back then
-				obj:Destroy()
-			elseif handle then
-				local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-				
-				if mesh and mesh.Scale.Magnitude > 8 then
-					obj:Destroy()
-				end
-			end
-			
-		elseif obj:IsA("BasePart") then
-			obj.CanCollide = false
-			obj.Anchored = false
-			
-			if obj.Name == "HumanoidRootPart" then
-				obj.Transparency = 1
-			end
-		elseif obj:IsA("Decal") then
-			obj.Transparency = 0
-		end
+	local textLabel = guiObject:FindFirstChildWhichIsA("TextLabel", true)
+	
+	if textLabel then
+		textLabel.Text = tostring(text or "")
+	end
+end
+
+local function setImage(guiObject, imageId)
+	if not guiObject then 
+		return
 	end
 	
-	hrp.CFrame = CFrame.new(0, 2, 0) * CFrame.Angles(0, math.rad(-90), 0)
+	imageId = imageId or ""
 	
-	camera.CFrame = CFrame.new(Vector3.new(0, 2.2, 6), Vector3.new(0, 1.5, 0))
-	
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
+	if guiObject:IsA("ImageLabel") or guiObject:IsA("ImageButton") then
+		guiObject.Image = imageId
+		return
 	end
 	
-	local runAnim = Instance.new("Animation")
-	runAnim.AnimationId = "rbxassetid://913376220"
+	local imageObject = guiObject:FindFirstChildWhichIsA("ImageLabel", true)
 	
-	local runTrack = animator:LoadAnimation(runAnim)
-	runTrack.Priority = Enum.AnimationPriority.Action
-	runTrack:Play()
-	runTrack:AdjustSpeed(2.5)
+	if imageObject then
+		imageObject.Image = imageId
+	end
+end
+
+local function setButtonEnabled(button, enabled)
+	button.Active = enabled
+	button.AutoButtonColor = enabled
 	
-	local startTime = tick()
+	if button:IsA("GuiButton") then
+		button.Selected = enabled
+	end
+end
+
+local function formatNumber(number)
+	number = tonumber(number) or 0
 	
-	previewConnection = RunService.RenderStepped:Connect(function()
-		if not trailPreviewFrame.Visible then return end
-		if not hrp or not hrp.Parent then return end
-		
-		local t = tick() - startTime
-		
-		--основной фейк трейл
-		fakeTrail.CFrame = hrp.CFrame * CFrame.new(0, 0.6 + math.sin(t * 4) * 0.08, 2.3) * CFrame.Angles(0, 0, math.sin(t * 3) * 0.25)
-		
-		fakeTrail.Size = Vector3.new( 
-			1 + math.sin(t * 5) * 0.1,
-			1 + math.sin(t * 5) * 0.1,
-			5 + math.sin(t * 3) * 0.5
-		)
-		
-		fakeTrail.Transparency = tierStyle.Transparency + math.sin(t * 4) * 0.05
-		
-		--шарики у основания трейла
-		for i, orb in ipairs(orbitParts) do
-			local angle = (t * (3 + i * 0.25)) + (i * ((math.pi * 2) / #orbitParts))
-			
-			local baseOffset = CFrame.new(0, 0.45, 1.4)
-			
-			local orbitOffset = CFrame.new( 
-				math.cos(angle) * 0.7,
-				math.sin(angle * 1.5) * 0.4,
-				math.sin(angle) * 0.5
-			)
-			
-			orb.CFrame = hrp.CFrame * baseOffset * orbitOffset
-			
-			local pulse = 0.18 + math.abs(math.sin(t * 6 + i)) * 0.08
-			orb.Size = Vector3.new(pulse, pulse, pulse)
-			
-			orb.Transparency = 0.1 + math.abs(math.sin(t * 5 + i)) * 0.25
+	local absolute = math.abs(number)
+	
+	if absolute >= 1e18 then
+		return string.format("%.2fQ", number / 1e18)
+	elseif absolute >= 1e12 then
+		return string.format("%.2fT", number / 1e12)
+	elseif absolute >= 1e9 then
+		return string.format("%.2fB", number / 1e9)
+	elseif absolute >= 1e6 then
+		return string.format("%.2fM", number / 1e6)
+	elseif absolute >= 1e3 then
+		return string.format("%.2fK", number / 1e3)
+	end
+	return tostring(math.floor(number))
+end
+
+local function showWarning(message, duration)
+	warningToken += 1
+	
+	local currentToken = warningToken
+	
+	setText(warningLabel, message)
+	warningLabel.Visible = true
+	
+	
+	task.delay(duration or 2.5, function()
+		if warningToken ~= currentToken then
+			return
 		end
+		warningLabel.Visible = false
 	end)
 end
 
-local function updateTrailDetails(trailName, data)
-	selectedTrail = trailName
-	selectedTrailData = data
-	
-	trailDetailsFrame.Visible = true
-
-
-	trailNameLabel.Text = data.DisplayName .. " [" .. data.TierName .. "]"
-	tierLabel.Text = "Tier: " .. data.TierName
-	levelLabel.Text = "Level: " .. data.Level
-	racePowerLabel.Text = "RacePower: x" .. string.format("%.2f", data.RacePowerMultiplier)
-	accelerationLabel.Text = "Acceleration: x" .. string.format("%.2f", data.AccelerationMultiplier)
-	
-	if data.IsMaxTier and data.Level >= data.MaxLevel then
-		xpLabel.Text = "MAX TIER"
-	else
-		xpLabel.Text = "XP: " .. formatShort(data.XP) .. " / " .. formatShort(data.XPNeeded)
+--// SERVER REQUEST
+local function requestServer(action, trailId)
+	if requestBusy then
+		return nil
 	end
 	
-	setupTrailPreview(data.TierName)
-
-	if data.Owned then
-		buyButton.Visible = false
-		ownedButton.Visible = true
-		
-		if data.IsMaxTier and data.Level >= data.MaxLevel then
-			upgradeButton.Visible = false
-			tierUpButton.Visible = true
-			tierUpButton.Text = "MAX TIER"
-		elseif data.Level >= data.MaxLevel then
-			upgradeButton.Visible = false
-			tierUpButton.Visible = true
-			tierUpButton.Text = "Tier UP"
-		else 
-			upgradeButton.Visible = true
-			tierUpButton.Visible = false
-			upgradeButton.Text = "Upgrade"
-			
-			if data.CanUpgrade then
-				upgradeButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-			else
-				upgradeButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-			end
-		end
-	else
-		buyButton.Visible = true
-		ownedButton.Visible = false
-		upgradeButton.Visible = false
-		tierUpButton.Visible = false
-		
-		buyButton.Text = "Buy -" .. data.Price .. " Money"
+	requestBusy = true
+	
+	local success, response = pcall(function()
+		return trailRequestFunction:InvokeServer(action, trailId)
+	end)
+	
+	requestBusy = false
+	
+	if not success then
+		warn("TrailUI server request failed:", action, trailId, response)
+		showWarning("Ошибка соединения с сервером")
+		return nil
 	end
 	
+	if type(response) ~= "table" then
+		showWarning("Сервер вернул неверные данные")
+		return nil
+	end
+	return response
 end
 
-
-
---//ButtonHendles
-blueTrailButton.MouseButton1Click:Connect(function()
+--// PLAYER RESOURCES
+local function updateLeaderstatsGui()
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local playerData = player:FindFirstChild("PlayerData")
 	
-	if trailDetailsFrame.Visible and selectedTrail == "BlueTrail" then
-		trailDetailsFrame.Visible = false
-		selectedTrail = nil
+	if leaderstats then
+		local rebirth = leaderstats:FindFirstChild("Rebirth")
+		
+		if rebirth then
+			setText(rebirthLead, formatNumber(rebirth.Value))
+		end
+	end
+	
+	if playerData then
+		local money = playerData:FindFirstChild("Money")
+		local srRobux = playerData:FindFirstChild("SrRobux")
+		
+		if money then
+			setText(moneyLead, formatNumber(money.Value))
+		end
+		
+		if srRobux then
+			setText(srRobuxLead, formatNumber(srRobux.Value))
+		end
+	end
+end
+
+local function connectResourceUpdates()
+	local leaderstats = player:WaitForChild("leaderstats")
+	local playerData = player:WaitForChild("PlayerData")
+	
+	local money = playerData:WaitForChild("Money")
+	local srRobux = playerData:WaitForChild("SrRobux")
+	local rebirth = leaderstats:WailForChild("Rebirth")
+	
+	money:GetPropertyChangedSignal("Value"):Connect(updateLeaderstatsGui)
+	srRobux:GetPropertyChangedSignal("Value"):Connect(updateLeaderstatsGui)
+	rebirth:GetPropertyChangedSignal("Value"):Connect(updateLeaderstatsGui)
+	
+	updateLeaderstatsGui()
+end
+
+--// XP BAR
+local function updateXPBar(trailData)
+	local upgradeCost = trailData.UpgradeCost
+	local resources = trailData.PlayerResources
+	
+	if not upgradeCost or not resources then
+		xpBar.Size = UDim2.fromScale(1, 1)
+		
+		if trailData.Level >= trailData.MaxLevel then
+			setText(xpLabel, "MAX LEVEL")
+		else
+			setText(xpLabel, "0 / 0")
+		end
+		
+		
 		return
 	end
 	
-	selectedTrail = "BlueTrail"
+	local currentXP = resources.XP or 0
+	local requiredXP = upgradeCost.XP or 0
 	
-	requestTrailDataEvent:FireServer("BlueTrail")
-end)
-
-buyButton.MouseButton1Click:Connect(function()
-	if selectedTrail then
-
-		buyTrailEvent:FireServer(selectedTrail)
+	local progress = 1
+	
+	if requiredXP > 0 then
+		progress = math.clamp(currentXP / requiredXP, 0, 1)
 	end
-end)
+	
+	xpBar.Size = UDim2.fromScale(progress, 1)
+	
+	setText(xpLabel, formatNumber(currentXP) .. " / " .. formatNumber(requiredXP))
+end
 
-upgradeButton.MouseButton1Click:Connect(function()
-	if selectedTrail then
+--// PREVIEW
+local function updateTrailPreview(trailData)
+	-- tut vizual treyla
+	
+	trailPreviewFrame:SetAttribute("SelectedTrail", trailData.TrailId)
+end
+
+--// CHOICE BUTTONS
+local function updateChoiceButtons()
+	for _, buttonData in ipairs(trailChoiceButtons) do
+		local button = buttonData.Button
+		local trailId = buttonData.TrailId
 		
-		upgradeTrailEvent:FireServer(selectedTrail)
+		local isSelected = trailId == selectedTrail
+		
+		button:SetAttribute("Selected", isSelected)
+		
+		local selectedImage = TrailModule.Icons.TrailList.Selected
+		local defaultImage = TrailModule.Icons.TrailList.Default
+		
+		if button:IsA("ImageButton") and selectedImage ~= "" and defaultImage ~= "" then
+			button.Image = isSelected and selectedImage and defaultImage
+		end
 	end
-end)
+end
 
-tierUpButton.MouseButton1Click:Connect(function()
-	if not selectedTrailData then return end
-	if selectedTrailData.IsMaxTier then return end
+--// MAIN RENDER
+local function renderSelectedTrail()
+	local trailData = allTrailData[selectedTrail]
 	
-	trailMenuFrame.Visible = false
-	trailDetailsFrame.Visible = false
-	trailTierFrame.Visible = true
+	if not trailData then
+		showWarning("Данные выббранного трейла не найдены")
+		return
+	end
 	
-	currentTierLabel.Text = "Current Tier: " .. selectedTrailData.TierName
-	nextTierLabel.Text = "Next Tier: " .. selectedTrailData.NextTierName
+	setText(trailNameLabel, trailData.DisplayName)
+	setText(stageNameLabel, trailData.StageName)
+	setImage(stageIcon, trailData.StageIcon)
+	setText(levelLabel, "LEVEL " .. tostring(trailData.Level) .. " / " .. tostring(trailData.StageMaxLevel))
 	
-	requirementsLabel.Text = "Requirements:\n" .. "Level: " .. selectedTrailData.Level .. " / " .. selectedTrailData.MaxLevel .. "\n" .. "Money: " .. selectedTrailData.TierUpCost
+	local boost = trailData.Boost or {}
 	
-	if selectedTrailData.CanTierUp then
-		upButton.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
+	setText(powerBoostLabel, TrailModule.FormatPercent(boost.PowerPercent or 0))
+	setText(accelerationBoostLabel, TrailModule.FormatPercent(boost.AccelerationPercent or 0))
+	setText(infoLabel, trailData.Description or "")
+	
+	updateXPBar(trailData)
+	updateTrailPreview(trailData)
+	updateChoiceButtons()
+	
+	if not trailData.Owned then
+		setText(buyUpgradeButton, "BUY")
+		setText(upgradePriceLabel, formatNumber(trailData.Purchase.Price))
+		setText(equipButton, "EQUIP")
+		setButtonEnabled(equipButton, false)
+		setButtonEnabled(buyUpgradeButton, trailData.Available == true)
+		
+	elseif trailData.Level >= trailData.MaxLevel then
+		setText(buyUpgradeButton, "MAX")
+		setText(upgradePriceLabel, "MAX")
+		
+		setButtonEnabled(buyUpgradeButton, false)
+		setButtonEnabled(equipButton, true)
+		
+	elseif not trailData.CanLevelUpAtStage then
+		setText(buyUpgradeButton, "UPGRADE")
+		setText(upgradePriceLabel, "STAGE UP")
+		setButtonEnabled(buyUpgradeButton, false)
+		setButtonEnabled(equipButton, true)
 	else
-		upButton.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-	end
-end)
-
-upButton.MouseButton1Click:Connect(function()
-	if selectedTrail then
+		setText(buyUpgradeButton, "UPGRADE")
+		local upgradeCost = trailData.UpgradeCost
 		
-		tierUpTrailEvent:FireServer(selectedTrail)
+		if upgradeCost then
+			setText(upgradePriceLabel, formatNumber(upgradeCost.Money))
+		else
+			setText(upgradePriceLabel, "-")
+		end
 		
-		trailTierFrame.Visible = false
-		trailMenuFrame.Visible = true
-		trailDetailsFrame.Visible = true
+		setButtonEnabled(buyUpgradeButton, true)
+		setButtonEnabled(equipButton, true)
 	end
-end)
-
-closeTierFrameButton.MouseButton1Click:Connect(function()
-	trailTierFrame.Visible = false
-	trailMenuFrame.Visible = true
-	trailDetailsFrame.Visible = true
-end)
-
-closeTrailMenuButton.MouseButton1Click:Connect(function()
-	closeTrailMenuEvent:FireServer()
-end)
-
-
-
---//OnClient
-trailDataEvent.OnClientEvent:Connect(function(trailName, data)
-	selectedTrail = trailName
-	selectedTrailData = data
 	
-	if trailTierFrame.Visible then
+	if trailData.Owned then
+		if trailData.Equipped then
+			setText(equipButton, "UNEQUIP")
+		else
+			setText(equipButton, "EQUIP")
+		end
+	end
+	
+	setButtonEnabled(stageOpenButton, trailData.Owned == true and trailData.IsMaxStage ~= true)
+	
+	updateLeaderstatsGui()
+end
+
+--// DATA LOADING
+local function rebuildOrderedTrailList()
+	table.clear(orderedTrailIds)
+	
+	for trailId, trailData in pairs(allTrailData) do
+		table.insert(orderedTrailIds, {
+			TrailId = trailId,
+			Order = trailData.Order or 999,
+		})
+	end
+	
+	table.sort(orderedTrailIds, function(a, b)
+		return a.Order < b.Order
+	end)
+	
+	for index, data in ipairs(orderedTrailIds) do
+		if data.TrailId == selectedTrail then
+			selectedTrailIndex = index
+			break
+		end
+	end
+end
+
+local function loadAllTrailData()
+	local response = requestServer("GetAllData")
+	
+	if not response then
+		return false
+	end
+	
+	if not response.Success then
+		showWarning(response.Message)
+		return false
+	end
+	
+	local data = response.Data
+	
+	if type(data) ~= "table" or type(data.Trails) ~= "table" then
+		showWarning("Не удалось загрузить трейлы")
+		return false
+	end
+	
+	allTrailData = data.Trails
+	
+	if not allTrailData[selectedTrail] then
+		selectedTrail = data.DefaultTrailId or TrailModule.DEFAULT_TRAIL_ID
+	end
+	
+	rebuildOrderedTrailList()
+	renderSelectedTrail()
+	
+	return true
+end
+
+local function applyActionResponse(response)
+	if not response then
 		return
 	end
 	
-	updateTrailDetails(trailName, data)
+	if response.Message and response.Message ~= "" then
+		showWarning(response.Message)
+	end
+	
+	if not response.Success then
+		return
+	end
+	
+	local updateTrail = response.Data
+	
+	if type(updateTrail) == "table" and updateTrail.TrailId then
+		allTrailData[updateTrail.TrailId] = updateTrail
+	end
+	
+	renderSelectedTrail()
+end
+
+--// SELECT TRAIL
+local function selectTrail(trailId)
+	if not allTrailData[trailId] then
+		showWarning("Этот трейл пока недостуен")
+		return
+	end
+	
+	selectedTrail = trailId
+	
+	for index, data in ipairs(orderedTrailIds) do
+		if data.TrailId == trailId then
+			selectedTrailIndex = index
+			break
+		end
+	end
+	renderSelectedTrail()
+end
+
+local function selectPreviousTrail()
+	if #orderedTrailIds <= 1 then
+		return
+	end
+	
+	selectedTrailIndex -= 1
+	
+	if selectedTrailIndex < 1  then
+		selectedTrailIndex = #orderedTrailIds
+	end
+	
+	selectTrail(orderedTrailIds[selectedTrailIndex].TrailId)
+end
+
+local function selectNextTrail()
+	if #orderedTrailIds <= 1 then
+		return
+	end
+	
+	selectedTrailIndex += 1
+	
+	if selectedTrailIndex > #orderedTrailIds then
+		selectedTrailIndex = 1
+	end
+	
+	selectTrail(orderedTrailIds[selectedTrailIndex].TrailId)
+end
+
+--// BUTTON ACTIONS
+buyUpgradeButton.Activated:Connect(function()
+	local trailData = allTrailData[selectedTrail]
+	
+	if not trailData then
+		return
+	end
+	
+	if not trailData.Owned then
+		local response = requestServer("PurchaseTrail", selectedTrail)
+		
+		applyActionResponse(response)
+		return
+	end
+	
+	if trailData.Level >= trailData.MaxLevel then
+		showWarning("Достигнут максимальный уровень")
+		return
+	end
+	
+	if not trailData.CanLevelUpAtStage then
+		showWarning("Необходимо повысть стадию для открытия следующих уровней")
+		return
+	end
+	
+	local response = requestServer("UpgradeTrail", selectedTrail)
+	
+	applyActionResponse(response)
+end)
+
+equipButton.Activated:Connect(function()
+	local trailData = allTrailData[selectedTrail]
+	
+	if not trailData then
+		return
+	end
+	
+	
+	if not trailData.Owned then
+		showWarning("Сначала купите этот трейл")
+		return
+	end
+	
+	local response = requestServer("ToggleEquip", selectedTrail)
+	
+	applyActionResponse(response)
+	
+	if response and response.Success then
+		loadAllTrailData()
+	end
+end)
+
+stageOpenButton.Activated:Connect(function()
+	local trailData = allTrailData[selectedTrail]
+	
+	if not trailData then
+		return
+	end
+	
+	if not trailData.Owned then
+		showWarning("Сначала купите этот трейл")
+		return
+	end
+	
+	if trailData.IsMaxStage then
+		showWarning("Достигнута максимальная стадия")
+		return
+	end
+	
+	trailStage:SetAttribute("SelectedTrail", selectedTrail)
+	
+	trailStage.Vivible = true
+	trailStageBlur.Visible = true
+end)
+
+trailListBackButton.Activated:Connect(selectPreviousTrail)
+trailListNextButton.Activated:Connect(selectNextTrail)
+
+for _, buttonData in ipairs(trailChoiceButtons) do
+	buttonData.Button.Activated:Connect(function()
+		selectedTrail(buttonData.TrailId)
+	end)
+end
+
+trailClose.Activated:Connect(function()
+	trailStage.Visible = false
+	trailStageBlur.Visible = false
+	
+	MenuManager.close("Trails")
+end)
+
+
+--// OPEN REFRESH
+trailMenu:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not trailMenu.Visible then
+		return
+	end
+	
+	loadAllTrailData()
+end)
+
+--// INITIALIZED
+warningLabel.Visible = false
+trailStage.Visible = false 
+trailStageBlur.Visible = false
+
+connectResourceUpdates()
+
+task.spawn(function()
+	while player:GetAttribute("DataReady") ~= true do
+		player:GetAttributeChangedSignal("DataReady"):Wait()
+	end
+	
+	loadAllTrailData()
 end)
 
 print("TrailUI loaded")
