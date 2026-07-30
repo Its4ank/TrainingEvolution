@@ -1,4 +1,4 @@
---// TrailUI 1.2v
+--// TrailUI
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -52,6 +52,23 @@ local buyUpgradeFrame = trailStats:WaitForChild("TraStatUpUpgLvl")
 local buyUpgradeButton = buyUpgradeFrame:WaitForChild("TraStatBuy/Upg")
 local upgradePriceLabel = buyUpgradeFrame:WaitForChild("TraStatUpgPrice")
 local stageOpenButton = trailStats:WaitForChild("TraStatStageOpen")
+
+--// STAGE
+local stageCurrentIcon = trailStage:WaitForChild("TraStageCurIcon")
+local stageNextIcon = trailStage:WaitForChild("TraStageNextIcon")
+local stageCurrentBoost = trailStage:WaitForChild("TraStageCurBoost")
+local stageNextBoost = trailStage:WaitForChild("TraStageNextBoost")
+
+local stageBar1 = trailStage:WaitForChild("TraStageBar1")
+local stageBar2 = trailStage:WaitForChild("TraStageBar2")
+local stageBar3 = trailStage:WaitForChild("TraStageBar3")
+
+local stageRequirement1 = trailStage:WaitForChild("TraStageRequir1")
+local stageRequirement2 = trailStage:WaitForChild("TraStageRequir2")
+local stageRequirement3 = trailStage:WaitForChild("TraStageRequir3")
+
+local stageCloseButton = trailStage:WaitForChild("TraStageClose")
+local stageUpButton = trailStage:WaitForChild("TraStageUpButton")
 
 --// STATE
 local selectedTrail = TrailModule.DEFAULT_TRAIL_ID
@@ -250,6 +267,77 @@ local function updateXPBar(trailData)
 	xpBar.Size = UDim2.fromScale(progress, 1)
 	
 	setText(xpLabel, formatNumber(currentXP) .. " / " .. formatNumber(requiredXP))
+end
+
+local function updateStageProgressBar(bar, progress)
+	progress = math.clamp(tonumber(progress) or 0, 0, 1)
+	
+	bar.Size = UDim2.fromScale(progress, 1)
+end
+
+local function closeStageMenu()
+	trailStage.Visible = false
+	trailStageBlur.Visible = false
+end
+
+local function renderStageMenu()
+	local trailData = allTrailData[selectedTrail]
+	
+	if not trailData then
+		showWarning("Данные трейла не найдены")
+		closeStageMenu()
+		return
+	end
+	
+	if not trailData.Owned then
+		showWarning("Сначала купите этот трейл")
+		closeStageMenu()
+		return
+	end
+	
+	if trailData.IsMaxStage then
+		showWarning("Достигнута максимальная стадия")
+		closeStageMenu()
+		return
+	end
+	
+	-- Иконки текущей т следующей стадии
+	setImage(stageCurrentIcon, trailData.StageIcon)
+	
+	local nextStageId = trailData.Stage + 1
+	
+	setImage(stageNextIcon, TrailModule.GetStageIcon(nextStageId))
+	
+	-- Множитель текущей и следующей стадии
+	local currentStageConfig = TrailModule.GetStageConfig(trailData.Stage)
+	local nextStageConfig = TrailModule.GetStageConfig(nextStageId)
+	local currentMultiplier = currentStageConfig and currentStageConfig.Multiplier or 1
+	local nextMultiplier = nextStageConfig and nextStageConfig.Multiplier
+	
+	setText(stageCurrentBoost, TrailModule.FormatMultiplier(currentMultiplier))
+	setText(stageNextBoost, TrailModule.FormatMultiplier(nextMultiplier))
+	
+	-- Прогресс требований
+	local progress = trailData.StageProgress
+	
+	if not progress then
+		setButtonEnabled(stageUpButton, false)
+		showWarning("Требования стадии не найдены")
+		return
+	end
+	
+	-- 1: Level
+	setText(stageRequirement1, formatNumber(progress.Level.Current) .. " / " .. formatNumber(progress.Level.Required))
+	updateStageProgressBar(stageBar1, progress.Level.Progress)
+	
+	-- 2: Money
+	setText(stageRequirement2, formatNumber(progress.Money.Current) .. " / " .. formatNumber(progress.Money.Required))
+	updateStageProgressBar(stageBar2, progress.Money.Progress)
+	
+	-- 3: Rebirth
+	setText(stageRequirement3, formatNumber(progress.Rebirth.Current) .. " / " .. formatNumber(progress.Rebirth.Required))
+	updateStageProgressBar(stageBar3, progress.Rebirth.Progress)
+	setButtonEnabled(stageUpButton, progress.CaStageUp == true)
 end
 
 --// PREVIEW
@@ -526,6 +614,7 @@ stageOpenButton.Activated:Connect(function()
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
+		showWarning("Данные трейла не найдены")
 		return
 	end
 	
@@ -541,8 +630,79 @@ stageOpenButton.Activated:Connect(function()
 	
 	trailStage:SetAttribute("SelectedTrail", selectedTrail)
 	
-	trailStage.Visible = true
+	renderStageMenu()
+	
 	trailStageBlur.Visible = true
+	trailStage.Visible = true
+end)
+
+stageUpButton.Activated:Connect(function()
+	local trailData = allTrailData[selectedTrail]
+	
+	if not trailData then
+		showWarning("")
+		return
+	end
+	
+	if not trailData.Owned then
+		showWarning("")
+		return
+	end
+	
+	if trailData.IsMaxStage then
+		showWarning("")
+		closeStageMenu()
+		return
+	end
+	
+	local progress = trailData.StageProgress
+	
+	if not progress then
+		showWarning("")
+		return
+	end
+	
+	if not progress.CanStageUp then
+		showWarning("")
+		return
+	end
+	
+	setButtonEnabled(stageUpButton, false)
+	
+	local response = requestServer("StageUp", selectedTrail)
+	
+	if not response then
+		renderStageMenu()
+		return
+	end
+	
+	if response.Message and response.Message ~= "" then
+		showWarning(response.Message)
+	end
+	
+	if not response.Success then
+		renderStageMenu()
+		return
+	end
+	
+	local updateTrail = response.Data
+	
+	if type(updateTrail) == "table" and updateTrail.TrailId then
+		allTrailData[updateTrail.TrailId] = updateTrail
+	end
+	
+	renderSelectedTrail()
+	
+	if updateTrail.IsMaxStage then
+		closeStageMenu()
+		return
+	end
+	
+	renderStageMenu()
+end)
+
+stageCloseButton.Activated:Connect(function()
+	closeStageMenu()
 end)
 
 trailListBackButton.Activated:Connect(selectPreviousTrail)
