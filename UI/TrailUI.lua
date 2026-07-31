@@ -1,4 +1,4 @@
---// TrailUI
+--// TrailUI 1.2v
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -272,7 +272,7 @@ end
 local function updateStageProgressBar(bar, progress)
 	progress = math.clamp(tonumber(progress) or 0, 0, 1)
 	
-	bar.Size = UDim2.fromScale(progress, 1)
+	bar.Size = UDim2.new(progress, 0, bar.Size.Y.Scale, bar.Size.Y.Offset)
 end
 
 local function closeStageMenu()
@@ -312,7 +312,7 @@ local function renderStageMenu()
 	local currentStageConfig = TrailModule.GetStageConfig(trailData.Stage)
 	local nextStageConfig = TrailModule.GetStageConfig(nextStageId)
 	local currentMultiplier = currentStageConfig and currentStageConfig.Multiplier or 1
-	local nextMultiplier = nextStageConfig and nextStageConfig.Multiplier
+	local nextMultiplier = nextStageConfig and nextStageConfig.Multiplier or 1
 	
 	setText(stageCurrentBoost, TrailModule.FormatMultiplier(currentMultiplier))
 	setText(stageNextBoost, TrailModule.FormatMultiplier(nextMultiplier))
@@ -337,7 +337,7 @@ local function renderStageMenu()
 	-- 3: Rebirth
 	setText(stageRequirement3, formatNumber(progress.Rebirth.Current) .. " / " .. formatNumber(progress.Rebirth.Required))
 	updateStageProgressBar(stageBar3, progress.Rebirth.Progress)
-	setButtonEnabled(stageUpButton, progress.CaStageUp == true)
+	setButtonEnabled(stageUpButton, progress.CanStageUp == true)
 end
 
 --// PREVIEW
@@ -628,6 +628,28 @@ stageOpenButton.Activated:Connect(function()
 		return
 	end
 	
+	local response = requestServer("GetTrailData", selectedTrail)
+	
+	if not response then
+		return
+	end
+	
+	if not response.Success then
+		showWarning(response.Message)
+		return
+	end
+	
+	local updateTrail = response.Data
+	
+	if type(updateTrail) ~= "table" or not updateTrail.TrailId then
+		showWarning("Не удалось обновить данные стадии")
+		return
+	end
+	
+	allTrailData[updateTrail.TrailId] = updateTrail
+	
+	trailData = updateTrail
+	
 	trailStage:SetAttribute("SelectedTrail", selectedTrail)
 	
 	renderStageMenu()
@@ -640,17 +662,17 @@ stageUpButton.Activated:Connect(function()
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
-		showWarning("")
+		showWarning("Данные трейла не найдены")
 		return
 	end
 	
 	if not trailData.Owned then
-		showWarning("")
+		showWarning("Сначала купите этот трейл")
 		return
 	end
 	
 	if trailData.IsMaxStage then
-		showWarning("")
+		showWarning("Достигнута максимальная стадия")
 		closeStageMenu()
 		return
 	end
@@ -658,12 +680,12 @@ stageUpButton.Activated:Connect(function()
 	local progress = trailData.StageProgress
 	
 	if not progress then
-		showWarning("")
+		showWarning("Требования стадии не найдены")
 		return
 	end
 	
 	if not progress.CanStageUp then
-		showWarning("")
+		showWarning("Не все требования выполнены")
 		return
 	end
 	
@@ -687,9 +709,14 @@ stageUpButton.Activated:Connect(function()
 	
 	local updateTrail = response.Data
 	
-	if type(updateTrail) == "table" and updateTrail.TrailId then
-		allTrailData[updateTrail.TrailId] = updateTrail
+	if type(updateTrail) ~= "table" or not updateTrail.TrailId then
+		showWarning("Сервер вернул неверные данные трейла")
+		loadAllTrailData()
+		closeStageMenu()
+		return
 	end
+	
+	allTrailData[updateTrail.TrailId] = updateTrail
 	
 	renderSelectedTrail()
 	
