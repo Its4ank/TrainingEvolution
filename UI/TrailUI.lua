@@ -15,7 +15,8 @@ local trailEventFolder = ReplicatedStorage:WaitForChild("TrailEvent")
 local trailRequestFunction = trailEventFolder:WaitForChild("TrailRequestFunction")
 
 --// GUI
-local trailFolder = raceGui:WaitForChild("TrailFolder")
+local guiFolder = raceGui:WaitForChild("GuiFolder")
+local trailFolder = guiFolder:WaitForChild("TrailsFolder")
 local trailHost = trailFolder:WaitForChild("TrailHost")
 local trailMenu = trailHost:WaitForChild("TrailMenu")
 local trailStage = trailHost:WaitForChild("TrailStage")
@@ -33,8 +34,8 @@ local srRobuxLead = trailLeaderstats:WaitForChild("SrRobuxLead")
 local trailStats = trailMenu:WaitForChild("TrailStats")
 local trailPreviewFrame = trailMenu:WaitForChild("TrailPreviewFrame")
 local trailChoiceButton = trailMenu:WaitForChild("TrailChoiceButton")
-local trailListBackButton = trailMenu:WaitForChild("TrailListBackButton")
-local trailListNextButton = trailMenu:WaitForChild("TrailListNextButton")
+local trailListBackButton = trailMenu:WaitForChild("TraListBackButton")
+local trailListNextButton = trailMenu:WaitForChild("TraListNextButton")
 local trailClose = trailMenu:WaitForChild("TrailClose")
 
 --// TRAIL STATS
@@ -44,13 +45,13 @@ local stageNameLabel = trailStats:WaitForChild("TraStatStageName")
 local powerBoostLabel = trailStats:WaitForChild("TraStatPowerBoost")
 local accelerationBoostLabel = trailStats:WaitForChild("TraStatAccBoost")
 local levelLabel = trailStats:WaitForChild("TraStatLevel")
-local xpBar = trailStats:WaitForChild("TraStatXpBar")
+local trailXPBar = trailStats:WaitForChild("TraStatXpBar")
 local xpLabel = trailStats:WaitForChild("TraStatXpLabel")
 local equipButton = trailStats:WaitForChild("TraStatEquipInfo")
 local infoLabel = trailStats:WaitForChild("TraStatInfo")
-local buyUpgradeFrame = trailStats:WaitForChild("TraStatUpUpgLvl")
-local buyUpgradeButton = buyUpgradeFrame:WaitForChild("TraStatBuy/Upg")
-local upgradePriceLabel = buyUpgradeFrame:WaitForChild("TraStatUpgPrice")
+local buyUpgradeButton = trailStats:WaitForChild("TraStatUpgLvl")
+local buyUpgradeLabel = buyUpgradeButton:WaitForChild("TraStatBuy/Upg")
+local upgradePriceLabel = buyUpgradeButton:WaitForChild("TraStatUpgPrice")
 local stageOpenButton = trailStats:WaitForChild("TraStatStageOpen")
 
 --// STAGE
@@ -80,6 +81,12 @@ local selectedTrailIndex = 1
 
 local requestBusy = false
 local warningToken = 0
+
+local TRAIL_XP_BAR_FULL_SIZE = UDim2.new(0.247, 0, 0.03, 0)
+
+local STAGE_BAR_1_FULL_SIZE = UDim2.new(0.211, 0, 0.024, 0)
+local STAGE_BAR_2_FULL_SIZE = UDim2.new(0.215, 0, 0.024, 0)
+local STAGE_BAR_3_FULL_SIZE = UDim2.new(0.235, 0, 0.024, 0)
 
 --// TRAILO BUTTON CONFIGURATION
 local trailChoiceButtons = {
@@ -238,41 +245,28 @@ local function connectResourceUpdates()
 end
 
 --// XP BAR
+local function updateProgressBar(bar, progress, fullSize)
+	progress = math.clamp(tonumber(progress) or 0, 0, 1)
+	
+	bar.Size = UDim2.new(
+		fullSize.X.Scale * progress,
+		fullSize.X.Offset * progress,
+		fullSize.Y.Scale,
+		fullSize.Y.Offset
+	)
+end
+
 local function updateXPBar(trailData)
-	local upgradeCost = trailData.UpgradeCost
-	local resources = trailData.PlayerResources
+	local currentXP = tonumber(trailData.XP or 0) or 0
+	local requiredXP = tonumber(trailData.RequiredXP or 0) or 0
 	
-	if not upgradeCost or not resources then
-		xpBar.Size = UDim2.fromScale(1, 1)
-		
-		if trailData.Level >= trailData.MaxLevel then
-			setText(xpLabel, "MAX LEVEL")
-		else
-			setText(xpLabel, "0 / 0")
-		end
-		
-		
-		return
-	end
-	
-	local currentXP = resources.XP or 0
-	local requiredXP = upgradeCost.XP or 0
-	
-	local progress = 1
+	local progress = 0
 	
 	if requiredXP > 0 then
 		progress = math.clamp(currentXP / requiredXP, 0, 1)
 	end
 	
-	xpBar.Size = UDim2.fromScale(progress, 1)
-	
-	setText(xpLabel, formatNumber(currentXP) .. " / " .. formatNumber(requiredXP))
-end
-
-local function updateStageProgressBar(bar, progress)
-	progress = math.clamp(tonumber(progress) or 0, 0, 1)
-	
-	bar.Size = UDim2.new(progress, 0, bar.Size.Y.Scale, bar.Size.Y.Offset)
+	updateProgressBar(trailXPBar, progress, TRAIL_XP_BAR_FULL_SIZE)
 end
 
 local function closeStageMenu()
@@ -328,15 +322,15 @@ local function renderStageMenu()
 	
 	-- 1: Level
 	setText(stageRequirement1, formatNumber(progress.Level.Current) .. " / " .. formatNumber(progress.Level.Required))
-	updateStageProgressBar(stageBar1, progress.Level.Progress)
+	updateProgressBar(stageBar1, progress.Level.Progress or 0, STAGE_BAR_1_FULL_SIZE)
 	
 	-- 2: Money
 	setText(stageRequirement2, formatNumber(progress.Money.Current) .. " / " .. formatNumber(progress.Money.Required))
-	updateStageProgressBar(stageBar2, progress.Money.Progress)
+	updateProgressBar(stageBar2, progress.Money.Progress or 0, STAGE_BAR_2_FULL_SIZE)
 	
 	-- 3: Rebirth
 	setText(stageRequirement3, formatNumber(progress.Rebirth.Current) .. " / " .. formatNumber(progress.Rebirth.Required))
-	updateStageProgressBar(stageBar3, progress.Rebirth.Progress)
+	updateProgressBar(stageBar3, progress.Rebirth.Progress or 0, STAGE_BAR_3_FULL_SIZE)
 	setButtonEnabled(stageUpButton, progress.CanStageUp == true)
 end
 
@@ -391,26 +385,31 @@ local function renderSelectedTrail()
 	updateChoiceButtons()
 	
 	if not trailData.Owned then
-		setText(buyUpgradeButton, "BUY")
+		setText(buyUpgradeLabel, "BUY")
 		setText(upgradePriceLabel, formatNumber(trailData.Purchase.Price))
 		setText(equipButton, "EQUIP")
+		
+		if equipButton:IsA("ImageButton") then
+			equipButton.Image = TrailModule.Icons.Equipped.Default
+		end
+		
 		setButtonEnabled(equipButton, false)
 		setButtonEnabled(buyUpgradeButton, trailData.Available == true)
 		
 	elseif trailData.Level >= trailData.MaxLevel then
-		setText(buyUpgradeButton, "MAX")
+		setText(buyUpgradeLabel, "MAX")
 		setText(upgradePriceLabel, "MAX")
 		
 		setButtonEnabled(buyUpgradeButton, false)
 		setButtonEnabled(equipButton, true)
 		
 	elseif not trailData.CanLevelUpAtStage then
-		setText(buyUpgradeButton, "UPGRADE")
+		setText(buyUpgradeLabel, "UPGRADE")
 		setText(upgradePriceLabel, "STAGE UP")
 		setButtonEnabled(buyUpgradeButton, false)
 		setButtonEnabled(equipButton, true)
 	else
-		setText(buyUpgradeButton, "UPGRADE")
+		setText(buyUpgradeLabel, "UPGRADE")
 		local upgradeCost = trailData.UpgradeCost
 		
 		if upgradeCost then
@@ -426,8 +425,16 @@ local function renderSelectedTrail()
 	if trailData.Owned then
 		if trailData.Equipped then
 			setText(equipButton, "UNEQUIP")
+			
+			if equipButton:IsA("ImageButton") then
+				equipButton.Image = TrailModule.Icons.Equipped.Selected
+			end
 		else
 			setText(equipButton, "EQUIP")
+			
+			if equipButton:IsA("ImageButton") then
+				equipButton.Image = TrailModule.Icons.Equipped.Default
+			end
 		end
 	end
 	
@@ -588,7 +595,8 @@ buyUpgradeButton.Activated:Connect(function()
 	applyActionResponse(response)
 end)
 
-equipButton.Activated:Connect(function()
+equipButton.MouseButton1Click:Connect(function()
+	print("Equip1")
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
@@ -608,9 +616,11 @@ equipButton.Activated:Connect(function()
 	if response and response.Success then
 		loadAllTrailData()
 	end
+	print("Equip2")
 end)
 
-stageOpenButton.Activated:Connect(function()
+stageOpenButton.MouseButton1Click:Connect(function()
+	print("Open1")
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
@@ -656,6 +666,7 @@ stageOpenButton.Activated:Connect(function()
 	
 	trailStageBlur.Visible = true
 	trailStage.Visible = true
+	print("Open2")
 end)
 
 stageUpButton.Activated:Connect(function()
