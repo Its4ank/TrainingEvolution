@@ -11,6 +11,7 @@ local TrainerModule = require(game.ServerScriptService.Modules.TrainerModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
 local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
+local TrailModule = require(game.ReplicatedStorage.Modules.TrailModule)
 
 
 
@@ -177,7 +178,83 @@ local function setupPlayerValues(player)
 	resetCollectedRewards(player)
 end
 
+-- Trail boosts
+local function getEquippedTrailData(player)
+	local trailsFolder = player:FindFirstChild("Trails")
+	
+	if not trailsFolder then
+		return nil
+	end
+	
+	local equippedTrailValue = trailsFolder:FindFirstChild("EquippedTrail")
+	
+	if not equippedTrailValue or not equippedTrailValue:IsA("StringValue") then
+		return nil
+	end
+	
+	local trailId = equippedTrailValue.Value
+	
+	if trailId == "" then
+		return nil
+	end
+	
+	local trailFolder = trailsFolder:FindFirstChild(trailId)
+	
+	if not trailFolder or not trailFolder:IsA("Folder") then
+		return nil
+	end
+	
+	local ownedValue = trailFolder:FindFirstChild("Owned")
+	local levelValue = trailFolder:FindFirstChild("Level")
+	local stageValue = trailFolder:FindFirstChild("Stage")
+	
+	if not ownedValue or not ownedValue:IsA("BoolValue") then
+		return nil
+	end
+	
+	if not ownedValue.Value then
+		return nil
+	end
+	
+	if not levelValue or not levelValue:IsA("IntValue") then
+		return nil
+	end
+	
+	if not stageValue or not stageValue:IsA("IntValue") then
+		return nil
+	end
+	
+	
+	if not TrailModule.GetTrailConfig(trailId) then
+		return nil
+	end
+	
+	return {
+		TrailId = trailId,
+		Level = levelValue.Value,
+		Stage = stageValue.Value,
+	}
+end
 
+local function getTrailRacePowerMultiplier(player)
+	local trailData = getEquippedTrailData(player)
+	
+	if not trailData then
+		return 1
+	end
+	
+	return TrailModule.GetRacePowerMultiplier(trailData.TrailId, trailData.Level, trailData.Stage)
+end
+
+local function getTrailAccelerationMultiplier(player)
+	local trailData = getEquippedTrailData(player)
+	
+	if not trailData then
+		return 1
+	end
+	
+	return TrailModule.GetAccelerationMultiplier(trailData.TrailId, trailData.Level, trailData.Stage)
+end
 
 --Race calculations
 local function lerp(a, b, t)
@@ -327,13 +404,22 @@ local function startRace(player)
 		local currentPos = currentHrp.Position
 		currentHrp.CFrame = CFrame.new(currentPos, currentPos + startLine.CFrame.LookVector)
 
-		local targetSpeed = getRaceSpeedFromEnergy(player) * TrainerModule.getRacePowerMultiplier(player)
+		local trainerRacePowerMultiplier = TrainerModule.getRacePowerMultiplier(player)
+		local trailRacePowerMultiplier = getTrailRacePowerMultiplier(player)
+		
+		local targetSpeed = 
+			getRaceSpeedFromEnergy(player)
+		    * trainerRacePowerMultiplier
+			* trailRacePowerMultiplier
+		
 		local currentSpeed = speedValue.Value
 
 		--Upgrade: Acceleration
 		local upgradeAccelerationMultiplier = UpgradeModule.GetAccelerationMultiplier(player)
 		local trainerAccelerationMultiplier = TrainerModule.getAccelerationMultiplier(player)
-		local accelerationMultiplier = upgradeAccelerationMultiplier * trainerAccelerationMultiplier
+		local trailAccelerationMultiplier = getTrailAccelerationMultiplier(player)
+		
+		local accelerationMultiplier = upgradeAccelerationMultiplier * trainerAccelerationMultiplier * trailAccelerationMultiplier
 
 		local delta = ACCELERATION_PER_SECOND * accelerationMultiplier * dt 
 		
