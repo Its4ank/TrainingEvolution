@@ -1,4 +1,4 @@
---RaceServer
+--RaceServer 1.2v
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -456,7 +456,7 @@ local function connectRewardTouch(reward)
 			end
 
 			--Upgrade: Money
-			local moneyUpgradeMultiplier = UpgradeModule.GetMoneyUpgradeMultiplier(player)
+			local moneyUpgradeMultiplier = UpgradeModule.GetMoneyMultiplier(player)
 
 			local trainerMoneyMultiplier = TrainerModule.getMoneyMultiplier(player)
 			
