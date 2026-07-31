@@ -10,28 +10,28 @@ TrailModule.DEFAULT_TRAIL_ID = "TrailStone"
 --// SHARED ICONS
 TrailModule.Icons = {
 	TrailList = {
-		Selected = "",
-		Default = "",
+		Selected = "rbxassetid://83651888385417",
+		Default = "rbxassetid://90815160752499",
 	},
 	
 	Equipped = {
-		Selected = "",
-	    Default = "",
+		Selected = "rbxassetid://130606674129045",
+		Default = "rbxassetid://91644446213802",
 	},
 	
 	Stages = {
-		[1] = "",
-		[2] = "",
-		[3] = "",
-		[4] = "",
-		[5] = "",
+		[1] = "rbxassetid://105234933061667",
+		[2] = "rbxassetid://129346516632269",
+		[3] = "rbxassetid://130513411629121",
+		[4] = "rbxassetid://107984855399889",
+		[5] = "rbxassetid://73158660699565",
 	},
 	
 	Currencies = {
-		Money = "",
-		Rebirth = "",
-		XP = "",
-		SrRobux = "",
+		Money = "rbxassetid://",
+		Rebirth = "rbxassetid://",
+		XP = "rbxassetid://84764867479981",
+		SrRobux = "rbxassetid://",
 	},
 }
 
