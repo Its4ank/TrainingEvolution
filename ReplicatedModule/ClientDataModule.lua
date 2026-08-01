@@ -30,12 +30,20 @@ function ClientDataModule.GetGems(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("Gems")
 end
 
+function ClientDataModule.GetRaceTouch(player)
+	return ClientDataModule.GetPlayerData(player):WaitForChild("RaceTouch")
+end
+
 function ClientDataModule.GetSrRobux(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("SrRobux")
 end
 
 function ClientDataModule.GetMaxEquippedPets(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("MaxEquippedPets")
+end
+
+function ClientDataModule.GetPetHatched(player)
+	return ClientDataModule.GetPlayerData(player):WaitForChild("PetHatched")
 end
 
 function ClientDataModule.GetGamepasses(player)
@@ -85,7 +93,7 @@ end
 
 function ClientDataModule.GetTreadmill(player, treadmillId)
 	local treadmills = ClientDataModule.GetTreadmills(player)
-	return treadmills:WaitForChild("Treadmill" .. tostring(treadmillId))
+	return treadmills:WaitForChild("Treadmills" .. tostring(treadmillId))
 end
 
 function ClientDataModule.GetTreadmillLevel(player, treadmillId)
