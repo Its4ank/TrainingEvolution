@@ -27,7 +27,12 @@ local function getMoney(player)
 	return playerData:FindFirstChild("Money")
 end
 
-
+local function getPetHatched(player)
+	local playerData = player:FindFirstChild("PlayerData")
+	if not playerData then return nil end
+	
+	return playerData:FindFirstChild("PetHatched")
+end
 
 --Egg data
 local eggData = {
@@ -132,13 +137,26 @@ local function openEgg(player, eggName)
 	end
 	
 
-	PetModule.givePet(player, wonPet)
+	local petFolder, giveError = PetModule.givePet(player, wonPet)
+	
+	if not petFolder then
+		warn("Failed to give pet:", wonPet, giveError)
+		money.Value += eggInfo.price
+		return false
+	end
+	
+	local petHatched = getPetHatched(player)
+	if petHatched then
+		petHatched.Value += 1
+	end
 
 	print(player.Name, "opened", eggName, "and got", wonPet, "(" .. tostring(rarity) .. ")")
+	return true
 end
 
 local function openEggMultiple(player, eggName, amount)
-	amount = math.clamp(amount or 1, 1, 3)
+	amount = math.floor(tonumber(amount) or 1)
+	amount = math.clamp(amount, 1, 3)
 	
 	for i = 1, amount do
 		openEgg(player, eggName)
