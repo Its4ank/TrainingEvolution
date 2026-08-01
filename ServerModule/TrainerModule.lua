@@ -40,7 +40,7 @@ TrainerModule.Data = {
 		
 		UnlockType = "Currency",
 		Currency = "Rebirth",
-		Price = 1,
+		Price = 100,
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
@@ -67,7 +67,7 @@ TrainerModule.Data = {
 		LeaderStatIcon = "rbxassetid://73197884503844",
 		
 		UnlockType = "PetHatched",
-		RequiredPets = 500,
+		RequiredPets = 50,
 		AutoUnlock = true,
 		
 		MaxLevel = 25,
@@ -121,7 +121,7 @@ TrainerModule.Data = {
 		
 		UnlockType = "Currency",
 		Currency = "Money",
-		Price = 1000,
+		Price = 500,
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
@@ -235,10 +235,11 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 60,
+				Need = 300,
 				ResetOnRankUp = true,
 			},
 		},
+		
 		[2] = {
 			{ 
 				Type = "Level",
@@ -252,14 +253,33 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 180,
+				Need = 500,
 				ResetOnRankUp = true,
 			},
 		},
+		
 		[3] = {
 			{
 				Type = "Level",
 				Need = 15,
+			},
+			{
+				Type = "Energy",
+				Need = 15000,
+				Spend = true,
+				ResetOnRankUp = true,
+			},
+			{
+				Type = "TrainerTreadmillTime",
+				Need = 900,
+				ResetOnRankUp = true,
+			},
+		},
+		
+		[4] = {
+			{
+				Type = "Level",
+				Need = 20,
 			},
 			{
 				Type = "Energy",
@@ -269,24 +289,7 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 300,
-				ResetOnRankUp = true,
-			},
-		},
-		[4] = {
-			{
-				Type = "Level",
-				Need = 20,
-			},
-			{
-				Type = "Energy",
-				Need = 100000,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 600,
+				Need = 1500,
 				ResetOnRankUp = true,
 			},
 		},
@@ -300,13 +303,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Money",
-				Need = 1000,
+				Need = 100,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 60,
+				Need = 300,
 				ResetOnRankUp = true,
 			},
 		},
@@ -317,13 +320,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Money",
-				Need = 5000,
+				Need = 750,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 180,
+				Need = 500,
 				ResetOnRankUp = true,
 			},
 		},
@@ -334,13 +337,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Money",
-				Need = 25000,
+				Need = 1500,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 300,
+				Need = 900,
 				ResetOnRankUp = true,
 			},
 		},
@@ -351,13 +354,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Money",
-				Need = 100000,
+				Need = 2500,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "TrainerTreadmillTime",
-				Need = 600,
+				Need = 1500,
 				ResetOnRankUp = true,
 			},
 		},
@@ -371,14 +374,14 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "EggHatched",
-				Need = 0,
+				Need = 20,
 				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "PetRarity",
 				Rarity = "Rare",
-				Need = 5,
+				Need = 10,
 				ResetOnRankUp = true,
 			},
 		},
@@ -389,14 +392,14 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "EggHatched",
-				Need = 0,
+				Need = 50,
 				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
 				Type = "PetRarity",
 				Rarity = "Epic",
-				Need = 5,
+				Need = 10,
 				ResetOnRankUp = true,
 			},
 		},
@@ -407,7 +410,7 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "EggHatched",
-				Need = 0,
+				Need = 75,
 				Placeholder = true,
 				ResetOnRankUp = true,
 			},
@@ -425,7 +428,7 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "EggHatched",
-				Need = 0,
+				Need = 150,
 				Placeholder = true,
 				ResetOnRankUp = true,
 			},
@@ -451,8 +454,8 @@ TrainerModule.StageRequirements = {
 				ResetOnRankUp = true,
 			},
 			{
-				Type = "RaceRewards",
-				Need = 50,
+				Type = "RaceTouch",
+				Need = 10,
 				ResetOnRankUp = true,
 			},
 		},
@@ -463,13 +466,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Rebirth",
-				Need = 500,
+				Need = 250,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
-				Type = "RaceRewards",
-				Need = 100,
+				Type = "RaceTouch",
+				Need = 25,
 				ResetOnRankUp = true,
 			},
 		},	
@@ -480,13 +483,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Rebirth",
-				Need = 1000,
+				Need = 750,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
-				Type = "RaceRewards",
-				Need = 150,
+				Type = "RaceTouch",
+				Need = 50,
 				ResetOnRankUp = true,
 			},
 		},
@@ -497,13 +500,13 @@ TrainerModule.StageRequirements = {
 			},
 			{
 				Type = "Rebirth",
-				Need = 2500,
+				Need = 1500,
 				Spend = true,
 				ResetOnRankUp = true,
 			},
 			{
-				Type = "RaceRewards",
-				Need = 200,
+				Type = "RaceTouch",
+				Need = 100,
 				ResetOnRankUp = true,
 			},
 		},
