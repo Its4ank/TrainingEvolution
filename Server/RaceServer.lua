@@ -79,7 +79,7 @@ end
 
 
 --Constants
-local WAIT_TIME = 30
+local WAIT_TIME = 0
 local RACE_TIME = 150
 
 local raceOpen = false
@@ -136,6 +136,13 @@ local function getMoney(player)
 	if not playerData then return nil end
 
 	return playerData:FindFirstChild("Money")
+end
+
+local function getRaceTouch(player)
+	local playerData = player:FindFirstChild("PlayerData")
+	if not playerData then return nil end
+	
+	return playerData:FindFirstChild("RaceTouch")
 end
 
 local function resetCollectedRewards(player)
@@ -525,6 +532,11 @@ local function connectRewardTouch(reward)
 		end
 
 		collectedRewards[player][reward.Name] = true
+		
+		local raceTouch = getRaceTouch(player)
+		if raceTouch then
+			raceTouch.Value += 1
+		end
 
 		local money = getMoney(player)
 		if money then
