@@ -42,8 +42,8 @@ function ClientDataModule.GetMaxEquippedPets(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("MaxEquippedPets")
 end
 
-function ClientDataModule.GetPetHatched(player)
-	return ClientDataModule.GetPlayerData(player):WaitForChild("PetHatched")
+function ClientDataModule.GetEggHatched(player)
+	return ClientDataModule.GetPlayerData(player):WaitForChild("EggHatched")
 end
 
 function ClientDataModule.GetGamepasses(player)
