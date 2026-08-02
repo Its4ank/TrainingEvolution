@@ -1,4 +1,4 @@
---// RebirthServer
+--// RebirthServer 1.2
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -53,7 +53,7 @@ local function isRebirthAmountUnlocked(player, amount)
 		return false
 	end
 	
-	return UpgradeModule.IsRebirthUnlocked(player, buttonName)
+	return UpgradeModule.IsRebirthButtonUnlocked(player, buttonName)
 end
 
 local function doRebirth(player, amount)
