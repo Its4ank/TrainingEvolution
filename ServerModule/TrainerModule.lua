@@ -66,7 +66,7 @@ TrainerModule.Data = {
 		LeaderStatName = "EggHatched",
 		LeaderStatIcon = "rbxassetid://73197884503844",
 		
-		UnlockType = "PetHatched",
+		UnlockType = "EggHatched",
 		RequiredPets = 50,
 		AutoUnlock = true,
 		
@@ -167,13 +167,85 @@ TrainerModule.Stage = {
 	},
 }
 
+TrainerModule.LevelCostRanges = {
+	{
+		FromeLevel = 1,
+		ToLevel = 5,
+
+		StartPrice = 50,
+		EndPrice = 250,
+
+		StartXP = 5,
+		EndXP = 25,
+
+		Curve = 1,
+		RoundTo = 1,
+	},
+
+	{
+		FromLevel = 6,
+		ToLevel = 10,
+
+		SatrtPrice = 300,
+		EndPrice = 600,
+
+		StartXP = 30,
+		EndXP = 60,
+
+		Curve = 1.15,
+		RoundTo = 5,
+	},
+
+	{
+		FromLevel = 11,
+		ToLevel = 15,
+
+		SatrtPrice = 800,
+		EndPrice = 1600,
+
+		StartXP = 100,
+		EndXP = 175,
+
+		Curve = 1.2,
+		RoundTo = 5,
+	},
+
+	{
+		FromLevel = 16,
+		ToLevel = 20,
+
+		SatrtPrice = 2000,
+		EndPrice = 4500,
+
+		StartXP = 200,
+		EndXP = 350,
+
+		Curve = 1.25,
+		RoundTo = 10,
+	},
+
+	{
+		FromLevel = 21,
+		ToLevel = 24,
+
+		SatrtPrice = 5000,
+		EndPrice = 7500,
+
+		StartXP = 400,
+		EndXP = 750,
+
+		Curve = 1.3,
+		RoundTo = 50,
+	},
+}
+
 TrainerModule.StageStarIcons = { 
 	Active = "rbxassetid://117035434388256",
 	Inactive = "rbxassetid://105741165654536",
 }
 
 TrainerModule.RequirementIcons = { 
-	Level = "",
+	Level = "rbxassetid://139561962294465",
 	
 	Energy = "rbxassetid://74509086636062",
 	Money = "rbxassetid://123691959584167",
@@ -181,8 +253,8 @@ TrainerModule.RequirementIcons = {
 	
 	TrainerTreadmillTime = "rbxassetid://104625083427194",
 	EggHatched = "rbxassetid://73197884503844",
-	PetRarity = "",
-	RaceRewards = "",
+	PetRarity = "rbxassetid://100104272754861",
+	RaceTouch = "rbxassetid://96359633366140",
 }
 
 TrainerModule.RequirementDisplayNames = { 
@@ -195,7 +267,7 @@ TrainerModule.RequirementDisplayNames = {
 	TrainerTreadmillTime = "TREADMILL TIME",
 	EggHatched = "EGGS HATCHED",
 	PetRarity = "PET HATCHED",
-	RaceRewards = "RACE REWARDS",
+	RaceTouch = "RACE REWARDS",
 }
 
 TrainerModule.ProgressValues = { 
@@ -216,7 +288,7 @@ TrainerModule.ProgressValues = {
 	
 	JoeTrainer = { 
 		Rebirth = "IntValue",
-		RaceRewards = "IntValue",
+		RaceTouch = "IntValue",
 	},
 }
 
@@ -375,7 +447,6 @@ TrainerModule.StageRequirements = {
 			{
 				Type = "EggHatched",
 				Need = 20,
-				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
@@ -393,7 +464,6 @@ TrainerModule.StageRequirements = {
 			{
 				Type = "EggHatched",
 				Need = 50,
-				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
@@ -411,7 +481,6 @@ TrainerModule.StageRequirements = {
 			{
 				Type = "EggHatched",
 				Need = 75,
-				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
@@ -429,7 +498,6 @@ TrainerModule.StageRequirements = {
 			{
 				Type = "EggHatched",
 				Need = 150,
-				Placeholder = true,
 				ResetOnRankUp = true,
 			},
 			{
@@ -512,6 +580,55 @@ TrainerModule.StageRequirements = {
 		},
 	},
 }
+
+local function roundToStep(value, step)
+	step = tonumber(step) or 1
+
+	if step <= 1 then
+		return math.floor(value + 0.5)
+	end
+
+	return math.floor(
+		(value / step) + 0.5
+	) * step
+end
+
+function TrainerModule.getLevelCostRange(level)
+	level = math.floor(tonumber(level) or 1)
+	
+	for _, range in ipairs(TrainerModule.LevelCostRanges) do
+		if level >= range.FromLevel and level <= range.ToLevel then
+			return range
+		end
+	end
+	
+	return nil
+end
+
+function TrainerModule.getLevelCost(level)
+	level = math.floor(tonumber(level) or 1)
+	
+	local range = TrainerModule.getLevelCostRange(level)
+	
+	if not range then
+		return nil
+	end
+	
+	local levelCount = math.max(1, range.ToLevel - range.FromLevel)
+	local alpha = (level - range.FromLevel) / levelCount
+	alpha = math.clamp(alpha, 0, 1)
+	
+	local curve = tonumber(range.Curve) or 1
+	local curveAlpha = alpha ^ curve
+	local moneyCost = range.StartPrice + (range.EndPrice - range.StartPrice) * curveAlpha
+	local xpCost = range.StartXP + (range.EndXP - range.StartXP) * curveAlpha
+	local roundStep = tonumber(range.RoundTo) or 1
+	
+	return {
+		Money = roundToStep(moneyCost, roundStep),
+		XP = roundToStep(xpCost, roundStep),
+	}
+end
 
 function TrainerModule.getTrainerData(trainerName)
 	return TrainerModule.Data[trainerName]
