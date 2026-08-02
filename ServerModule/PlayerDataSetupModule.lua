@@ -39,7 +39,7 @@ function PlayerDataSetupModule.setup(player)
 	getOrCreateValue(playerData, "IntValue", "RaceTouch", 0)
 	getOrCreateValue(playerData, "IntValue", "SrRobux", 0)
 	getOrCreateValue(playerData, "IntValue", "MaxEquippedPets", 3)
-	getOrCreateValue(playerData, "IntValue", "PetHatched", 0)
+	getOrCreateValue(playerData, "IntValue", "EggHatched", 0)
 	
 	getOrCreateValue(playerData, "BoolValue", "BetaTester", false)
 	getOrCreateValue(playerData, "BoolValue", "BetaRewardClaimed", false)
