@@ -129,10 +129,10 @@ TrailModule.Trails = {
 				ToLevel = 5,
 				
 				StartPrice = 50,
-				EndPrice = 100,
+				EndPrice = 250,
 				
 				StartXP = 5,
-				EndXP = 15,
+				EndXP = 25,
 				
 				Curve = 1,
 				RoundTo = 1,
@@ -141,11 +141,11 @@ TrailModule.Trails = {
 				FromLevel = 6,
 				ToLevel = 10,
 
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 300,
+				EndPrice = 600,
 
-				StartXP = 20,
-				EndXP = 50,
+				StartXP = 30,
+				EndXP = 100,
 
 				Curve = 1,
 				RoundTo = 5,
@@ -155,10 +155,10 @@ TrailModule.Trails = {
 				ToLevel = 15,
 
 				StartPrice = 750,
-				EndPrice = 2500,
+				EndPrice = 1500,
 
-				StartXP = 60,
-				EndXP = 150,
+				StartXP = 125,
+				EndXP = 200,
 
 				Curve = 1.10,
 				RoundTo = 10,
@@ -167,10 +167,10 @@ TrailModule.Trails = {
 				FromLevel = 16,
 				ToLevel = 20,
 
-				StartPrice = 3500,
-				EndPrice = 10000,
+				StartPrice = 1750,
+				EndPrice = 2250,
 
-				StartXP = 175,
+				StartXP = 250,
 				EndXP = 400,
 
 				Curve = 1.15,
@@ -180,11 +180,11 @@ TrailModule.Trails = {
 				FromLevel = 21,
 				ToLevel = 25,
 
-				StartPrice = 15000,
-				EndPrice = 50000,
+				StartPrice = 3000,
+				EndPrice = 5500,
 
 				StartXP = 500,
-				EndXP = 1000,
+				EndXP = 750,
 
 				Curve = 1.20,
 				RoundTo = 100,
@@ -195,7 +195,7 @@ TrailModule.Trails = {
 			[1] = {
 				Level = 5,
 				Money = 500,
-				Rebirth = 1,
+				Rebirth = 100,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -204,7 +204,7 @@ TrailModule.Trails = {
 			[2] = {
 				Level = 10,
 				Money = 1000,
-				Rebirth = 2,
+				Rebirth = 250,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -213,7 +213,7 @@ TrailModule.Trails = {
 			[3] = {
 				Level = 15,
 				Money = 2500,
-				Rebirth = 3,
+				Rebirth = 500,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -222,7 +222,7 @@ TrailModule.Trails = {
 			[4] = {
 				Level = 20,
 				Money = 5000,
-				Rebirth = 4,
+				Rebirth = 100,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -241,6 +241,7 @@ local function roundToStep(value, step)
 	end
 	return math.floor((value / step) + 0.5) * step
 end
+
 
 local function interpolateRange(startValue, endValue, alpha, curve)
 	startValue = tonumber(startValue) or 0
