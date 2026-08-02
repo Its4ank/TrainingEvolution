@@ -1,4 +1,4 @@
---EggServer
+--EggServer 1.2v
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
