@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local raceGui = script.Parent
@@ -87,6 +88,212 @@ local TRAIL_XP_BAR_FULL_SIZE = UDim2.new(0.247, 0, 0.03, 0)
 local STAGE_BAR_1_FULL_SIZE = UDim2.new(0.211, 0, 0.024, 0)
 local STAGE_BAR_2_FULL_SIZE = UDim2.new(0.215, 0, 0.024, 0)
 local STAGE_BAR_3_FULL_SIZE = UDim2.new(0.235, 0, 0.024, 0)
+
+local PREVIEW_RUN_ANIMATION_ID = "rbxassetid://913376220"
+
+local PREVIEW_STAGE_STYLES = {
+	[1] = {
+		Colors = {
+			[1] = Color3.fromRGB(180, 180, 180),
+			[2] = Color3.fromRGB(180, 180, 180),
+			[3] = Color3.fromRGB(180, 180, 180),
+			[4] = Color3.fromRGB(180, 180, 180),
+			[5] = Color3.fromRGB(180, 180, 180),
+			[6] = Color3.fromRGB(180, 180, 180),
+		},
+
+		Material = Enum.Material.SmoothPlastic,
+		TransparencyStart = 0.55,
+		TransparencyEnd = 1,
+
+		Length = 5,
+		SegmentCount = 10,
+
+		WidthStart = 0.16,
+		WidthEnd = 0.025,
+
+		WaveX = 0.12,
+		WaveY = 0.08,
+		WaveSpeed = 5,
+		
+		SempleRate = 0.025,
+		TrailDealy = 1,
+		BackWardSpeed = 10,
+		
+		ZigzagX = 0.16,
+		ZigzagY = 0.12,
+		ZigzagSpeed = 18,
+		ZigzagFequency = 3.5,
+	},
+	
+	[2] = {
+		Colors = {
+			[1] = Color3.fromRGB(180, 180, 180),
+			[2] = Color3.fromRGB(180, 180, 180),
+			[3] = Color3.fromRGB(180, 180, 180),
+			[4] = Color3.fromRGB(180, 180, 180),
+			[5] = Color3.fromRGB(180, 180, 180),
+			[6] = Color3.fromRGB(180, 180, 180),
+		},
+
+		Material = Enum.Material.SmoothPlastic,
+		TransparencyStart = 0.42,
+		TransparencyEnd = 1,
+
+		Length = 3.4,
+		SegmentCount = 11,
+		
+		WidthStart = 0.18,
+		WidthEnd = 0.03,
+		
+		WaveX = 0.12,
+		WaveY = 0.08,
+		WaveSpeed = 5,
+		
+		SempleRate = 0.025,
+		TrailDealy = 0.55,
+		BackWardSpeed = 4.5,
+
+		ZigzagX = 0.16,
+		ZigzagY = 0.12,
+		ZigzagSpeed = 12,
+		ZigzagFequency = 3.5,
+	},
+	
+	[3] = {
+		Colors = {
+			[1] = Color3.fromRGB(180, 180, 180),
+			[2] = Color3.fromRGB(180, 180, 180),
+			[3] = Color3.fromRGB(180, 180, 180),
+			[4] = Color3.fromRGB(180, 180, 180),
+			[5] = Color3.fromRGB(180, 180, 180),
+			[6] = Color3.fromRGB(180, 180, 180),
+		},
+
+		Material = Enum.Material.Neon,
+		TransparencyStart = 0.30,
+		TransparencyEnd = 1,
+
+		Length = 3.8,
+		SegmentCount = 12,
+		WidthStart = 0.21,
+		WidthEnd = 0.035,
+		
+		WaveX = 0.12,
+		WaveY = 0.08,
+		WaveSpeed = 5,
+		
+		SempleRate = 0.025,
+		TrailDealy = 0.55,
+		BackWardSpeed = 4.5,
+
+		ZigzagX = 0.16,
+		ZigzagY = 0.12,
+		ZigzagSpeed = 12,
+		ZigzagFequency = 3.5,
+	},
+	
+	[4] = {
+		Colors = {
+			[1] = Color3.fromRGB(180, 180, 180),
+			[2] = Color3.fromRGB(180, 180, 180),
+			[3] = Color3.fromRGB(180, 180, 180),
+			[4] = Color3.fromRGB(180, 180, 180),
+			[5] = Color3.fromRGB(180, 180, 180),
+			[6] = Color3.fromRGB(180, 180, 180),
+		},
+
+		Material = Enum.Material.Neon,
+		TransparencyStart = 0.18,
+		TransparencyEnd = 1,
+
+		Length = 4.3,
+		SegmentCount = 13,
+		WidthStart = 0.24,
+		WidthEnd = 0.04,
+		
+		WaveX = 0.12,
+		WaveY = 0.08,
+		WaveSpeed = 5,
+		
+		SempleRate = 0.025,
+		TrailDealy = 0.55,
+		BackWardSpeed = 4.5,
+
+		ZigzagX = 0.16,
+		ZigzagY = 0.12,
+		ZigzagSpeed = 12,
+		ZigzagFequency = 3.5,
+	},
+	
+	[5] = {
+		Colors = {
+			[1] = Color3.fromRGB(180, 180, 180),
+			[2] = Color3.fromRGB(180, 180, 180),
+			[3] = Color3.fromRGB(180, 180, 180),
+			[4] = Color3.fromRGB(180, 180, 180),
+			[5] = Color3.fromRGB(180, 180, 180),
+			[6] = Color3.fromRGB(180, 180, 180),
+		},
+
+		Material = Enum.Material.Neon,
+		TransparencyStart = 0.06,
+		TransparencyEnd = 1,
+
+		Length = 4.8,
+		SegmentCount = 14,
+		WidthStart = 0.28,
+		WidthEnd = 0.045,
+		
+		WaveX = 0.12,
+		WaveY = 0.08,
+		WaveSpeed = 5,
+		
+		SempleRate = 0.025,
+		TrailDealy = 0.55,
+		BackWardSpeed = 4.5,
+
+		ZigzagX = 0.16,
+		ZigzagY = 0.12,
+		ZigzagSpeed = 12,
+		ZigzagFequency = 3.5,
+	},
+}
+
+local PREVIEW_TRAIL_POINTS = {
+	[1] = {
+		PartName = "LeftFoot",
+		Offset = Vector3.new(0, 0, 0),
+	},
+	
+	[2] = {
+		PartName = "RightFoot",
+		Offset = Vector3.new(0, 0, 0),
+	},
+	
+	[3] = {
+		PartName = "LeftHand",
+		Offset = Vector3.new(0, 0, 0),
+	},
+	
+	[4] = {
+		PartName = "RightHand",
+		Offset = Vector3.new(0, 0, 0),
+	},
+	
+	[5] = {
+		PartName = "LowerTorso",
+		Offset = Vector3.new(0, 0, 0),
+	},
+	
+	[6] = {
+		PartName = "UpperTorso",
+		Offset = Vector3.new(0, 0.8, 0),
+	},
+}
+
+local previewConnection = nil
+local previewAnimationTrack = nil
 
 --// TRAILO BUTTON CONFIGURATION
 local trailChoiceButtons = {
@@ -257,14 +464,37 @@ local function updateProgressBar(bar, progress, fullSize)
 end
 
 local function updateXPBar(trailData)
-	local currentXP = tonumber(trailData.XP or 0) or 0
-	local requiredXP = tonumber(trailData.RequiredXP or 0) or 0
+	local playerResources = trailData.PlayerResources or {}
+	local upgradeCost = trailData.UpgradeCost or {}
+	
+	local currentXP = tonumber(playerResources.XP) or 0
+	local requiredXP = tonumber(upgradeCost.XP) or 0
+	
+	if trailData.Level >= trailData.MaxLevel then
+		setText(xpLabel, "MAX LEVEL")
+		trailXPBar.Visible = true
+		
+		updateProgressBar(trailXPBar, 1, TRAIL_XP_BAR_FULL_SIZE)
+		return
+	end
+	
+	if not trailData.CanLevelUpAtStage then
+		setText(xpLabel, "STAGE UP")
+		trailXPBar.Visible = true
+		
+		updateProgressBar(trailXPBar, 1, TRAIL_XP_BAR_FULL_SIZE)
+		return
+	end
+	
+	setText(xpLabel, formatNumber(currentXP) .. " / " .. formatNumber(requiredXP) .. " XP")
 	
 	local progress = 0
 	
 	if requiredXP > 0 then
 		progress = math.clamp(currentXP / requiredXP, 0, 1)
 	end
+	
+	trailXPBar.Visible = true
 	
 	updateProgressBar(trailXPBar, progress, TRAIL_XP_BAR_FULL_SIZE)
 end
@@ -335,10 +565,582 @@ local function renderStageMenu()
 end
 
 --// PREVIEW
-local function updateTrailPreview(trailData)
-	-- tut vizual treyla
+local function clearTrailPreview()
+	if previewConnection then
+		previewConnection:Disconnect()
+		previewConnection = nil
+	end
+
+	if previewAnimationTrack then
+		previewAnimationTrack:Stop()
+		previewAnimationTrack:Destroy()
+		previewAnimationTrack = nil
+	end
+
+	trailPreviewFrame.CurrentCamera = nil
+	trailPreviewFrame:ClearAllChildren()
+end
+
+local function getPreviewStageStyle(stage)
+	stage = math.clamp(math.floor(tonumber(stage) or 1), 1, 5)
 	
-	trailPreviewFrame:SetAttribute("SelectedTrail", trailData.TrailId)
+	return PREVIEW_STAGE_STYLES[stage] or PREVIEW_STAGE_STYLES[1]
+end
+
+local function preparePreviewCharacter(character)
+	for _, object in ipairs(character:GetDescendants()) do
+		if object:IsA("Script") or object:IsA("LocalScript") then
+			object:Destroy()
+
+		elseif object:IsA("Accessory") then
+			local accessoryType = object.AccessoryType
+
+			-- Удаляем крылья и другие аксессуары на спине
+			if accessoryType == Enum.AccessoryType.Back then
+				object:Destroy()
+			end
+
+		elseif object:IsA("BasePart") then
+			object.CanCollide = false
+			object.CanTouch = false
+			object.CanQuery = false
+			object.Anchored = false
+
+			if object.Name == "HumanoidRootPart" then
+				object.Transparency = 1
+			end
+		end
+	end
+end
+
+local function createPreviewSegment(
+	worldModel,
+	lineIndex,
+	segmentIndex,
+	color,
+	style
+)
+	local segment = Instance.new("Part")
+
+	segment.Name =
+		"PreviewTrailLine"
+		.. lineIndex
+		.. "Segment"
+		.. segmentIndex
+
+	segment.Anchored = true
+	segment.CanCollide = false
+	segment.CanTouch = false
+	segment.CanQuery = false
+	segment.CastShadow = false
+
+	segment.Material =
+		style.Material
+		or Enum.Material.Neon
+
+	segment.Color =
+		color
+		or Color3.fromRGB(255, 255, 255)
+
+	segment.Parent = worldModel
+
+	return segment
+end
+
+local function setPartBetweenPoints(
+	part,
+	pointA,
+	pointB,
+	thickness
+)
+	local difference = pointB - pointA
+	local distance = difference.Magnitude
+
+	if distance <= 0.001 then
+		part.Transparency = 1
+		return
+	end
+
+	local center = (pointA + pointB) * 0.5
+
+	part.Size = Vector3.new(
+		thickness,
+		thickness,
+		distance
+	)
+
+	part.CFrame = CFrame.lookAt(
+		center,
+		pointB
+	)
+end
+
+local function createPreviewAttachment(parent, name, position)
+	local attachment = Instance.new("Attachment")
+
+	attachment.Name = name
+	attachment.Position = position or Vector3.zero
+	attachment.Parent = parent
+
+	return attachment
+end
+
+local function createPreviewBeamLine(
+	worldModel,
+	bodyPart,
+	lineIndex,
+	pointData,
+	style
+)
+	-- Точка начала линии на персонаже
+	local bodyAttachment = createPreviewAttachment(
+		bodyPart,
+		"PreviewBeamBodyAttachment" .. lineIndex,
+		pointData.Offset or Vector3.zero
+	)
+
+	-- Прозрачная точка, которая будет двигаться позади персонажа
+	local targetPart = Instance.new("Part")
+
+	targetPart.Name = "PreviewBeamTarget" .. lineIndex
+	targetPart.Size = Vector3.new(0.05, 0.05, 0.05)
+	targetPart.Transparency = 0
+	targetPart.Color = Color3.fromRGB(255, 0, 0)
+	targetPart.Size = Vector3.new(0.3, 0.3, 0.3)
+	targetPart.Anchored = true
+	targetPart.CanCollide = false
+	targetPart.CanTouch = false
+	targetPart.CanQuery = false
+	targetPart.CastShadow = false
+	targetPart.Parent = worldModel
+
+	local targetAttachment = createPreviewAttachment(
+		targetPart,
+		"PreviewBeamTargetAttachment" .. lineIndex,
+		Vector3.zero
+	)
+
+	local beam = Instance.new("Beam")
+
+	beam.Name = "PreviewBeamLine" .. lineIndex
+
+	beam.Attachment0 = bodyAttachment
+	beam.Attachment1 = targetAttachment
+
+	beam.FaceCamera = true
+	beam.Enabled = true
+
+	beam.Color = ColorSequence.new(
+		style.Colors[lineIndex]
+			or Color3.fromRGB(255, 255, 255)
+	)
+
+	beam.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(
+			0,
+			math.clamp(style.Transparency, 0, 1)
+		),
+
+		NumberSequenceKeypoint.new(
+			0.75,
+			math.clamp(style.Transparency + 0.1, 0, 1)
+		),
+
+		NumberSequenceKeypoint.new(1, 1),
+	})
+
+	beam.Width0 = style.Width0 or 0.15
+	beam.Width1 = style.Width1 or 0.02
+
+	beam.CurveSize0 = style.CurveSize0 or 0
+	beam.CurveSize1 = style.CurveSize1 or 0
+
+	beam.LightEmission = 1
+	beam.LightInfluence = 0
+
+	beam.Segments = 12
+
+	beam.Parent = bodyPart
+
+	return {
+		BodyPart = bodyPart,
+		BodyAttachment = bodyAttachment,
+
+		TargetPart = targetPart,
+		TargetAttachment = targetAttachment,
+
+		Beam = beam,
+		PointData = pointData,
+	}
+end
+
+local function updateTrailPreview(trailData)
+	clearTrailPreview()
+
+	if type(trailData) ~= "table" then
+		return
+	end
+
+	local character = player.Character
+
+	if not character then
+		return
+	end
+
+	character.Archivable = true
+	local previewCharacter = character:Clone()
+	character.Archivable = false
+
+	if not previewCharacter then
+		return
+	end
+
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Name = "TrailPreviewWorld"
+	worldModel.Parent = trailPreviewFrame
+
+	local camera = Instance.new("Camera")
+	camera.Name = "TrailPreviewCamera"
+	camera.FieldOfView = 38
+	camera.Parent = trailPreviewFrame
+
+	trailPreviewFrame.CurrentCamera = camera
+
+	previewCharacter.Name = "PreviewCharacter"
+	previewCharacter.Parent = worldModel
+
+	preparePreviewCharacter(previewCharacter)
+
+	local humanoid =
+		previewCharacter:FindFirstChildOfClass("Humanoid")
+
+	local humanoidRootPart =
+		previewCharacter:FindFirstChild("HumanoidRootPart")
+
+	if not humanoid or not humanoidRootPart then
+		clearTrailPreview()
+		return
+	end
+
+	humanoidRootPart.CFrame =
+		CFrame.new(0, 1.8, 0)
+		* CFrame.Angles(0, math.rad(-90), 0)
+
+	-- Здесь оставь уже настроенную тобой позицию камеры
+	camera.CFrame = CFrame.lookAt(
+		Vector3.new(2.7, 3, 9),
+		Vector3.new(0, 1.6, 0)
+	)
+
+	local animator =
+		humanoid:FindFirstChildOfClass("Animator")
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	local runAnimation = Instance.new("Animation")
+	runAnimation.AnimationId = PREVIEW_RUN_ANIMATION_ID
+
+	local success, animationTrack = pcall(function()
+		return animator:LoadAnimation(runAnimation)
+	end)
+
+	runAnimation:Destroy()
+
+	if success and animationTrack then
+		previewAnimationTrack = animationTrack
+		previewAnimationTrack.Priority =
+			Enum.AnimationPriority.Action
+
+		previewAnimationTrack.Looped = true
+		previewAnimationTrack:Play()
+		previewAnimationTrack:AdjustSpeed(2.2)
+	end
+
+	local style =
+		getPreviewStageStyle(trailData.Stage)
+
+	local previewLines = {}
+
+	local segmentCount =
+		math.max(
+			math.floor(
+				tonumber(style.SegmentCount) or 10
+			),
+			2
+		)
+
+	for lineIndex, pointData in ipairs(PREVIEW_TRAIL_POINTS) do
+		local bodyPart =
+			previewCharacter:FindFirstChild(
+				pointData.PartName
+			)
+
+		if bodyPart and bodyPart:IsA("BasePart") then
+			local color =
+				style.Colors[lineIndex]
+				or Color3.fromRGB(255, 255, 255)
+
+			local segments = {}
+
+			for segmentIndex = 1, segmentCount do
+				segments[segmentIndex] =
+					createPreviewSegment(
+						worldModel,
+						lineIndex,
+						segmentIndex,
+						color,
+						style
+					)
+			end
+
+			local startPosition =
+				(
+					bodyPart.CFrame
+					* CFrame.new(
+						pointData.Offset or Vector3.zero
+					)
+				).Position
+
+			local history = {}
+
+			for historyIndex = 1, segmentCount + 1 do
+				history[historyIndex] = {
+					Position = startPosition,
+					Time = os.clock(),
+				}
+			end
+
+			previewLines[lineIndex] = {
+				BodyPart = bodyPart,
+				PointData = pointData,
+				Segments = segments,
+
+				History = history,
+				LastSampleTime = 0,
+
+				PreviousBodyPosition = startPosition,
+			}
+		end
+	end
+
+	local startTime = os.clock()
+
+	previewConnection =
+		RunService.RenderStepped:Connect(function(deltaTime)
+			if not trailPreviewFrame.Visible then
+				return
+			end
+
+			if not humanoidRootPart.Parent then
+				return
+			end
+
+			local now = os.clock()
+			local t = now - startTime
+
+			local sampleRate = math.max(
+				tonumber(style.SampleRate) or 0.025,
+				0.01
+			)
+
+			local trailDelay = math.max(
+				tonumber(style.TrailDelay) or 0.55,
+				0.05
+			)
+
+			local backwardSpeed = tonumber(style.BackwardSpeed) or 4.5
+
+			local zigzagX = tonumber(style.ZigzagX) or 0.16
+
+			local zigzagY = tonumber(style.ZigzagY) or 0.12
+
+			local zigzagSpeed = tonumber(style.ZigzagSpeed) or 12
+
+			local zigzagFrequency = tonumber(style.ZigzagFrequency) or 3.5
+
+			local widthStart = tonumber(style.WidthStart) or 0.16
+
+			local widthEnd = tonumber(style.WidthEnd) or 0.02
+
+			local transparencyStart = tonumber(style.TransparencyStart) or 0.4
+
+			local transparencyEnd = tonumber(style.TransparencyEnd) or 1
+
+			for lineIndex, lineData in pairs(previewLines) do
+				local bodyPart = lineData.BodyPart
+				local pointData = lineData.PointData
+				local segments = lineData.Segments
+				local history = lineData.History
+
+				if not bodyPart.Parent then
+					continue
+				end
+
+				local phase = (lineIndex - 1)
+				* (math.pi * 2 / 6)
+
+				local currentBodyPosition = (
+					bodyPart.CFrame
+					* CFrame.new(
+						pointData.Offset
+						or Vector3.zero
+					)
+				).Position
+
+				-- Сохраняем новые позиции не каждый кадр,
+				-- а через заданный интервал.
+				if now - lineData.LastSampleTime >= sampleRate then
+					lineData.LastSampleTime = now
+
+					table.insert(history, 1, {
+						Position = currentBodyPosition,
+						Time = now,
+					})
+
+					while #history > segmentCount + 1 do
+						table.remove(history)
+					end
+				end
+
+				-- Первая точка всегда остаётся прикреплена
+				-- к текущему положению конечности.
+				local renderedPoints = {
+					currentBodyPosition,
+				}
+
+				for pointIndex = 2, segmentCount + 1 do
+					local historyEntry = history[math.min(
+						pointIndex,
+						#history
+					)
+					]
+
+					local progress = (pointIndex - 1) / segmentCount
+
+					local age = now - historyEntry.Time
+
+					local ageProgress = math.clamp(
+						age / trailDelay,
+						0,
+						1
+					)
+
+					local originalPosition = historyEntry.Position
+
+					-- Направление назад берём от RootPart,
+					-- а не от руки/ноги. Поэтому хвост всегда
+					-- уходит за персонажа.
+					local backwardDirection = humanoidRootPart.CFrame.LookVector * -1
+
+					local backwardOffset = backwardDirection
+					* backwardSpeed
+					* ageProgress
+
+					-- Зигзаг рассчитываем в мировом пространстве
+					-- относительно осей персонажа.
+					local rightDirection = humanoidRootPart.CFrame.RightVector
+
+					local upDirection = humanoidRootPart.CFrame.UpVector
+
+					local zigzagAngle = t * zigzagSpeed
+					- progress
+					* math.pi
+					* 2
+					* zigzagFrequency
+					+ phase
+
+					-- Две гармоники дают менее округлую
+					-- и более "молниеподобную" форму.
+					local horizontalValue = math.sin(zigzagAngle)
+
+					local verticalValue = math.sin(
+						zigzagAngle * 1.65
+						+ phase * 0.7
+					)
+
+					local zigzagFade = 0.25 + progress * 0.75
+
+					local zigzagOffset = rightDirection
+					* horizontalValue
+					* zigzagX
+					* zigzagFade
+					* upDirection
+					* verticalValue
+					* zigzagY
+					* zigzagFade
+
+					renderedPoints[pointIndex] = originalPosition
+					+ backwardOffset
+					+ zigzagOffset
+				end
+
+				for segmentIndex, segment in ipairs(segments) do
+					if not segment.Parent then
+						continue
+					end
+
+					local startPoint = renderedPoints[segmentIndex]
+
+					local endPoint = renderedPoints[segmentIndex + 1]
+
+					local progress = (segmentIndex - 1)
+					/ math.max(
+						segmentCount - 1,
+						1
+					)
+
+					local thickness = widthStart
+					+ (
+						widthEnd
+						- widthStart
+					)
+					* progress
+
+					local transparency = transparencyStart
+					+ (
+						transparencyEnd
+						- transparencyStart
+					)
+					* progress
+
+					-- Резкая пульсация больше похожа на молнию,
+					-- чем плавная синусоида.
+					local pulseWave = math.abs(
+						math.sin(
+							t * 15
+							+ segmentIndex * 1.7
+							+ phase
+						)
+					)
+
+					local pulse = 0.88 + pulseWave * 0.20
+
+					setPartBetweenPoints(
+						segment,
+						startPoint,
+						endPoint,
+						math.max(
+							thickness * pulse,
+							0.01
+						)
+					)
+
+					segment.Transparency = math.clamp(
+						transparency,
+						0,
+						1
+					)
+				end
+			end
+		end)
+
+	trailPreviewFrame:SetAttribute(
+		"SelectedTrail",
+		trailData.TrailId
+	)
 end
 
 --// CHOICE BUTTONS
@@ -669,7 +1471,7 @@ stageOpenButton.MouseButton1Click:Connect(function()
 	print("Open2")
 end)
 
-stageUpButton.Activated:Connect(function()
+stageUpButton.MouseButton1Click:Connect(function()
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
@@ -753,6 +1555,8 @@ for _, buttonData in ipairs(trailChoiceButtons) do
 end
 
 trailClose.Activated:Connect(function()
+	clearTrailPreview()
+	
 	trailStage.Visible = false
 	trailStageBlur.Visible = false
 	
@@ -763,6 +1567,7 @@ end)
 --// OPEN REFRESH
 trailMenu:GetPropertyChangedSignal("Visible"):Connect(function()
 	if not trailMenu.Visible then
+		clearTrailPreview()
 		return
 	end
 	
