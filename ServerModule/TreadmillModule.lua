@@ -4,11 +4,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TreadmillModule = {}
 
 local PetModule = require(ServerScriptService.Modules.PetModule)
-local TrainerModule = require(ServerScriptService.Modules.TrainerModule)
+local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local RebirthModule = require(ReplicatedStorage.Modules.RebirthModule)
 
 TreadmillModule.MAX_TREADMILLS = 3
 TreadmillModule.MAX_STAGE = 5
@@ -93,10 +94,10 @@ TreadmillModule.TierRequirements = {
 	},
 	
 	[3] = { -- Treadmill 3
-		[1] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 1 > 2
-		[2] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 2 > 3
-		[3] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 3 > 4
-		[4] = {Energy = 1, Rebirth = 1, Time = 1}, -- Stage 4 > 5
+		[1] = {Energy = 3000000, Rebirth = 2000, Time = 600}, -- Stage 1 > 2
+		[2] = {Energy = 4500000, Rebirth = 2500, Time = 1100}, -- Stage 2 > 3
+		[3] = {Energy = 6000000, Rebirth = 3500, Time = 2400}, -- Stage 3 > 4
+		[4] = {Energy = 8500000, Rebirth = 5000, Time = 3500}, -- Stage 4 > 5
 	},
 }
 
@@ -279,6 +280,11 @@ function TreadmillModule.GetPlayerEnergyMultiplier(player)
 	end
 	
 	multiplier *= petEnergyMultiplier
+	
+	--// Буст к беговой дорожке
+	local rebirthEnergyMultiplier = RebirthModule.GetEnergyMultiplier(player)
+	
+	multiplier *= rebirthEnergyMultiplier
 	
 	--// Улучшение енергии
 	local energyUpgradeMultiplier = UpgradeModule.GetEnergyMultiplier(player)
