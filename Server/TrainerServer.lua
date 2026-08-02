@@ -1,703 +1,1858 @@
---RaceServer 1.2v
+--// TrainerServer 1.2v
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local PetModule = require(game.ServerScriptService.Modules.PetModule)
-local ItemModule = require(game.ServerScriptService.Modules.ItemModule)
-local XPModule = require(game.ServerScriptService.Modules.XPModule)
-local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
-local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
-local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
-local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
-local TrailModule = require(game.ReplicatedStorage.Modules.TrailModule)
+local TrainerModule = require(
+	ReplicatedStorage.Modules.TrainerModule
+)
 
+local XPModule = require(
+	ServerScriptService.Modules.XPModule
+)
 
+local TRAINERS = TrainerModule.Data
 
---World helpers
-local function findDescendantByName(parent, targetName)
-	for _, obj in ipairs(parent:GetDescendants()) do
-		if obj.Name == targetName then
-			return obj
+--// Folders
+
+local trainerModelsFolder =
+	ReplicatedStorage:WaitForChild("TrainerModels")
+
+local trainerEventFolder =
+	ReplicatedStorage:WaitForChild("TrainerEvent")
+
+--// Events
+
+local trainerEquipEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerEquipEvent"
+	)
+
+local trainerLevelUpEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerLevelUpEvent"
+	)
+
+local trainerStageUpEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerStageUpEvent"
+	)
+
+local trainerStageResultEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerStageResultEvent"
+	)
+
+local closeTrainerMenuEvent =
+	trainerEventFolder:WaitForChild(
+		"CloseTrainerMenuEvent"
+	)
+
+local playerDataLoadedEvent =
+	trainerEventFolder:WaitForChild(
+		"PlayerDataLoadedEvent"
+	)
+
+local trainerEquipResultEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerEquipResultEvent"
+	)
+
+local trainerLevelResultEvent =
+	trainerEventFolder:WaitForChild(
+		"TrainerLevelResultEvent"
+	)
+
+--// World
+
+local backPart =
+	workspace:WaitForChild("TrainerPosBack")
+
+--// Runtime
+
+local equippedTrainers = {}
+local trainerConnections = {}
+
+local equipLocks = {}
+local levelUpLocks = {}
+local stageUpLocks = {}
+
+--// Follow settings
+
+local FOLLOW_DISTANCE = 4
+local FOLLOW_SIDE_OFFSET = 1.5
+local TELEPORT_DISTANCE = 80
+local FOLLOW_SPEED = 4
+
+--==================================================
+-- Utility
+--==================================================
+
+local function runWithPlayerLock(
+	lockTable,
+	player,
+	callback
+)
+	if lockTable[player] then
+		return
+	end
+
+	lockTable[player] = true
+
+	local success, errorMessage =
+		pcall(callback)
+
+	lockTable[player] = nil
+
+	if not success then
+		warn(
+			"[TrainerServer] Operation failed:",
+			player.Name,
+			errorMessage
+		)
+	end
+end
+
+local function getTrainerFolder(player)
+	local folder =
+		player:FindFirstChild("Trainer")
+
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "Trainer"
+		folder.Parent = player
+	end
+
+	return folder
+end
+
+local function getOrCreateValue(
+	parent,
+	className,
+	valueName,
+	defaultValue
+)
+	local value =
+		parent:FindFirstChild(valueName)
+
+	if value and not value:IsA(className) then
+		warn(
+			"[TrainerServer] Wrong class:",
+			value:GetFullName(),
+			"expected",
+			className,
+			"got",
+			value.ClassName
+		)
+
+		value:Destroy()
+		value = nil
+	end
+
+	if not value then
+		value = Instance.new(className)
+		value.Name = valueName
+		value.Value = defaultValue
+		value.Parent = parent
+	end
+
+	return value
+end
+
+local function getPlayerStat(
+	player,
+	statName
+)
+	local leaderstats =
+		player:FindFirstChild("leaderstats")
+
+	local playerData =
+		player:FindFirstChild("PlayerData")
+
+	if leaderstats then
+		local value =
+			leaderstats:FindFirstChild(statName)
+
+		if value then
+			return value
 		end
 	end
+
+	if playerData then
+		local value =
+			playerData:FindFirstChild(statName)
+
+		if value then
+			return value
+		end
+	end
+
 	return nil
 end
 
-local function requireBasePart(parent, targetName)
-	local obj = findDescendantByName(parent, targetName)
-	if not obj then
-		error("Не найден объект '" .. targetName .. "' внутри " .. parent:GetFullName())
+local function getSpendableStat(
+	player,
+	requirementType
+)
+	if requirementType == "Energy" then
+		return getPlayerStat(
+			player,
+			"Energy"
+		)
 	end
-	if not obj:IsA("BasePart") then
-		error("Объект '" .. targetName .. "' найден, но он не BasePart. ClassName = " .. obj.ClassName)
+
+	if requirementType == "Money" then
+		return getPlayerStat(
+			player,
+			"Money"
+		)
 	end
-	return obj
-end
 
-
-
---World references
-local track = workspace:WaitForChild("RaceTrack")
-
-local startLine = requireBasePart(track, "StartLine")
-local raceBarrier = requireBasePart(track, "RaceBarrier")
-local finishLine = requireBasePart(track, "Finish")
-local road1 = requireBasePart(track, "Road1")
-local road1_2 = requireBasePart(track, "Road1.2")
-local road2 = requireBasePart(track, "Road2")
-local road3 = requireBasePart(track, "Road3")
-local road4 = requireBasePart(track, "Road4")
-local road5 = requireBasePart(track, "Road5")
-local spawnPart = workspace:FindFirstChild("SpawnLocation")
-
-
-
---RemoteEvent
-local leaveRaceEvent = ReplicatedStorage:FindFirstChild("LeaveRaceEvent")
-if not leaveRaceEvent then
-	leaveRaceEvent = Instance.new("RemoteEvent")
-	leaveRaceEvent.Name = "LeaveRaceEvent"
-	leaveRaceEvent.Parent = ReplicatedStorage
-end
-
-local raceStatusText = ReplicatedStorage:FindFirstChild("RaceStatusText")
-if not raceStatusText then
-	raceStatusText = Instance.new("StringValue")
-	raceStatusText.Name = "RaceStatusText"
-	raceStatusText.Parent = ReplicatedStorage
-end
-
-local raceTimerText = ReplicatedStorage:FindFirstChild("RaceTimerText")
-if not raceTimerText then
-	raceTimerText = Instance.new("StringValue")
-	raceTimerText.Name = "RaceTimerText"
-	raceTimerText.Parent = ReplicatedStorage
-end
-
-
-
---Constants
-local WAIT_TIME = 0
-local RACE_TIME = 150
-
-local raceOpen = false
-local totalTrackLength = 9278.5
-local MIN_SPEED = 10
-local ACCELERATION_PER_SECOND = 0.2
-local rewardValues = {
-	Reward1 = 1,
-	Reward2 = 5,
-	Reward3 = 10,
-	Reward4 = 25,
-	Reward5 = 50,
-	Reward6 = 100,
-	Reward7 = 250,
-	Reward8 = 500,
-	Reward9 = 1000,
-	Reward10 = 2000,
-	Reward11 = 4000,
-	Reward12 = 7000,
-	Reward13 = 12000,
-	Reward14 = 25000,
-	Reward15 = 35000,
-	Reward16 = 50000,
-}
-local GEM_CHANCE = 0.2 -- 20% шанс получить гем
-local GEM_REWARD = 1 -- сколько гемов всего дается
-
-
-
---Runtime state
-local activeConnections = {}
-local savedWalkSpeed = {}
-local savedJumpPower = {}
-local savedJumpHeight = {}
-local savedAutoRotate = {}
-local collectedRewards = {}
-
-
-
---Helpers
-local function getOrCreateValue(parent, className, name, default)
-	local v = parent:FindFirstChild(name)
-	if not v then
-		v = Instance.new(className)
-		v.Name = name
-		v.Value = default
-		v.Parent = parent
+	if requirementType == "Rebirth" then
+		return getPlayerStat(
+			player,
+			"Rebirth"
+		)
 	end
-	return v
+
+	return nil
 end
 
-local function getMoney(player)
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return nil end
+--==================================================
+-- Billboard
+--==================================================
 
-	return playerData:FindFirstChild("Money")
+local function createBillboard(
+	trainerModel,
+	trainerData
+)
+	local head =
+		trainerModel:FindFirstChild("Head")
+
+	if not head then
+		return
+	end
+
+	local oldBillboard =
+		head:FindFirstChild(
+			"TrainerBillboard"
+		)
+
+	if oldBillboard then
+		oldBillboard:Destroy()
+	end
+
+	local billboard =
+		Instance.new("BillboardGui")
+
+	billboard.Name = "TrainerBillboard"
+	billboard.Size =
+		UDim2.new(0, 220, 0, 80)
+
+	billboard.StudsOffset =
+		Vector3.new(0, 2.8, 0)
+
+	billboard.AlwaysOnTop = true
+	billboard.Parent = head
+
+	local label =
+		Instance.new("TextLabel")
+
+	label.Name = "Text"
+	label.Size = UDim2.new(1, 0, 1, 0)
+	label.BackgroundTransparency = 1
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.TextColor3 =
+		Color3.fromRGB(255, 255, 255)
+
+	label.TextStrokeTransparency = 0.3
+
+	label.Text =
+		tostring(
+			trainerData.DisplayName
+			or "Trainer"
+		)
+		.. "\nStage: Rookie"
+		.. "\nLv. 1"
+
+	label.Parent = billboard
 end
 
-local function getRaceTouch(player)
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return nil end
-	
-	return playerData:FindFirstChild("RaceTouch")
+local function updateTrainerBillboard(
+	player,
+	trainerName
+)
+	local model =
+		equippedTrainers[player]
+
+	if not model then
+		return
+	end
+
+	local head =
+		model:FindFirstChild("Head")
+
+	if not head then
+		return
+	end
+
+	local billboard =
+		head:FindFirstChild(
+			"TrainerBillboard"
+		)
+
+	if not billboard then
+		return
+	end
+
+	local label =
+		billboard:FindFirstChild("Text")
+
+	if not label then
+		return
+	end
+
+	local trainerData =
+		TRAINERS[trainerName]
+
+	local trainerFolder =
+		getTrainerFolder(player)
+		:FindFirstChild(trainerName)
+
+	if not trainerData
+		or not trainerFolder then
+
+		return
+	end
+
+	local level =
+		trainerFolder:FindFirstChild(
+			"Level"
+		)
+
+	local stage =
+		trainerFolder:FindFirstChild(
+			"Stage"
+		)
+
+	local levelValue =
+		level and level.Value or 1
+
+	local stageValue =
+		stage and stage.Value or 1
+
+	local stageName =
+		TrainerModule.getStageName(
+			stageValue
+		)
+
+	label.Text =
+		tostring(
+			trainerData.DisplayName
+			or "Trainer"
+		)
+		.. "\nStage: "
+		.. stageName
+		.. "\nLv. "
+		.. tostring(levelValue)
 end
 
-local function resetCollectedRewards(player)
-	collectedRewards[player] = {}
+--==================================================
+-- Player trainer data
+--==================================================
+
+local function setupTrainerData(
+	player,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData then
+		warn(
+			"[TrainerServer] Trainer data missing:",
+			trainerName
+		)
+
+		return nil
+	end
+
+	local trainersFolder =
+		getTrainerFolder(player)
+
+	local trainerFolder =
+		trainersFolder:FindFirstChild(
+			trainerName
+		)
+
+	if not trainerFolder then
+		trainerFolder =
+			Instance.new("Folder")
+
+		trainerFolder.Name =
+			trainerName
+
+		trainerFolder.Parent =
+			trainersFolder
+	end
+
+	getOrCreateValue(
+		trainerFolder,
+		"BoolValue",
+		"Owned",
+		false
+	)
+
+	getOrCreateValue(
+		trainerFolder,
+		"BoolValue",
+		"Equipped",
+		false
+	)
+
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Level",
+		1
+	)
+
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Stage",
+		1
+	)
+
+	getOrCreateValue(
+		trainerFolder,
+		"IntValue",
+		"Evolution",
+		0
+	)
+
+	local progressFolder =
+		trainerFolder:FindFirstChild(
+			"RequirementProgress"
+		)
+
+	if not progressFolder then
+		progressFolder =
+			Instance.new("Folder")
+
+		progressFolder.Name =
+			"RequirementProgress"
+
+		progressFolder.Parent =
+			trainerFolder
+	end
+
+	local progressConfig =
+		TrainerModule.ProgressValues[trainerName]
+
+	if progressConfig then
+		for valueName, className
+			in pairs(progressConfig) do
+
+			getOrCreateValue(
+				progressFolder,
+				className,
+				valueName,
+				0
+			)
+		end
+	end
+
+	return trainerFolder
 end
 
-local function getPlayerFromHit(hit)
-	local character = hit:FindFirstAncestorOfClass("Model")
+local function setupAllTrainers(player)
+	for trainerName, trainerData
+		in pairs(TRAINERS) do
+
+		if trainerData.Enabled then
+			setupTrainerData(
+				player,
+				trainerName
+			)
+		end
+	end
+end
+
+--==================================================
+-- Trainer model
+--==================================================
+
+local function removeTrainer(player)
+	local connection =
+		trainerConnections[player]
+
+	if connection then
+		connection:Disconnect()
+		trainerConnections[player] = nil
+	end
+
+	local model =
+		equippedTrainers[player]
+
+	if model then
+		model:Destroy()
+		equippedTrainers[player] = nil
+	end
+end
+
+local function equipTrainer(
+	player,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData then
+		return false, "InvalidTrainer"
+	end
+
+	local character =
+		player.Character
+
 	if not character then
-		return nil
-	end
-	return Players:GetPlayerFromCharacter(character)
-end
-
-local function formatTime(seconds)
-	local minutes = math.floor(seconds / 60)
-	local secs = seconds % 60
-	return string.format("%d:%02d", minutes, secs)
-end
-
-
-
---Race values
-local function getOrCreateInRace(player)
-	return getOrCreateValue(player, "BoolValue", "InRace", false)
-end
-
-local function getOrCreateRaceProgress(player)
-	return getOrCreateValue(player, "NumberValue", "RaceProgress", 0)
-end
-
-local function getOrCreateRaceSpeed(player)
-	return getOrCreateValue(player, "NumberValue", "RaceSpeed", 0)
-end
-
-local function setupPlayerValues(player)
-	getOrCreateInRace(player)
-	getOrCreateRaceProgress(player)
-	getOrCreateRaceSpeed(player)
-	resetCollectedRewards(player)
-end
-
--- Trail boosts
-local function getEquippedTrailData(player)
-	local trailsFolder = player:FindFirstChild("Trails")
-	
-	if not trailsFolder then
-		return nil
-	end
-	
-	local equippedTrailValue = trailsFolder:FindFirstChild("EquippedTrail")
-	
-	if not equippedTrailValue or not equippedTrailValue:IsA("StringValue") then
-		return nil
-	end
-	
-	local trailId = equippedTrailValue.Value
-	
-	if trailId == "" then
-		return nil
-	end
-	
-	local trailFolder = trailsFolder:FindFirstChild(trailId)
-	
-	if not trailFolder or not trailFolder:IsA("Folder") then
-		return nil
-	end
-	
-	local ownedValue = trailFolder:FindFirstChild("Owned")
-	local levelValue = trailFolder:FindFirstChild("Level")
-	local stageValue = trailFolder:FindFirstChild("Stage")
-	
-	if not ownedValue or not ownedValue:IsA("BoolValue") then
-		return nil
-	end
-	
-	if not ownedValue.Value then
-		return nil
-	end
-	
-	if not levelValue or not levelValue:IsA("IntValue") then
-		return nil
-	end
-	
-	if not stageValue or not stageValue:IsA("IntValue") then
-		return nil
-	end
-	
-	
-	if not TrailModule.GetTrailConfig(trailId) then
-		return nil
-	end
-	
-	return {
-		TrailId = trailId,
-		Level = levelValue.Value,
-		Stage = stageValue.Value,
-	}
-end
-
-local function getTrailRacePowerMultiplier(player)
-	local trailData = getEquippedTrailData(player)
-	
-	if not trailData then
-		return 1
-	end
-	
-	return TrailModule.GetRacePowerMultiplier(trailData.TrailId, trailData.Level, trailData.Stage)
-end
-
-local function getTrailAccelerationMultiplier(player)
-	local trailData = getEquippedTrailData(player)
-	
-	if not trailData then
-		return 1
-	end
-	
-	return TrailModule.GetAccelerationMultiplier(trailData.TrailId, trailData.Level, trailData.Stage)
-end
-
---Race calculations
-local function lerp(a, b, t)
-	return a + (b - a) * t
-end
-
-local function getRaceSpeedFromEnergy(player)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then
-		return MIN_SPEED
+		return false, "CharacterMissing"
 	end
 
-	local energy = leaderstats:FindFirstChild("Energy")
-	if not energy then
-		return MIN_SPEED
+	local playerHrp =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not playerHrp then
+		return false, "CharacterMissing"
 	end
 
-	local value = UpgradeModule.GetRaceEnergy(player, energy.Value)
-	if value <= 0 then
-		return MIN_SPEED
+	local modelTemplate =
+		trainerModelsFolder:FindFirstChild(
+			trainerData.ModelName
+		)
+
+	if not modelTemplate then
+		warn(
+			"[TrainerServer] Model missing:",
+			trainerData.ModelName
+		)
+
+		return false, "ModelMissing"
 	end
 
-	-- 0 - 1m 16/50
-	if value < 1e6 then
-		local t = value / 1e6
-		return lerp(16, 50, t)
+	removeTrainer(player)
+
+	local trainerModel =
+		modelTemplate:Clone()
+
+	trainerModel.Name =
+		player.Name
+		.. "_"
+		.. trainerName
+
+	trainerModel.Parent = workspace
+
+	local trainerHrp =
+		trainerModel:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	local humanoid =
+		trainerModel:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	if not trainerHrp or not humanoid then
+		trainerModel:Destroy()
+
+		return false, "InvalidModel"
 	end
 
-	-- 1m - 1b  50/100  
-	if value < 1e9 then
-		local t = (value - 1e6) / (1e9 - 1e6)
-		return lerp(50, 100, t)
+	humanoid.DisplayDistanceType =
+		Enum.HumanoidDisplayDistanceType.None
+
+	local animator =
+		humanoid:FindFirstChildOfClass(
+			"Animator"
+		)
+
+	if not animator then
+		animator =
+			Instance.new("Animator")
+
+		animator.Parent = humanoid
 	end
 
-	-- 1b - 1t  100/200
-	if value < 1e12 then
-		local t = (value - 1e9) / (1e12 - 1e9)
-		return lerp(100, 200, t)
-	end
+	local idleAnimation =
+		Instance.new("Animation")
 
-	-- 1t - 1q  200/400
-	if value < 1e15 then
-		local t = (value - 1e12) / (1e15 - 1e12)
-		return lerp(200, 400, t)
-	end
+	idleAnimation.AnimationId =
+		"rbxassetid://507766388"
 
-	-- все выше 1q
-	return 400
-end
+	local idleTrack =
+		animator:LoadAnimation(
+			idleAnimation
+		)
 
+	idleTrack.Priority =
+		Enum.AnimationPriority.Idle
 
+	idleTrack.Looped = true
 
---Character control
-local function lockPlayerToTrack(player)
-	local character = player.Character
-	if not character then
-		return nil, nil
-	end
+	local runAnimation =
+		Instance.new("Animation")
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not hrp then
-		return nil, nil
-	end
+	runAnimation.AnimationId =
+		"rbxassetid://913376220"
 
-	savedWalkSpeed[player] = humanoid.WalkSpeed
-	savedJumpPower[player] = humanoid.JumpPower
-	savedJumpHeight[player] = humanoid.JumpHeight
-	savedAutoRotate[player] = humanoid.AutoRotate
+	local runTrack =
+		animator:LoadAnimation(
+			runAnimation
+		)
 
-	local targetPos = startLine.Position + Vector3.new(0, 3, 0)
-	hrp.CFrame = CFrame.new(targetPos, targetPos + startLine.CFrame.LookVector)
+	runTrack.Priority =
+		Enum.AnimationPriority.Movement
 
-	humanoid.WalkSpeed = 0
-	humanoid.JumpPower = 0
-	humanoid.JumpHeight = 0
-	humanoid.AutoRotate = false
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+	runTrack.Looped = true
 
-	return humanoid, hrp
-end
+	trainerModel.PrimaryPart =
+		trainerHrp
 
-local function unlockPlayer(player)
-	local character = player.Character
-	if not character then
-		return
-	end
+	trainerHrp.CFrame =
+		playerHrp.CFrame
+		* CFrame.new(
+			FOLLOW_SIDE_OFFSET,
+			0,
+			FOLLOW_DISTANCE
+		)
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
+	trainerHrp.Anchored = true
+	humanoid.PlatformStand = true
 
-	humanoid.WalkSpeed = savedWalkSpeed[player] or 16
-	humanoid.JumpPower = savedJumpPower[player] or 50
-	humanoid.JumpHeight = savedJumpHeight[player] or 7.2
-	humanoid.AutoRotate = savedAutoRotate[player]
-	if humanoid.AutoRotate == nil then
-		humanoid.AutoRotate = true
-	end
-	humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+	createBillboard(
+		trainerModel,
+		trainerData
+	)
 
-	savedWalkSpeed[player] = nil
-	savedJumpPower[player] = nil
-	savedJumpHeight[player] = nil
-	savedAutoRotate[player] = nil
-end
+	equippedTrainers[player] =
+		trainerModel
 
+	local trainersFolder =
+		getTrainerFolder(player)
 
+	for _, folder
+		in ipairs(
+			trainersFolder:GetChildren()
+		) do
 
---Main race function
-local function startRace(player)
-	if not raceOpen then
-		return
-	end
-	
-	if activeConnections[player] then
-		return
-	end
+		local equipped =
+			folder:FindFirstChild(
+				"Equipped"
+			)
 
-	setupPlayerValues(player)
-
-	local inRaceValue = getOrCreateInRace(player)
-	local progressValue = getOrCreateRaceProgress(player)
-	local speedValue = getOrCreateRaceSpeed(player)
-
-	inRaceValue.Value = true
-	progressValue.Value = 0
-	resetCollectedRewards(player)
-	speedValue.Value = MIN_SPEED
-
-	local humanoid, hrp = lockPlayerToTrack(player)
-	if not humanoid or not hrp then
-		return
-	end
-
-	print("START:", player.Name)
-
-	activeConnections[player] = RunService.Heartbeat:Connect(function(dt)
-		local character = player.Character
-		local currentHumanoid = character and character:FindFirstChildOfClass("Humanoid")
-		local currentHrp = character and character:FindFirstChild("HumanoidRootPart")
-		if not currentHumanoid or not currentHrp then
-			return
-		end
-
-		local currentPos = currentHrp.Position
-		currentHrp.CFrame = CFrame.new(currentPos, currentPos + startLine.CFrame.LookVector)
-
-		local trainerRacePowerMultiplier = TrainerModule.getRacePowerMultiplier(player)
-		local trailRacePowerMultiplier = getTrailRacePowerMultiplier(player)
-		
-		local targetSpeed = 
-			getRaceSpeedFromEnergy(player)
-		    * trainerRacePowerMultiplier
-			* trailRacePowerMultiplier
-		
-		local currentSpeed = speedValue.Value
-
-		--Upgrade: Acceleration
-		local upgradeAccelerationMultiplier = UpgradeModule.GetAccelerationMultiplier(player)
-		local trainerAccelerationMultiplier = TrainerModule.getAccelerationMultiplier(player)
-		local trailAccelerationMultiplier = getTrailAccelerationMultiplier(player)
-		
-		local accelerationMultiplier = upgradeAccelerationMultiplier * trainerAccelerationMultiplier * trailAccelerationMultiplier
-
-		local delta = ACCELERATION_PER_SECOND * accelerationMultiplier * dt 
-		
-		currentSpeed = math.min(currentSpeed + delta, targetSpeed)
-
-		speedValue.Value = currentSpeed
-		currentHrp.AssemblyLinearVelocity = startLine.CFrame.LookVector * currentSpeed
-
-		local distanceFromStart = math.abs(currentHrp.Position.Z - startLine.Position.Z)
-		local progress = distanceFromStart / totalTrackLength
-		progressValue.Value = math.clamp(progress, 0, 1)
-	end)
-end
-
-local function restartRace(player)
-	local character = player.Character
-	if not character then
-		return
-	end
-
-	resetCollectedRewards(player)
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		return
-	end
-
-	local progressValue = getOrCreateRaceProgress(player)
-	progressValue.Value = 0
-
-	local targetPos = startLine.Position + Vector3.new(0, 3, 0)
-	hrp.AssemblyLinearVelocity = Vector3.zero
-	hrp.CFrame = CFrame.new(targetPos, targetPos + startLine.CFrame.LookVector)
-
-	print("RESTART:", player.Name)
-end
-
-local function leaveRace(player)
-	local conn = activeConnections[player]
-	if conn then
-		conn:Disconnect()
-		activeConnections[player] = nil
-	end
-
-	resetCollectedRewards(player)
-
-	local character = player.Character
-	if character then
-		local hrp = character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			if spawnPart then
-				hrp.CFrame = spawnPart.CFrame + Vector3.new(0, 3, 0)
-			end
+		if equipped then
+			equipped.Value = false
 		end
 	end
 
-	unlockPlayer(player)
+	local selectedFolder =
+		trainersFolder:FindFirstChild(
+			trainerName
+		)
 
-	getOrCreateInRace(player).Value = false
-	getOrCreateRaceProgress(player).Value = 0
-	getOrCreateRaceSpeed(player).Value = 0
+	local selectedEquipped =
+		selectedFolder
+		and selectedFolder:FindFirstChild(
+			"Equipped"
+		)
 
-	print("LEAVE RACE:", player.Name)
-end
-
-local function stopAllRacers()
-	local playersToStop = {}
-
-	for player, _ in pairs(activeConnections) do
-		table.insert(playersToStop, player)
+	if selectedEquipped then
+		selectedEquipped.Value = true
 	end
 
-	for _, player in ipairs(playersToStop) do
-		leaveRace(player)
-	end
-end
+	idleTrack:Play()
 
+	trainerConnections[player] =
+		RunService.Heartbeat:Connect(
+			function(deltaTime)
+				local currentCharacter = player.Character
 
+				local currentPlayerHrp = currentCharacter
+				and currentCharacter
+				:FindFirstChild(
+					"HumanoidRootPart"
+				)
 
---Rewards
-local function connectRewardTouch(reward)
-	reward.Touched:Connect(function(hit)
-		local player = getPlayerFromHit(hit)
-		if not player then
-			return
-		end
+				if not currentPlayerHrp
+					or not trainerModel.Parent then
 
-		local inRaceValue = getOrCreateInRace(player)
-		if not inRaceValue.Value then
-			return
-		end
-
-		collectedRewards[player] = collectedRewards[player] or {}
-
-		if collectedRewards[player][reward.Name] then
-			return
-		end
-
-		local rewardAmount = rewardValues[reward.Name]
-		if not rewardAmount then
-			return
-		end
-
-		collectedRewards[player][reward.Name] = true
-		
-		local raceTouch = getRaceTouch(player)
-		if raceTouch then
-			raceTouch.Value += 1
-		end
-		
-		TrainerModule.addEquippedTrainerProgress(player, "RaceTouch", 1)
-
-		local money = getMoney(player)
-		if money then
-
-			local shoesMultiplier = ItemModule.getShoesMultiplier(player)
-
-			local petMoneyMultiplier = 1
-
-			local equippedPets = PetModule.getEquippedPets(player)
-			for _, pet in ipairs(equippedPets) do
-				local petMoney = pet:FindFirstChild("MoneyMultiplier")
-				if petMoney then
-					petMoneyMultiplier *= petMoney.Value
-				end
-			end
-
-			--Upgrade: Money
-			local moneyUpgradeMultiplier = UpgradeModule.GetMoneyMultiplier(player)
-
-			local trainerMoneyMultiplier = TrainerModule.getMoneyMultiplier(player)
-			
-			local boostMoneyMultiplier = BoostModule.GetMoneyMultiplier(player)
-			local rebirthMoneyMultiplier = RebirthModule.GetMoneyMultiplier(player)
-			
-			
-			local finalMultiplier = 
-				shoesMultiplier 
-				* petMoneyMultiplier 
-				* moneyUpgradeMultiplier 
-				* trainerMoneyMultiplier 
-				* boostMoneyMultiplier
-				* rebirthMoneyMultiplier
-			
-			
-			local finalReward = math.floor(rewardAmount * finalMultiplier)
-			money.Value += finalReward
-		end
-
-		PetModule.givePetXP(player, 1)
-		XPModule.addXP(player, 1)
-		local pet = PetModule.getEquippedPet(player)
-		if pet then
-			local xp = pet:FindFirstChild("XP")
-			local level = pet:FindFirstChild("Level")
-			if xp and level then
-				print("PET XP:", xp.Value, "LEVEL:", level.Value)
-			end
-		end
-
-		print(player.Name, "got base reward", rewardAmount, "from", reward.Name)
-
-		-- UPGRADE: GemChance + GemMore
-		local finalGemChance = UpgradeModule.GetFinalGemChance(player, GEM_CHANCE)
-
-		local finalGemReward = UpgradeModule.GetFinalGemAmount(player, GEM_REWARD)
-
-		if math.random() < finalGemChance then
-			local playerData = player:FindFirstChild("PlayerData")
-			if playerData then
-				local gems = playerData:FindFirstChild("Gems")
-				if gems then
-					gems.Value += finalGemReward
-					print(player.Name, "получил GEM")
+					removeTrainer(player)
+					return
 				end
 
+				local followCFrame = currentPlayerHrp.CFrame
+				* CFrame.new(
+					FOLLOW_SIDE_OFFSET,
+					0,
+					FOLLOW_DISTANCE
+				)
+
+				local targetPosition = followCFrame.Position
+
+				local distance = (
+					trainerHrp.Position
+					- targetPosition
+				).Magnitude
+
+				if distance >
+					TELEPORT_DISTANCE then
+
+					trainerHrp.CFrame = CFrame.new(
+						targetPosition
+					)
+				end
+
+				if distance > 3 then
+					if not runTrack.IsPlaying then
+						idleTrack:Stop()
+						runTrack:Play()
+					end
+
+					local alpha = math.clamp(
+						deltaTime
+						* FOLLOW_SPEED,
+						0,
+						1
+					)
+
+					local lookAt = Vector3.new(
+						currentPlayerHrp.Position.X,
+						trainerHrp.Position.Y,
+						currentPlayerHrp.Position.Z
+					)
+
+					local desiredCFrame = CFrame.new(
+						targetPosition,
+						lookAt
+					)
+
+					trainerHrp.CFrame = trainerHrp.CFrame:Lerp(
+						desiredCFrame,
+						alpha
+					)
+				else
+					if not idleTrack.IsPlaying then
+						runTrack:Stop()
+						idleTrack:Play()
+					end
+				end
+			end
+		)
+
+	updateTrainerBillboard(
+		player,
+		trainerName
+	)
+
+	return true, "Equipped"
+end
+
+local function equipSavedTrainer(player)
+	local trainersFolder =
+		getTrainerFolder(player)
+
+	local savedTrainerName = nil
+
+	for _, trainerFolder in ipairs(
+		trainersFolder:GetChildren()
+		) do
+		local equipped =
+			trainerFolder:FindFirstChild(
+				"Equipped"
+			)
+
+		local owned =
+			trainerFolder:FindFirstChild(
+				"Owned"
+			)
+
+		if equipped
+			and equipped.Value == true
+			and owned
+			and owned.Value == true then
+
+			if not savedTrainerName then
+				savedTrainerName =
+					trainerFolder.Name
+			else
+				equipped.Value = false
 			end
 		end
+	end
+
+	if savedTrainerName then
+		equipTrainer(
+			player,
+			savedTrainerName
+		)
+	end
+end
+
+--==================================================
+-- Buying
+--==================================================
+
+local function buyTrainer(
+	player,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData
+		or not trainerData.Enabled then
+
+		return false, "InvalidTrainer"
+	end
+
+	local trainerFolder =
+		getTrainerFolder(player)
+		:FindFirstChild(trainerName)
+
+	if not trainerFolder then
+		return false, "TrainerFolderMissing"
+	end
+
+	local owned =
+		trainerFolder:FindFirstChild(
+			"Owned"
+		)
+
+	if not owned then
+		return false, "OwnedValueMissing"
+	end
+
+	if owned.Value == true then
+		return true, "AlreadyOwned"
+	end
+
+	if trainerData.UnlockType
+		== "EggHatched" then
+
+		local playerData =
+			player:FindFirstChild(
+				"PlayerData"
+			)
+
+		local eggHatched =
+			playerData
+			and playerData:FindFirstChild(
+				"EggHatched"
+			)
+
+		if not eggHatched then
+			return false,
+				"EggHatchedMissing"
+		end
+
+		local requiredPets =
+			math.max(
+				0,
+				tonumber(
+					trainerData.RequiredPets
+				) or 0
+			)
+
+		if eggHatched.Value
+			< requiredPets then
+
+			return false,
+				"NotEnoughEggHatched"
+		end
+
+		owned.Value = true
+
+		return true, "Purchased"
+	end
+
+	if trainerData.UnlockType
+		== "Currency" then
+
+		local currency =
+			getPlayerStat(
+				player,
+				trainerData.Currency
+			)
+
+		if not currency then
+			return false,
+				"CurrencyMissing"
+		end
+
+		local price =
+			math.max(
+				0,
+				tonumber(
+					trainerData.Price
+				) or 0
+			)
+
+		if currency.Value < price then
+			return false,
+				"NotEnoughCurrency"
+		end
+
+		currency.Value -= price
+		owned.Value = true
+
+		return true, "Purchased"
+	end
+
+	return false, "UnsupportedUnlockType"
+end
+
+--==================================================
+-- Rank requirements
+--==================================================
+
+local function getRequirementCurrentValue(
+	player,
+	trainerName,
+	requirement
+)
+	if not requirement then
+		return 0
+	end
+
+	if requirement.Type == "Level" then
+		local trainerFolder =
+			TrainerModule
+			.getTrainerPlayerFolder(
+				player,
+				trainerName
+			)
+
+		local level =
+			trainerFolder
+			and trainerFolder:FindFirstChild(
+				"Level"
+			)
+
+		return level and level.Value or 0
+	end
+
+	return TrainerModule
+		.getRequirementProgress(
+			player,
+			trainerName,
+			requirement.Type
+		)
+end
+
+local function checkStageRequirements(
+	player,
+	trainerName,
+	stageValue
+)
+	local requirements =
+		TrainerModule.getStageRequirements(
+			trainerName,
+			stageValue
+		)
+
+	local missing = {}
+	local allCompleted = true
+
+	for index, requirement
+		in ipairs(requirements) do
+
+		if requirement.Placeholder == true then
+			continue
+		end
+
+		local need =
+			math.max(
+				0,
+				tonumber(
+					requirement.Need
+				) or 0
+			)
+
+		local current =
+			getRequirementCurrentValue(
+				player,
+				trainerName,
+				requirement
+			)
+
+		local progressCompleted =
+			current >= need
+
+		local balanceCompleted = true
+		local balanceCurrent = nil
+
+		if requirement.Spend == true then
+			local spendableStat =
+				getSpendableStat(
+					player,
+					requirement.Type
+				)
+
+			balanceCurrent =
+				spendableStat
+				and spendableStat.Value
+				or 0
+
+			balanceCompleted =
+				balanceCurrent >= need
+		end
+
+		if not progressCompleted
+			or not balanceCompleted then
+
+			allCompleted = false
+
+			missing[index] = {
+				Index = index,
+				Type = requirement.Type,
+
+				Current = current,
+				Need = need,
+
+				ProgressCompleted =
+					progressCompleted,
+
+				Spend =
+					requirement.Spend
+					== true,
+
+				BalanceCurrent =
+					balanceCurrent,
+
+				BalanceCompleted =
+					balanceCompleted,
+			}
+		end
+	end
+
+	return allCompleted, missing
+end
+
+local function spendStageRequirements(
+	player,
+	trainerName,
+	stageValue
+)
+	local requirements =
+		TrainerModule.getStageRequirements(
+			trainerName,
+			stageValue
+		)
+
+	for _, requirement
+		in ipairs(requirements) do
+
+		if requirement.Placeholder == true then
+			continue
+		end
+
+		if requirement.Spend == true then
+			local stat =
+				getSpendableStat(
+					player,
+					requirement.Type
+				)
+
+			local need =
+				math.max(
+					0,
+					tonumber(
+						requirement.Need
+					) or 0
+				)
+
+			if stat and need > 0 then
+				stat.Value =
+					math.max(
+						0,
+						stat.Value - need
+					)
+			end
+		end
+	end
+end
+
+local function resetStageRequirementProgress(
+	player,
+	trainerName,
+	stageValue
+)
+	local requirements =
+		TrainerModule.getStageRequirements(
+			trainerName,
+			stageValue
+		)
+
+	for _, requirement
+		in ipairs(requirements) do
+
+		if requirement.ResetOnRankUp
+			== true then
+
+			TrainerModule
+				.resetRequirementProgress(
+					player,
+					trainerName,
+					requirement.Type
+				)
+		end
+	end
+end
+
+--==================================================
+-- Equip event
+--==================================================
+
+local function processEquipRequest(
+	player,
+	action,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData
+		or not trainerData.Enabled then
+
+		trainerEquipResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"InvalidTrainer"
+		)
+
+		return
+	end
+
+	setupTrainerData(
+		player,
+		trainerName
+	)
+
+	local trainerFolder =
+		getTrainerFolder(player)
+		:FindFirstChild(trainerName)
+
+	if not trainerFolder then
+		return
+	end
+
+	local owned =
+		trainerFolder:FindFirstChild(
+			"Owned"
+		)
+
+	local equipped =
+		trainerFolder:FindFirstChild(
+			"Equipped"
+		)
+
+	if action == "Equip" then
+		if not owned
+			or owned.Value == false then
+
+			local purchased,
+				purchaseResult =
+				buyTrainer(
+					player,
+					trainerName
+				)
+
+			if not purchased then
+				trainerEquipResultEvent
+					:FireClient(
+						player,
+						false,
+						trainerName,
+						purchaseResult
+					)
+
+				return
+			end
+		end
+
+		local success,
+			equipResult =
+			equipTrainer(
+				player,
+				trainerName
+			)
+
+		trainerEquipResultEvent:FireClient(
+			player,
+			success,
+			trainerName,
+			equipResult
+		)
+
+		return
+	end
+
+	if action == "Unequip" then
+		if equipped
+			and equipped.Value == true then
+
+			removeTrainer(player)
+			equipped.Value = false
+
+			trainerEquipResultEvent:FireClient(
+				player,
+				true,
+				trainerName,
+				"Unequipped"
+			)
+		end
+
+		return
+	end
+
+	trainerEquipResultEvent:FireClient(
+		player,
+		false,
+		trainerName,
+		"InvalidAction"
+	)
+end
+
+trainerEquipEvent.OnServerEvent:Connect(
+	function(player, action, trainerName)
+		runWithPlayerLock(
+			equipLocks,
+			player,
+			function()
+				processEquipRequest(
+					player,
+					action,
+					trainerName
+				)
+			end
+		)
+	end
+)
+
+--==================================================
+-- Level Up
+--==================================================
+
+local function processLevelUp(
+	player,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData
+		or not trainerData.Enabled then
+
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"InvalidTrainer",
+			{}
+		)
+
+		return
+	end
+
+	local trainerFolder =
+		setupTrainerData(
+			player,
+			trainerName
+		)
+
+	if not trainerFolder then
+		return
+	end
+
+	local owned =
+		trainerFolder:FindFirstChild(
+			"Owned"
+		)
+
+	local level =
+		trainerFolder:FindFirstChild(
+			"Level"
+		)
+
+	local stage =
+		trainerFolder:FindFirstChild(
+			"Stage"
+		)
+
+	if not owned
+		or owned.Value == false then
+
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"NotOwned",
+			{}
+		)
+
+		return
+	end
+
+	if not level or not stage then
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"DataMissing",
+			{}
+		)
+
+		return
+	end
+
+	local maxLevel =
+		TrainerModule.getStageMaxLevel(
+			stage.Value
+		)
+
+	if level.Value >= maxLevel then
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"MaxLevel",
+			{
+				CurrentLevel = level.Value,
+				MaxLevel = maxLevel,
+			}
+		)
+
+		return
+	end
+
+	local cost =
+		TrainerModule.getLevelUpCost(
+			level.Value
+		)
+
+	if not cost then
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"CostMissing",
+			{}
+		)
+
+		return
+	end
+
+	local money =
+		getPlayerStat(
+			player,
+			"Money"
+		)
+
+	local currentXP =
+		XPModule.getXP(player)
+
+	if not money then
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"ResourceMissing",
+			{}
+		)
+
+		return
+	end
+
+	local moneyCost =
+		math.max(
+			0,
+			math.floor(
+				tonumber(cost.Money)
+				or 0
+			)
+		)
+
+	local xpCost =
+		math.max(
+			0,
+			math.floor(
+				tonumber(cost.XP)
+				or 0
+			)
+		)
+
+	local missingMoney =
+		math.max(
+			0,
+			moneyCost - money.Value
+		)
+
+	local missingXP =
+		math.max(
+			0,
+			xpCost - currentXP
+		)
+
+	if missingMoney > 0
+		or missingXP > 0 then
+
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"NotEnoughResources",
+			{
+				MissingMoney =
+					missingMoney,
+
+				MissingXP =
+					missingXP,
+
+				CurrentMoney =
+					money.Value,
+
+				CurrentXP =
+					currentXP,
+
+				NeedMoney =
+					moneyCost,
+
+				NeedXP =
+					xpCost,
+			}
+		)
+
+		return
+	end
+
+	-- Повторная серверная проверка XP
+	-- перед фактическим списанием.
+
+	if not XPModule.hasXP(
+		player,
+		xpCost
+		) then
+		trainerLevelResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"NotEnoughResources",
+			{
+				MissingMoney = 0,
+				MissingXP =
+					math.max(
+						0,
+						xpCost
+						- XPModule
+						.getXP(player)
+					),
+
+				NeedMoney = moneyCost,
+				NeedXP = xpCost,
+			}
+		)
+
+		return
+	end
+
+	local oldMomey = money.Value
+	local oldXP = XPModule.getXP(player)
+	local oldLevel = level.Value
+	
+	local transactionSuccess, transactionError = pcall(function()
+		local removeXP = XPModule.removeXP(player, xpCost)
+		if not removeXP then
+			error("XPRemoveFailed")
+		end
+		
+		money.Value -= moneyCost
+		level.Value += 1
 	end)
+	
+	if not transactionSuccess then
+		money.Value = oldMomey
+		
+		local currentXP = XPModule.getXP(player)
+		if currentXP < oldXP then
+			XPModule.addXP(player, oldXP - currentXP)
+		end
+		
+		level.Value = oldLevel
+		
+		warn("[TrainerServer] Level transaction failed:", player.Name, trainerName, transactionError)
+		
+		trainerLevelResultEvent:FireClient(player, false, trainerName, "LevelTransactionFiled", {})
+		return
+	end
+
+	updateTrainerBillboard(
+		player,
+		trainerName
+	)
+
+	trainerLevelResultEvent:FireClient(
+		player,
+		true,
+		trainerName,
+		"LevelUpSuccess",
+		{
+			NewLevel = level.Value,
+			SpentMoney = moneyCost,
+			SpentXP = xpCost,
+		}
+	)
 end
 
-
-
---Track connections
-startLine.Touched:Connect(function(hit)
-	local player = getPlayerFromHit(hit)
-	if player then
-		startRace(player)
+trainerLevelUpEvent.OnServerEvent:Connect(
+	function(player, trainerName)
+		runWithPlayerLock(
+			levelUpLocks,
+			player,
+			function()
+				processLevelUp(
+					player,
+					trainerName
+				)
+			end
+		)
 	end
-end)
+)
 
-finishLine.Touched:Connect(function(hit)
-	local player = getPlayerFromHit(hit)
-	if player and activeConnections[player] then
-		restartRace(player)
+--==================================================
+-- Rank Up
+--==================================================
+
+local function processStageUp(
+	player,
+	trainerName
+)
+	local trainerData =
+		TRAINERS[trainerName]
+
+	if not trainerData
+		or not trainerData.Enabled then
+
+		return
 	end
-end)
 
+	local trainerFolder =
+		setupTrainerData(
+			player,
+			trainerName
+		)
 
-
---Remote connections
-leaveRaceEvent.OnServerEvent:Connect(function(player)
-	if activeConnections[player] then
-		leaveRace(player)
+	if not trainerFolder then
+		return
 	end
-end)
 
+	local owned =
+		trainerFolder:FindFirstChild(
+			"Owned"
+		)
 
+	local level =
+		trainerFolder:FindFirstChild(
+			"Level"
+		)
 
---Player lifecycle
-Players.PlayerAdded:Connect(function(player)
-	setupPlayerValues(player)
-end)
+	local stage =
+		trainerFolder:FindFirstChild(
+			"Stage"
+		)
 
-for _, player in ipairs(Players:GetPlayers()) do
-	setupPlayerValues(player)
+	if not owned
+		or owned.Value == false then
+
+		trainerStageResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"NotOwned",
+			{}
+		)
+
+		return
+	end
+
+	if not level or not stage then
+		return
+	end
+
+	local currentStage =
+		stage.Value
+
+	if currentStage >= 5 then
+		trainerStageResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"MaxStage",
+			{}
+		)
+
+		return
+	end
+
+	local stageData =
+		TrainerModule.getStageData(
+			currentStage
+		)
+
+	if not stageData then
+		trainerStageResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"StageDataMissing",
+			{}
+		)
+
+		return
+	end
+
+	-- Для повышения ранга тренер должен
+	-- достичь максимального уровня
+	-- ТЕКУЩЕГО ранга:
+	--
+	-- Rookie   -> 5
+	-- Athlete  -> 10
+	-- Champion -> 15
+	-- Titan    -> 20
+
+	if level.Value < stageData.MaxLevel then
+		trainerStageResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"NeedLevel",
+			{
+				CurrentLevel =
+					level.Value,
+
+				NeedLevel =
+					stageData.MaxLevel,
+			}
+		)
+
+		return
+	end
+
+	local completed, missing =
+		checkStageRequirements(
+			player,
+			trainerName,
+			currentStage
+		)
+
+	if not completed then
+		trainerStageResultEvent:FireClient(
+			player,
+			false,
+			trainerName,
+			"MissingRequirements",
+			missing
+		)
+
+		return
+	end
+
+	spendStageRequirements(
+		player,
+		trainerName,
+		currentStage
+	)
+
+	resetStageRequirementProgress(
+		player,
+		trainerName,
+		currentStage
+	)
+
+	local oldStage =
+		currentStage
+
+	-- ВАЖНО:
+	-- уровень НЕ сбрасывается.
+	stage.Value += 1
+
+	local srRobuxReward = 0
+
+	if oldStage == 4
+		and stage.Value == 5 then
+
+		local playerData =
+			player:FindFirstChild(
+				"PlayerData"
+			)
+
+		local srRobux =
+			playerData
+			and playerData:FindFirstChild(
+				"SrRobux"
+			)
+
+		if srRobux then
+			srRobuxReward = 2
+			srRobux.Value += 2
+		else
+			warn(
+				"[TrainerServer] SrRobux missing:",
+				player.Name
+			)
+		end
+	end
+
+	updateTrainerBillboard(
+		player,
+		trainerName
+	)
+
+	trainerStageResultEvent:FireClient(
+		player,
+		true,
+		trainerName,
+		"StageUpSuccess",
+		{
+			OldStage = oldStage,
+			NewStage = stage.Value,
+
+			CurrentLevel =
+				level.Value,
+
+			NewMaxLevel =
+				TrainerModule
+				.getStageMaxLevel(
+					stage.Value
+				),
+
+			NewStageName =
+				TrainerModule
+				.getStageName(
+					stage.Value
+				),
+
+			SrRobuxReward =
+				srRobuxReward,
+		}
+	)
 end
 
-Players.PlayerRemoving:Connect(function(player)
-	local conn = activeConnections[player]
-	if conn then
-		conn:Disconnect()
-		activeConnections[player] = nil
+trainerStageUpEvent.OnServerEvent:Connect(
+	function(player, trainerName)
+		runWithPlayerLock(
+			stageUpLocks,
+			player,
+			function()
+				processStageUp(
+					player,
+					trainerName
+				)
+			end
+		)
 	end
+)
 
-	savedWalkSpeed[player] = nil
-	savedJumpPower[player] = nil
-	savedJumpHeight[player] = nil
-	savedAutoRotate[player] = nil
-end)
+--==================================================
+-- Menu close / teleport
+--==================================================
 
+closeTrainerMenuEvent.OnServerEvent:Connect(
+	function(player)
+		local character =
+			player.Character
 
-
---Reward hookup
-for _, obj in ipairs(track:GetDescendants()) do
-	if obj:IsA("BasePart") and rewardValues[obj.Name] then
-		connectRewardTouch(obj)
-	end
-end
-
-task.spawn(function()
-	while true do
-		raceOpen = false
-		raceBarrier.CanCollide = true
-		raceBarrier.Transparency = 0
-
-		raceStatusText.Value = "Race starts in"
-
-		for timeLeft = WAIT_TIME, 0, -1 do
-			raceTimerText.Value = formatTime(timeLeft)
-			task.wait(1)
+		if not character then
+			return
 		end
 
-		raceOpen = true
-		raceBarrier.CanCollide = false
-		raceBarrier.Transparency = 1
+		local hrp =
+			character:FindFirstChild(
+				"HumanoidRootPart"
+			)
 
-		raceStatusText.Value = "Race has started"
-
-		for timeLeft = RACE_TIME, 0, -1 do
-			raceTimerText.Value = formatTime(timeLeft)
-			task.wait(1)
+		if not hrp then
+			return
 		end
 
-		raceOpen = false
-		raceBarrier.CanCollide = true
-		raceBarrier.Transparency = 0
-
-		stopAllRacers()
+		hrp.CFrame =
+			backPart.CFrame
+			* CFrame.new(0, 3, 0)
 	end
-end)
+)
 
-print("RaceServer loaded")
+--==================================================
+-- Player lifecycle
+--==================================================
+
+local function connectCharacter(player)
+	player.CharacterAdded:Connect(
+		function()
+			task.wait(1)
+
+			equipSavedTrainer(player)
+		end
+	)
+end
+
+Players.PlayerAdded:Connect(
+	function(player)
+		setupAllTrainers(player)
+		connectCharacter(player)
+	end
+)
+
+playerDataLoadedEvent.Event:Connect(
+	function(player)
+		task.wait(0.5)
+
+		setupAllTrainers(player)
+
+		if player.Character then
+			equipSavedTrainer(player)
+		end
+	end
+)
+
+Players.PlayerRemoving:Connect(
+	function(player)
+		removeTrainer(player)
+
+		equipLocks[player] = nil
+		levelUpLocks[player] = nil
+		stageUpLocks[player] = nil
+	end
+)
+
+for _, player
+	in ipairs(Players:GetPlayers()) do
+
+	setupAllTrainers(player)
+	connectCharacter(player)
+
+	if player.Character then
+		task.delay(
+			1,
+			function()
+				equipSavedTrainer(player)
+			end
+		)
+	end
+end
+
+print("TrainerServer loaded")
