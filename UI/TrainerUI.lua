@@ -458,6 +458,27 @@ local function formatNumber(value)
 	end
 end
 
+local function getTrainerPriceText(trainerName)
+	local trainerData = TrainerModule.getTrainerData(trainerName)
+	if not trainerName then
+		return ""
+	end
+	
+	if trainerData.UnlockType == "Currency" then
+		local price = tonumber(trainerData.Price) or 0
+		local currencyName = tostring(trainerData.Currency or "")
+		
+		return formatNumber(price) .. " " .. string.upper(currencyName)
+	end
+	
+	if trainerData.UnlockType == "EggHatched" then
+		local requiredPets = tonumber(trainerData.RequiredPets) or 0
+		
+		return formatNumber(requiredPets) .. " EGGS HATCHED"
+	end
+	return ""
+end
+
 local function formatTime(seconds)
 	seconds = math.floor(tonumber(seconds) or 0)
 
@@ -934,7 +955,7 @@ local function updateEquipButton()
 		
 		setImageIfValid(equipButton, ICONS.EquipButton)
 	else
-		equipButtonText.Text = "BUY\n" .. (info.PriceText or "")
+		equipButtonText.Text = "BUY\n" .. getTrainerPriceText(selectedTrainerName)
 		
 		setImageIfValid(equipButton, ICONS.EquipButton)
 	end
@@ -1311,6 +1332,8 @@ trainerLevelResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 		showWarning("PLAYER RESOURCE NOT FOUND!", 3)
 	elseif resultType == "CostMissing" then
 		showWarning("LEVEL PRICE NOT FOUND!", 3)
+	elseif resultType == "LevelTransactionFailed" then
+		showWarning("LEVEL UP FAILED! TRY AGAIN.")
 	else 
 		showWarning("LEVEL UP FAILED!", 3)
 	end
