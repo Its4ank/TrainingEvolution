@@ -24,16 +24,6 @@ local updFrame = updateFrame:WaitForChild("UPDFrame")
 local scrollingFrameButton = updateFrame:WaitForChild("ScrollingFrameButton")
 local closeUpdateFrame = updateFrame:WaitForChild("CloseUpdateButton")
 
---// scrollingFrameButton
-local upd0Button = scrollingFrameButton:WaitForChild("UPD0Button")
-local upd1Button = scrollingFrameButton:WaitForChild("UPD1Button")
-local upd2Button = scrollingFrameButton:WaitForChild("UPD2Button")
-
---//UPDFrame
-local scrolingUPD0 = updFrame:WaitForChild("ScrollingUPD0")
-local scrolingUPD1 = updFrame:WaitForChild("ScrollingUPD1")
-local scrolingUPD2 = updFrame:WaitForChild("ScrollingUPD2")
-
 local updateEntries = {}
 
 for version, updateInfo in pairs(UpdateConfig.Updates) do
@@ -92,12 +82,12 @@ closeUpdateFrame.MouseButton1Click:Connect(function()
 end)
 
 local function waitForPlayerData()
-	while player:FindFirstChild("DataReady") ~= true do
+	while player:GetAttribute("DataReady") ~= true do
 		player:GetAttributeChangedSignal("DataReady"):Wait()
 	end
 	
-	local playerData = player:FindFirstChild("PlayerData")
-	local lastSeenUpdate = playerData:FindFirstChild("LastSeenUpdate")
+	local playerData = player:WaitForChild("PlayerData")
+	local lastSeenUpdate = playerData:WaitForChild("LastSeenUpdate")
 	
 	return lastSeenUpdate
 end
