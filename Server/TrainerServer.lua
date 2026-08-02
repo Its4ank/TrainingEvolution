@@ -766,11 +766,11 @@ local function equipSavedTrainer(player)
 	local trainersFolder =
 		getTrainerFolder(player)
 
-	for _, trainerFolder
-		in ipairs(
-			trainersFolder:GetChildren()
-		) do
+	local savedTrainerName = nil
 
+	for _, trainerFolder in ipairs(
+		trainersFolder:GetChildren()
+		) do
 		local equipped =
 			trainerFolder:FindFirstChild(
 				"Equipped"
@@ -786,13 +786,20 @@ local function equipSavedTrainer(player)
 			and owned
 			and owned.Value == true then
 
-			equipTrainer(
-				player,
-				trainerFolder.Name
-			)
-
-			return
+			if not savedTrainerName then
+				savedTrainerName =
+					trainerFolder.Name
+			else
+				equipped.Value = false
+			end
 		end
+	end
+
+	if savedTrainerName then
+		equipTrainer(
+			player,
+			savedTrainerName
+		)
 	end
 end
 
@@ -1464,31 +1471,35 @@ local function processLevelUp(
 		return
 	end
 
-	local removedXP =
-		XPModule.removeXP(
-			player,
-			xpCost
-		)
-
-	if not removedXP then
-		trainerLevelResultEvent:FireClient(
-			player,
-			false,
-			trainerName,
-			"XPRemoveFailed",
-			{}
-		)
-
+	local oldMomey = money.Value
+	local oldXP = XPModule.getXP(player)
+	local oldLevel = level.Value
+	
+	local transactionSuccess, transactionError = pcall(function()
+		local removeXP = XPModule.removeXP(player, xpCost)
+		if not removeXP then
+			error("XPRemoveFailed")
+		end
+		
+		money.Value -= moneyCost
+		level.Value += 1
+	end)
+	
+	if not transactionSuccess then
+		money.Value = oldMomey
+		
+		local currentXP = XPModule.getXP(player)
+		if currentXP < oldXP then
+			XPModule.addXP(player, oldXP - currentXP)
+		end
+		
+		level.Value = oldLevel
+		
+		warn("[TrainerServer] Level transaction failed:", player.Name, trainerName, transactionError)
+		
+		trainerLevelResultEvent:FireClient(player, false, trainerName, "LevelTransactionFiled", {})
 		return
 	end
-
-	-- XP уже успешно снят.
-	-- Money точно хватает, потому что
-	-- проверка проведена выше и запрос
-	-- защищён lock.
-
-	money.Value -= moneyCost
-	level.Value += 1
 
 	updateTrainerBillboard(
 		player,
