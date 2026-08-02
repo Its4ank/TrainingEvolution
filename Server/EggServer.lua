@@ -6,6 +6,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PetModule = require(game.ServerScriptService.Modules.PetModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
+local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
 local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 
@@ -27,11 +28,11 @@ local function getMoney(player)
 	return playerData:FindFirstChild("Money")
 end
 
-local function getPetHatched(player)
+local function getEggHatched(player)
 	local playerData = player:FindFirstChild("PlayerData")
 	if not playerData then return nil end
 	
-	return playerData:FindFirstChild("PetHatched")
+	return playerData:FindFirstChild("EggHatched")
 end
 
 --Egg data
@@ -145,9 +146,16 @@ local function openEgg(player, eggName)
 		return false
 	end
 	
-	local petHatched = getPetHatched(player)
-	if petHatched then
-		petHatched.Value += 1
+	local eggHatched = getEggHatched(player)
+	if eggHatched then
+		eggHatched.Value += 1
+	end
+	
+	TrainerModule.addEquippedTrainerProgress(player, "EggHatched", 1)
+	
+	local rarityRequirement = TrainerModule.getCurrentRequirement(player, "MonikaTrainer", "PetRarity")
+	if rarityRequirement and rarityRequirement.Rarity == rarity then
+		TrainerModule.addEquippedTrainerProgress(player, "PetRarity", 1)
 	end
 
 	print(player.Name, "opened", eggName, "and got", wonPet, "(" .. tostring(rarity) .. ")")
