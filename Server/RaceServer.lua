@@ -7,7 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local PetModule = require(game.ServerScriptService.Modules.PetModule)
 local ItemModule = require(game.ServerScriptService.Modules.ItemModule)
 local XPModule = require(game.ServerScriptService.Modules.XPModule)
-local TrainerModule = require(game.ServerScriptService.Modules.TrainerModule)
+local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 local RebirthModule = require(game.ReplicatedStorage.Modules.RebirthModule)
 local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
@@ -537,6 +537,8 @@ local function connectRewardTouch(reward)
 		if raceTouch then
 			raceTouch.Value += 1
 		end
+		
+		TrainerModule.addEquippedTrainerProgress(player, "RaceTouch", 1)
 
 		local money = getMoney(player)
 		if money then
