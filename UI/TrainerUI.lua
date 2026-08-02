@@ -1,4 +1,4 @@
---// TrainerUI
+--// TrainerUI 1.2
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
+local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
@@ -74,7 +75,7 @@ local TRAINER_INFO = {
 		DisplayName = "Bella",
 		Specialty = "Money Trainer",
 		ModelName = "BellaTrainer",
-		PriceText = "1000 Money",
+		PriceText = "500 Money",
 		
 		InfoText = "Bella is a true master of money-making. With her charm and experience, she helps you earn much more money from races and rewards. Her beauty is only matched by her incredible talent for turning every run into profit.",
 		
@@ -91,13 +92,14 @@ local TRAINER_INFO = {
 		DisplayName = "Monika",
 		Specialty = "Luck Trainer",
 		ModelName = "MonikaTrainer",
-		PriceText = "COMING SOON",
+		PriceText = "50 PETS HATCHED",
 		
 		InfoText = "Monika’s middle name is Lady Luck. Wherever Monika appears, luck follows close behind. If you manage to win her heart, consider yourself lucky already — because with Monika by your side, fortune is always on your side.",
 		
 		SpecialIcon = ICONS.SpecialPetLuck,
 		LeaderIcon = ICONS.LeaderEgg,
 		LeaderValueType = "EggHatched",
+		RequiredPets = 50,
 		
 		PrimaryBoostName = "PetLuck",
 		SecondaryBoostName = "RACE XP",
@@ -116,7 +118,7 @@ local TRAINER_INFO = {
 		
 		SpecialIcon = ICONS.SpecialPower,
 		LeaderIcon = ICONS.LeaderRebirth,
-		LeaderValueType = "Rebirth",
+		LeaderValueType = "RaceTouch",
 		
 		PrimaryBoostName = "Power",
 		SecondaryBoostName = "Acceleration",
@@ -126,38 +128,13 @@ local TRAINER_INFO = {
 	},
 }
 
---// ранги
-local STAGE_NAMES = {
-	[1] = "Rookie",
-	[2] = "Athlete",
-	[3] = "Champion",
-	[4] = "Titan",
-	[5] = "Mythic",
-}
-
-local STAGE_MAX_LEVELS = {
-	[1] = 5,
-	[2] = 10,
-	[3] = 15,
-	[4] = 20,
-	[5] = 25,
-}
-
-local STAGE_MULTIPLIERS = {
-	[1] = 1.0,
-	[2] = 1.1,
-	[3] = 1.2,
-	[4] = 1.3,
-	[5] = 1.4,
-}
-
 --// требования
 local STAGE_REQUIREMENTS = {
 	LedyTrainer = {
 		[1] = {
 			{Type = "Level", Need = 5},
 			{Type = "Energy", Need = 1000},
-			{Type = "TrainerTreadmillTime", Need = 60},
+			{Type = "TrainerTreadmillTime", Need = 300},
 		},
 
 		[2] = { 
@@ -208,26 +185,42 @@ local STAGE_REQUIREMENTS = {
 	MonikaTrainer = {
 		[1] = {
 			{Type = "Level", Need = 5},
-			{Type = "EggHatched", Need = 0},
-			{Type = "PetRarity", Need = 5},
+			{Type = "EggHatched", Need = 20},
+			{
+				Type = "PetRarity",
+				Rarity = "Rare",
+				Need = 10,
+			}
 		},
 		
 		[2] = {
 			{Type = "Level", Need = 10},
-			{Type = "EggHatched", Need = 0},
-			{Type = "PetRarity", Need = 5},
+			{Type = "EggHatched", Need = 50},
+			{
+				Type = "PetRarity",
+				Rarity = "Epic",
+				Need = 10,
+			},
 		},
 		
 		[3] = {
 			{Type = "Level", Need = 15},
-			{Type = "EggHatched", Need = 0},
-			{Type = "PetRarity", Need = 15},
+			{Type = "EggHatched", Need = 75},
+			{
+				Type = "PetRarity",
+				Rarity = "Epic",
+				Need = 15,
+			}
 		},
 		
 		[4] = {
 			{Type = "Level", Need = 20},
-			{Type = "EggHatched", Need = 0},
-			{Type = "PetRarity", Need = 10},
+			{Type = "EggHatched", Need = 100},
+			{
+				Type = "PetRarity",
+				Rarity = "Legendary",
+				Need = 10,
+			},
 		},
 	},
 	
@@ -235,25 +228,25 @@ local STAGE_REQUIREMENTS = {
 		[1] = {
 			{Type = "Level", Need = 5},
 			{Type = "Rebirth", Need = 100},
-			{Type = "RaceRewards", Need = 50},
+			{Type = "RaceTouch", Need = 10},
 		},
 		
 		[2] = {
 			{Type = "Level", Need = 10},
 			{Type = "Rebirth", Need = 500},
-			{Type = "RaceRewards", Need = 100},
+			{Type = "RaceTouch", Need = 25},
 		},
 		
 		[3] = {
 			{Type = "Level", Need = 15},
 			{Type = "Rebirth", Need = 1000},
-			{Type = "RaceRewards", Need = 150},
+			{Type = "RaceTouch", Need = 50},
 		},
 		
 		[4] = {
 			{Type = "Level", Need = 20},
 			{Type = "Rebirth", Need = 2500},
-			{Type = "RaceRewards", Need = 200},
+			{Type = "RaceTouch", Need = 100},
 		},
 	},
 }
@@ -271,6 +264,7 @@ local trainerStageUpEvent = trainerEventFolder:WaitForChild("TrainerStageUpEvent
 local trainerStageResultEvent = trainerEventFolder:WaitForChild("TrainerStageResultEvent")
 local closeTrainerMenuEvent = trainerEventFolder:WaitForChild("CloseTrainerMenuEvent")
 local trainerEquipResultEvent = trainerEventFolder:WaitForChild("TrainerEquipResultEvent")
+local trainerLevelResultEvent = trainerEventFolder:WaitForChild("TrainerLevelResultEvent")
 
 local trainerFolderUI = guiFolder:WaitForChild("TrainerFolder")
 local trainerHost = trainerFolderUI:WaitForChild("TrainerHost")
@@ -311,6 +305,7 @@ local trainerValue = findUI(trainerMenu, "TrainerValue")
 local trainerInfoLabel = findUI(trainerMenu, "TrainerInfoLabel")
 local trainerXpLabel = findUI(trainerMenu, "TrainerXpLabel")
 local trainerXpBar = findUI(trainerMenu, "TrainerXpBar")
+local trainerLvlPrice = findUI(trainerMenu, "TrainerLvlPrice")
 local trainerPreviewViewport = findUI(trainerMenu, "TrainerPreviewViewport", false)
 local levelUpButton = findUI(trainerMenu, "LevelUpButton")
 local stageOpenButton = findUI(trainerMenu, "StageOpen")
@@ -374,6 +369,8 @@ local money = ClientDataModule.GetMoney(player)
 local rebirth = ClientDataModule.GetRebirth(player)
 local srRobux = ClientDataModule.GetSrRobux(player)
 local xp = ClientDataModule.GetXP(player)
+local raceTouch = ClientDataModule.GetRaceTouch(player)
+local eggHatched = ClientDataModule.GetEggHatched(player)
 
 --// положение карт
 local folderCards = {
@@ -510,10 +507,6 @@ local function getProgressValue(trainerName, requirementType)
 	return value and value.Value or 0
 end
 
-local function getXPRequired(level)
-	return 100 + (level * 50)
-end
-
 local function isTrainerOwned(trainerName)
 	return getTrainerValue(trainerName, "Owned", false) == true
 end
@@ -531,7 +524,7 @@ local function getRequirementName(requirementType)
 		EggHatched = "EGGS HATCHED",
 		PetRarity = "RARITY PETS",
 		Rebirth = "REBIRTH",
-		RaceRewards = "RACE REWARDS",
+		RaceTouch = "RACE TOUCH",
 	}
 	
 	return names[requirementType] or string.upper(requirementType)
@@ -546,7 +539,7 @@ local function getRequirementIcon(requirementType)
 		EggHatched = ICONS.RequirementEgg,
 		PetRarity = ICONS.RequirementPet,
 		Rebirth = ICONS.RequirementRebirth,
-		RaceRewards = ICONS.RequirementRace,
+		RaceTouch = ICONS.RequirementRace,
 	}
 	
 	return icons[requirementType] or ""
@@ -780,7 +773,7 @@ local function getTrainerBoosts(trainerName, stage, level)
 		return 0, 0
 	end
 	
-	local stageMultiplier = STAGE_MULTIPLIERS[stage] or 1
+	local stageMultiplier = TrainerModule.getStageMultiplier(stage)
 	
 	local levelMultiplier = 1 + math.max(0, level - 1) * 0.02
 	
@@ -879,16 +872,6 @@ local function updateBoostSection(trainerName, stage, level)
 end
 
 --// LeaderstatsUI
-local function getEggHatchedProgress()
-	local folder = getTrainerFolder("MonikaTrainer")
-	
-	local progressFolder = folder and folder:FindFirstChild("RequirementProgress")
-	
-	local value = progressFolder and progressFolder:FindFirstChild("EggHatched")
-	
-	return value and value.Value or 0
-end
-
 local function updateLeaderstats()
 	if srRobuxLabel then 
 		srRobuxLabel.Text = formatNumber(srRobux and srRobux.Value or 0)
@@ -917,7 +900,9 @@ local function updateLeaderstats()
 	elseif info.LeaderValueType == "Rebirth" then
 		leaderValue = rebirth and rebirth.Value or 0
 	elseif info.LeaderValueType == "EggHatched" then 
-		leaderValue = getEggHatchedProgress()
+		leaderValue = eggHatched and eggHatched.Value or 0
+	elseif info.LeaderValueType == "RaceTouch" then
+		leaderValue = raceTouch and raceTouch.Value or 0
 	end
 	
 	if trainerLeaderLabel then 
@@ -967,11 +952,14 @@ local function updateMainTrainerUI()
 	local level = getTrainerValue(trainerName, "Level", 1)
 	local stage = getTrainerValue(trainerName, "Stage", 1)
 	
-	local maxStageLevel = STAGE_MAX_LEVELS[stage] or 25
-	local stageName = STAGE_NAMES[stage] or "Rookie"
+	local maxStageLevel = TrainerModule.getStageMaxLevel(stage)
+	local stageName = TrainerModule.getStageName(stage)
 	
 	local currentXP = xp and xp.Value or 0
-	local requiredXP = getXPRequired(level)
+	local levelCost = TrainerModule.getLevelCost(level)
+	
+	local requiredXP = levelCost and levelCost.XP or 0
+	local requiredMoney = levelCost and levelCost.Money or 0
 	
 	trainerNameLabel.Text = info.DisplayName
 	trainerSpecialistLabel.Text = info.Specialty
@@ -984,11 +972,26 @@ local function updateMainTrainerUI()
 	
 	trainerStageInfoLabel.Text = "RANK: " .. stageName
 	trainerValue.Text = tostring(level) .. " / " .. tostring(maxStageLevel)
-	trainerXpLabel.Text = formatNumber(currentXP) .. " / " .. formatNumber(requiredXP)
 	
-	local xpProgress = math.clamp(currentXP / math.max(1, requiredXP), 0, 1)
-	
-	trainerXpBar.Size = UDim2.new(0.19 * xpProgress, 0, 0.032, 0)
+	if level >= maxStageLevel then
+		trainerXpLabel.Text = "MAX"
+		
+		trainerXpBar.Size = UDim2.new(0.19, 0, 0.032, 0)
+		
+		if trainerLvlPrice then
+			trainerLvlPrice.Text = "MAX"
+		end
+	else
+		trainerXpLabel.Text = formatNumber(currentXP) .. " / " .. formatNumber(requiredXP)
+		
+		local xpProgress = math.clamp(currentXP / math.max(1, requiredXP), 0, 1)
+		
+		trainerXpBar.Size = UDim2.new(0.19 * xpProgress, 0, 0.032, 0)
+		
+		if trainerLvlPrice then
+			trainerLvlPrice.Text = formatNumber(requiredMoney)
+		end
+	end
 	
 	updateStars(menuStageIcons, stage)
 	updateBoostSection(trainerName, stage, level)
@@ -999,12 +1002,7 @@ end
 
 --// ребования ранкап
 local function getCurrentRequirements(trainerName, stage)
-	local trainerRequirements = STAGE_REQUIREMENTS[trainerName]
-	
-	if not trainerRequirements then
-		return {}
-	end
-	return trainerRequirements[stage] or {}
+	return TrainerModule.getStageRequirements(trainerName, stage)
 end
 
 local function updateRequirementBar(index, requirement)
@@ -1022,7 +1020,11 @@ local function updateRequirementBar(index, requirement)
 	setImageIfValid(icon, getRequirementIcon(requirementType))
 	
 	if valueLabel then 
-		valueLabel.Text = getRequirementName(requirementType)
+		if requirementType == "PetRarity" then
+			valueLabel.Text = getRequirementName(requirementType) .. ": " .. tostring(requirement.Rarity or "")
+		else
+			valueLabel.Text = getRequirementName(requirementType)
+		end
 	end
 	
 	if bar then 
@@ -1083,7 +1085,7 @@ local function updateStageFrame()
 	end
 	
 	local stage = getTrainerValue(trainerName, "Stage", 1)
-	local stageName = STAGE_NAMES[stage] or "Rookie"
+	local stageName = TrainerModule.Stage[stage]
 	
 	stageNameTrainer.Text = info.DisplayName .. " _ " .. stageName
 	trainerStageSpecialtyLabel.Text = info.Specialty
@@ -1186,6 +1188,8 @@ local function connectTrainerData()
 	connectValue(rebirth)
 	connectValue(srRobux)
 	connectValue(xp)
+	connectValue(raceTouch)
+	connectValue(eggHatched)
 end
 
 --// кнопки карт
@@ -1240,8 +1244,11 @@ trainerEquipResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 	
 	if resultType == "NotEnoughCurrency" then
 		showWarning("NOT ENOUGH CURRENCY!", 3)
-	elseif resultType == "ComingSoon" then
-		showWarning("MONIKA COMING SOON!", 3)
+	elseif resultType == "NotEnoughEggHatched" then
+		local requiredPets = TRAINER_INFO.MonikaTrainer.RequiredPets or 0
+		local currentPets = eggHatched and eggHatched.Value or 0
+		local missingEggs = math.max(0, requiredPets - currentPets)
+		showWarning("NEED " .. formatNumber(missingEggs) .. " MORE EGG HATCHED!", 4)
 	elseif resultType == "CurrencyMissing" then
 		showWarning("CURRENCY NOT FOUND!", 3)
 	else
@@ -1262,22 +1269,51 @@ levelUpButton.MouseButton1Click:Connect(function()
 	
 	local level = getTrainerValue(selectedTrainerName, "Level", 1)
 	local stage = getTrainerValue(selectedTrainerName, "Stage", 1)
-	local maxLevel = STAGE_MAX_LEVELS[stage] or 25
+	local maxLevel = TrainerModule.Stage[stage]
 	
 	if level >= maxLevel then 
 		showWarning("MAX LEVEL FOR THIS RANK!", 3)
 		return
 	end
 	
-	local requiredXP = getXPRequired(level)
-	local currentXP = xp and xp.Value or 0
-	
-	if currentXP < requiredXP then
-		showWarning("NOT ENOUGH XP! " .. formatNumber(currentXP) .. " / " .. formatNumber(requiredXP), 3)
+	trainerLevelUpEvent:FireServer(selectedTrainerName)
+end)
+
+trainerLevelResultEvent.OnClientEvent:Connect(function(success, trainerName, resultType, data)
+	if trainerName ~= selectedTrainerName then
 		return
 	end
 	
-	trainerLevelUpEvent:FireServer(selectedTrainerName)
+	if success then
+		showWarning("LEVEL UP COMPLETE!", 3)
+		updateMainTrainerUI()
+		return
+	end
+	
+	if resultType == "NotOwned" then
+		showWarning("TRAINER IS NOT OWNED!", 3)
+	elseif resultType == "MaxLevel" then
+		showWarning("MAX LEVEL FOR THIS RANK!", 3)
+	elseif resultType == "NotEnoughResources" then
+		local missingMoney = data and data.MissingMoney or 0
+		local missingXP = data and data.MissingXP or 0
+		local missingParts = {}
+		
+		if missingMoney > 0 then
+			table.insert(missingParts, formatNumber(missingMoney) .. " MONEY")
+		end
+		
+		if missingXP > 0 then
+			table.insert(missingParts, formatNumber(missingXP) .. " XP")
+		end
+		showWarning("NEED " .. table.concat(missingParts, " AND "), 4)
+	elseif resultType == "ResourceMissing" then
+		showWarning("PLAYER RESOURCE NOT FOUND!", 3)
+	elseif resultType == "CostMissing" then
+		showWarning("LEVEL PRICE NOT FOUND!", 3)
+	else 
+		showWarning("LEVEL UP FAILED!", 3)
+	end
 end)
 
 --// открытие ранг фрейм
