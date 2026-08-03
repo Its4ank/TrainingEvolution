@@ -1,4 +1,4 @@
---EggServer 1.2v
+--EggServer
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -67,7 +67,57 @@ local eggData = {
 	},
 }
 
+local MAX_EGG_DISTANCE = 15
+local EGG_REQUEST_COOLDOWN = 0.15
 
+local lastEggRequest = {}
+
+local function canProcessEggRequest(player)
+	local now = os.clock()
+	local lastRequest = lastEggRequest[player] or 0
+
+	if now - lastRequest < EGG_REQUEST_COOLDOWN then
+		return false
+	end
+	lastEggRequest[player] = now
+	return true
+end
+
+local function getEggPosition(eggName)
+	local eggObject = workspace:FindFirstChild(eggName)
+	
+	if not eggObject then
+		return nil
+	end
+	
+	if eggObject:IsA("BasePart") then
+		return eggObject.Position
+	end
+	
+	if eggObject:IsA("Model") then
+		return eggObject:GetPivot().Position
+	end
+	
+	local part = eggObject:FindFirstChildWhichIsA("BasePart", true)
+	return part and part.Position or nil
+end
+
+local function isPlayerNearEgg(player, eggName)
+	local character = player.Character
+	
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then
+		return false
+	end
+	
+	local eggPosition = getEggPosition(eggName)
+	if not eggPosition then
+		return false
+	end
+	
+	local distance = (hrp.Position - eggPosition).Magnitude
+	return distance <= MAX_EGG_DISTANCE
+end
 
 --Roll logic
 local function rollPetFromEgg(player, eggName)
@@ -75,8 +125,8 @@ local function rollPetFromEgg(player, eggName)
 	if not eggInfo then return nil, nil end
 	
 	local petLuckBonus = UpgradeModule.GetPetLuckBonus(player)
-	
 	local boostLuckMultiplier = BoostModule.GetLuckMultiplier(player)
+	local trainerLuckMultiplier = TrainerModule.getPetLuckMultiplier(player)
 	
 	local weightedPets = {}
 	local totalWeight = 0
@@ -89,6 +139,7 @@ local function rollPetFromEgg(player, eggName)
 		if rarityPower > 0 then
 			finalChance *= 1 + (petLuckBonus * rarityPower)
 			finalChance *= boostLuckMultiplier
+			finalChance += trainerLuckMultiplier
 		end
 		
 		table.insert(weightedPets, {
@@ -118,11 +169,23 @@ end
 
 -- Main egg actions
 local function openEgg(player, eggName)
+	if typeof(eggName) ~= "string" then
+		return false
+	end
+	
 	local eggInfo = eggData[eggName]
-	if not eggInfo then return end 
+	if not eggInfo then
+		warn("[EggServer] Invalid egg:", player.Name, eggName)
+		return false
+	end
+	
+	if not isPlayerNearEgg(player, eggName) then
+		warn("[EggSevrer] Player too far:", player.Name, eggName)
+		return false
+	end
 
 	local money = getMoney(player)
-	if not money then return end 
+	if not money then return end
 
 	if money.Value < eggInfo.price then
 		warn(player.Name .. " not enough money for " .. eggName)
@@ -133,8 +196,14 @@ local function openEgg(player, eggName)
 
 	local wonPet, rarity = rollPetFromEgg(player, eggName)
 	if not wonPet then
-		warn("Failed to roll pet from " .. eggName)
-		return
+		money.Value += eggInfo.price
+		
+		warn("[EggServer] Failed to roll pet:", player.Name, eggName)
+		return false
+	end
+	
+	if not rarity then
+		warn("[EggServer] Pet rarity missing:", eggName, wonPet)
 	end
 	
 
@@ -154,8 +223,13 @@ local function openEgg(player, eggName)
 	TrainerModule.addEquippedTrainerProgress(player, "EggHatched", 1)
 	
 	local rarityRequirement = TrainerModule.getCurrentRequirement(player, "MonikaTrainer", "PetRarity")
-	if rarityRequirement and rarityRequirement.Rarity == rarity then
-		TrainerModule.addEquippedTrainerProgress(player, "PetRarity", 1)
+	if rarityRequirement then
+		local requiredRarity = tostring(rarityRequirement.Rarity or "")
+		local receivedRarity = tostring(rarity or "")
+		
+		if requiredRarity ~= "" and receivedRarity ~= "" and requiredRarity == receivedRarity then
+			TrainerModule.addEquippedTrainerProgress(player, "PetRarity", 1)
+		end
 	end
 
 	print(player.Name, "opened", eggName, "and got", wonPet, "(" .. tostring(rarity) .. ")")
@@ -163,11 +237,16 @@ local function openEgg(player, eggName)
 end
 
 local function openEggMultiple(player, eggName, amount)
+	if typeof(eggName) ~= "string" then
+		return
+	end
+	
 	amount = math.floor(tonumber(amount) or 1)
 	amount = math.clamp(amount, 1, 3)
 	
 	for i = 1, amount do
-		openEgg(player, eggName)
+		local success = openEgg(player, eggName)
+		if not success then break end
 	end
 end
 
@@ -175,6 +254,8 @@ end
 
 --// Event Connections
 openEggEvent.OnServerEvent:Connect(function(player, eggName, amount)
+	if not canProcessEggRequest(player) then return end
+	
 	openEggMultiple(player, eggName, amount)
 end)
 
@@ -208,7 +289,7 @@ end
 for eggName, _ in pairs(eggData) do
 	local egg = workspace:FindFirstChild(eggName)
 	if egg then
-		local prompt = egg:FindFirstChild("PriximityPrompt")
+		local prompt = egg:FindFirstChildWhichIsA("ProximityPrompt", true)
 		if prompt then
 
 			prompt.Triggered:Connect(function(player)
@@ -217,5 +298,9 @@ for eggName, _ in pairs(eggData) do
 		end
 	end
 end
+
+Players.PlayerRemoving:Connect(function(player)
+	lastEggRequest[player] = nil
+end)
 
 print("EggServer loaded")
