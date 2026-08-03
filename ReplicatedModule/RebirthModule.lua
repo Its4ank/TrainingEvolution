@@ -10,8 +10,10 @@ RebirthModule.CostPerRebirth = 10
 RebirthModule.EnergyFlatBonusPerRebirth = 1
 
 RebirthModule.EnergyBonusPerRebirth = 0.10
-RebirthModule.XpBonusPerRebirth = 0.05
+RebirthModule.XpBonusPerRebirth = 0.03
 RebirthModule.MoneyBonusPerRebirth = 0.01
+
+--RebirthModule.MaxRebirthPerOperation = 1_000_000 -- в будущем
 
 RebirthModule.Buttons = {
 	RebirthButton1 = 1,
@@ -43,10 +45,14 @@ function RebirthModule.GetXpMultiplier(player)
 end
 
 function RebirthModule.GetOneRebirthCost(currentRebirths)
+	currentRebirths = math.max(0, math.floor(tonumber(currentRebirths) or 0))
+		
 	return RebirthModule.BaseCost + (currentRebirths * RebirthModule.CostPerRebirth)
 end
 
 function RebirthModule.GetRebirthCost(currentRebirths, rebirthAmount)
+	rebirthAmount = math.max(0, math.floor(tonumber(rebirthAmount) or 0))
+	
 	local oneCost = RebirthModule.GetOneRebirthCost(currentRebirths)
 	return oneCost * rebirthAmount
 end
