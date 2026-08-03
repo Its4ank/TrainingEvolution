@@ -14,6 +14,8 @@ local performRebirthEvent = rebirthEvent:WaitForChild("PerformRebirthEvent")
 local autoRebirthEvent = rebirthEvent:WaitForChild("AutoRebirthEvent")
 
 local autoRebirthPlayers = {}
+local lastRebirthRequest = {}
+local REBIRTH_REQUEST_COOLDOWN = 0.1
 
 local function getEnergy(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -56,18 +58,46 @@ local function isRebirthAmountUnlocked(player, amount)
 	return UpgradeModule.IsRebirthButtonUnlocked(player, buttonName)
 end
 
+local function canProcessRebirthRequest(player)
+	local now = os.clock()
+	
+	local lastRequest = lastRebirthRequest[player] or 0
+	
+	if now - lastRequest < REBIRTH_REQUEST_COOLDOWN then
+		return false
+	end
+	
+	lastRebirthRequest[player] = now
+	return true
+end
+
 local function doRebirth(player, amount)
-	if typeof(amount) ~= "number" then return false end 
+	if typeof(amount) ~= "number" then
+		return false
+	end 
+	
 	amount = math.floor(amount)
 	
 	if amount <= 0 then return false end 
+	
+	if amount > RebirthModule.MaxRebirthPerOperation then
+		return false
+	end
 	
 	local energy = getEnergy(player)
 	local rebirth = getRebirth(player)
 	
 	if not energy or not rebirth then return false end 
 	
+	if energy.Value < 0 or rebirth.Value < 0 then
+		return false
+	end
+	
 	local cost = RebirthModule.GetRebirthCost(rebirth.Value, amount)
+	
+	if cost <= 0 then
+		return false
+	end
 	
 	if energy.Value < cost then 
 		return false
@@ -76,13 +106,14 @@ local function doRebirth(player, amount)
 	energy.Value = 0
 	rebirth.Value += amount
 	
-	print(player.Name .. " rebirth +" .. amount)
-	print("Total Rebirth:", rebirth.Value)
-	
 	return true
 end
 
 performRebirthEvent.OnServerEvent:Connect(function(player, amount)
+	if not canProcessRebirthRequest(player) then
+		return
+	end
+	
 	if amount == "Max" then 
 		if not ShopModule.HasMaxRebirth(player) then
 			return
@@ -179,6 +210,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	autoRebirthPlayers[player] = nil
+	lastRebirthRequest[player] = nil
 end)
 
 print("RebirthServer loaded")
