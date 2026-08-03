@@ -688,8 +688,7 @@ local function equipTrainer(
 					"HumanoidRootPart"
 				)
 
-				if not currentPlayerHrp
-					or not trainerModel.Parent then
+				if not currentPlayerHrp	or not trainerModel.Parent or not trainerHrp.Parent then
 
 					removeTrainer(player)
 					return
@@ -709,12 +708,31 @@ local function equipTrainer(
 					- targetPosition
 				).Magnitude
 
-				if distance >
-					TELEPORT_DISTANCE then
+				local lookAt = Vector3.new(
+					currentPlayerHrp.Position.X,
+					targetPosition.Y,
+					currentPlayerHrp.Position.Z
+				)
 
-					trainerHrp.CFrame = CFrame.new(
-						targetPosition
-					)
+				local desiredCFrame = CFrame.new(
+					targetPosition,
+					lookAt
+				)
+
+				-- Если тренер слишком далеко,
+				-- сразу переносим его и завершаем этот кадр.
+				if distance > TELEPORT_DISTANCE then
+					trainerHrp.CFrame = desiredCFrame
+
+					if runTrack.IsPlaying then
+						runTrack:Stop()
+					end
+
+					if not idleTrack.IsPlaying then
+						idleTrack:Play()
+					end
+
+					return
 				end
 
 				if distance > 3 then
@@ -724,21 +742,9 @@ local function equipTrainer(
 					end
 
 					local alpha = math.clamp(
-						deltaTime
-						* FOLLOW_SPEED,
+						deltaTime * FOLLOW_SPEED,
 						0,
 						1
-					)
-
-					local lookAt = Vector3.new(
-						currentPlayerHrp.Position.X,
-						trainerHrp.Position.Y,
-						currentPlayerHrp.Position.Z
-					)
-
-					local desiredCFrame = CFrame.new(
-						targetPosition,
-						lookAt
 					)
 
 					trainerHrp.CFrame = trainerHrp.CFrame:Lerp(
@@ -746,8 +752,11 @@ local function equipTrainer(
 						alpha
 					)
 				else
-					if not idleTrack.IsPlaying then
+					if runTrack.IsPlaying then
 						runTrack:Stop()
+					end
+
+					if not idleTrack.IsPlaying then
 						idleTrack:Play()
 					end
 				end
@@ -1801,13 +1810,25 @@ closeTrainerMenuEvent.OnServerEvent:Connect(
 --==================================================
 
 local function connectCharacter(player)
-	player.CharacterAdded:Connect(
-		function()
-			task.wait(1)
-
-			equipSavedTrainer(player)
+	player.CharacterAdded:Connect(function(character)
+		local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
+		
+		if not humanoidRootPart then
+			warn("[TrainerServer] HumanoidRootPart timeout:", player.Data)
+			return
 		end
-	)
+		
+		if player:GetAttribute("DataReady") ~= true then
+			return
+		end
+		
+		task.wait(0.25)
+		
+		if player.Character ~= character then
+			return
+		end
+		equipSavedTrainer(player)
+	end)
 end
 
 Players.PlayerAdded:Connect(
@@ -1817,17 +1838,32 @@ Players.PlayerAdded:Connect(
 	end
 )
 
-playerDataLoadedEvent.Event:Connect(
-	function(player)
-		task.wait(0.5)
-
-		setupAllTrainers(player)
-
-		if player.Character then
-			equipSavedTrainer(player)
-		end
+playerDataLoadedEvent.Event:Connect(function(player)
+	if not player or not player.Parent then
+		return
 	end
-)
+	
+	setupAllTrainers(player)
+	
+	local character = player.Character
+	if not character then return end
+	
+	local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
+	
+	if not humanoidRootPart then
+		warn("[TrainerServer] HumanoidRootPart missing after data load:", player.Name)
+		return
+	end
+	
+	task.wait(0.25)
+	
+	if player.Character ~= character then
+		return
+	end
+	
+	equipSavedTrainer(player)
+end)
+	
 
 Players.PlayerRemoving:Connect(
 	function(player)
@@ -1839,19 +1875,16 @@ Players.PlayerRemoving:Connect(
 	end
 )
 
-for _, player
-	in ipairs(Players:GetPlayers()) do
-
+for _, player in ipairs(Players:GetPlayers()) do
 	setupAllTrainers(player)
 	connectCharacter(player)
 
-	if player.Character then
-		task.delay(
-			1,
-			function()
+	if player:GetAttribute("DataReady") == true and player.Character then
+		task.defer(function()
+			if player.Parent and player.Character then
 				equipSavedTrainer(player)
 			end
-		)
+		end)
 	end
 end
 
