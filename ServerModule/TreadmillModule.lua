@@ -15,8 +15,6 @@ TreadmillModule.MAX_TREADMILLS = 3
 TreadmillModule.MAX_STAGE = 5
 TreadmillModule.MAX_LEVEL = 25
 
-TreadmillModule.REBIRTH_ENERGY_BONUS = 1
-
 TreadmillModule.Treadmills = { 
 	[1] = {
 		Name = "Treadmill 1",
@@ -351,7 +349,7 @@ function TreadmillModule.GetBaseEnergyPerSecond(player, treadmillId, levelOverri
 	local flatEnergy = 
 		treadmillConfig.BaseEnergy 
 		+ (level * treadmillConfig.EnergyPerLevel)
-		+ (rebirthValue * TreadmillModule.REBIRTH_ENERGY_BONUS)
+		+ (rebirthValue * RebirthModule.EnergyFlatBonusPerRebirth)
 	
 	return flatEnergy * stageData.Multiplier
 end
