@@ -79,7 +79,7 @@ end
 
 
 --Constants
-local WAIT_TIME = 0
+local WAIT_TIME = 30
 local RACE_TIME = 150
 
 local raceOpen = false
@@ -578,7 +578,14 @@ local function connectRewardTouch(reward)
 		end
 
 		PetModule.givePetXP(player, 1)
-		XPModule.addXP(player, 1)
+		
+		local baseRaceXp = 1
+		local rebirthXpMultiplier = RebirthModule.GetXpMultiplier(player)
+		
+		local finalRaceXp = baseRaceXp * rebirthXpMultiplier
+		
+		XPModule.addXP(player, finalRaceXp)
+		
 		local pet = PetModule.getEquippedPet(player)
 		if pet then
 			local xp = pet:FindFirstChild("XP")
