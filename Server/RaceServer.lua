@@ -575,14 +575,17 @@ local function connectRewardTouch(reward)
 			
 			local finalReward = math.floor(rewardAmount * finalMultiplier)
 			money.Value += finalReward
+			
+			TrainerModule.addEquippedTrainerProgress(player, "Money", finalReward)
 		end
 
 		PetModule.givePetXP(player, 1)
 		
 		local baseRaceXp = 1
 		local rebirthXpMultiplier = RebirthModule.GetXpMultiplier(player)
+		local trainerRaceXpMultiplier = TrainerModule.getRaceXPMultiplier(player)
 		
-		local finalRaceXp = baseRaceXp * rebirthXpMultiplier
+		local finalRaceXp = baseRaceXp * rebirthXpMultiplier * trainerRaceXpMultiplier
 		
 		XPModule.addXP(player, finalRaceXp)
 		
