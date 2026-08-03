@@ -244,7 +244,7 @@ local function getMoneyMultiplier(rebirths)
 end
 
 local function getXpMultiplier(rebirths)
-	return RebirthModule.GetXpMultiplierFromRebirths(rebirthValue.Value)
+	return RebirthModule.GetXpMultiplierFromRebirths(rebirths)
 end
 
 local function setEnergyText(label, price)
@@ -341,15 +341,13 @@ local function updateInfoFrame()
 	
 	if isMaxSelected then 
 		local maxAmount = getMaxRebirthAmount(currentRebirths, currentEnergy)
+		local nextMaxThreshold = getMaxRebirthAmount(currentRebirths, currentEnergy)
 		
-		if maxAmount <= 0 then 
-			requirEnergyLabel.Text = formatNumber(currentEnergy) .. "/" .. formatNumber(nextOneCost)
+		requirEnergyLabel.Text = formatNumber(currentEnergy) .. "/" .. formatNumber(nextMaxThreshold)
+		
+		if maxAmount > 0 then 
 			infoTotalRebirthImage.Image = INFO_NOT_ENOUGH_IMAGE
-		else 
-			local costForMax = getRebirthCost(currentRebirths, maxAmount)
-			local nextAfterMaxCost = getOneRebirthCost(currentRebirths + maxAmount)
-			
-			requirEnergyLabel.Text = formatNumber(currentEnergy) .. "/" .. formatNumber(costForMax + nextAfterMaxCost)
+		else
 			infoTotalRebirthImage.Image = INFO_ENOUGH_IMAGE
 		end
 	else 
