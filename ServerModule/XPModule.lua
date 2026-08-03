@@ -1,62 +1,73 @@
 local XPModule = {}
 
-local function getOrCreateResourse(player)
+local function getOrCreateResources(player)
 	local resources = player:FindFirstChild("Resources")
+
 	if not resources then
 		resources = Instance.new("Folder")
 		resources.Name = "Resources"
 		resources.Parent = player
 	end
+
 	return resources
 end
 
-local function getOrCreateXPModule(player)
-	local resources = getOrCreateResourse(player)
-	
-	local xpModule = resources:FindFirstChild("XPModule")
-	if not xpModule then
-		xpModule = Instance.new("IntValue")
-		xpModule.Name = "XPModule"
-		xpModule.Value = 0
-		xpModule.Parent = resources
+local function getOrCreateXPValue(player)
+	local resources = getOrCreateResources(player)
+	local xpValue = resources:FindFirstChild("XPModule")
+
+	if not xpValue then
+		xpValue = Instance.new("NumberValue")
+		xpValue.Name = "XPModule"
+		xpValue.Value = 0
+		xpValue.Parent = resources
 	end
-	return xpModule
-end	
+
+	return xpValue
+end
 
 function XPModule.getXP(player)
-	return getOrCreateXPModule(player).Value
+	return getOrCreateXPValue(player).Value
 end
 
 function XPModule.addXP(player, amount)
-	amount = math.floor(tonumber(amount) or 0)
-	if amount <= 0 then return 0 end
-	
-	local xpModule = getOrCreateXPModule(player)
-	xpModule.Value += amount
-	
-	return xpModule.Value
+	amount = tonumber(amount) or 0
+
+	if amount <= 0 then
+		return getOrCreateXPValue(player).Value
+	end
+
+	local xpValue = getOrCreateXPValue(player)
+	xpValue.Value += amount
+
+	return xpValue.Value
 end
 
 function XPModule.removeXP(player, amount)
-	amount = math.floor(tonumber(amount) or 0)
-	if amount <= 0 then return false end
-	
-	local xpModule = getOrCreateXPModule(player)
-	if xpModule.Value < amount then
+	amount = tonumber(amount) or 0
+
+	if amount <= 0 then
 		return false
 	end
-	
-	xpModule.Value -= amount
+
+	local xpValue = getOrCreateXPValue(player)
+
+	if xpValue.Value < amount then
+		return false
+	end
+
+	xpValue.Value -= amount
 	return true
 end
 
 function XPModule.hasXP(player, amount)
-	amount = math.floor(tonumber(amount) or 0)
-	return getOrCreateXPModule(player).Value >= amount
+	amount = tonumber(amount) or 0
+
+	return getOrCreateXPValue(player).Value >= amount
 end
 
 function XPModule.setupPlayer(player)
-	getOrCreateXPModule(player)
+	getOrCreateXPValue(player)
 end
 
 return XPModule
