@@ -232,7 +232,7 @@ local function getSelectedAmount()
 end
 
 local function getEnergyMultiplier(rebirths)
-	return RebirthModule.GetEnergyMultiplierFromRebirths(rebirthValue.Value)
+	return RebirthModule.GetEnergyMultiplierFromRebirths(rebirths)
 end
 
 local function getMoneyMultiplier(rebirths)
@@ -521,5 +521,6 @@ task.spawn(function()
 end)
 
 updateRebirthUI()
+updateLeaderstatsUI()
 
 print("RebirthUI loaded")
