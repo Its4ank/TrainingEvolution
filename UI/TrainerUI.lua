@@ -343,6 +343,7 @@ local rankUpButton = findUI(trainerStageFrame, "RankUpButton")
 local stageNameTrainer = findUI(trainerStageFrame, "StageNameTrainer")
 local trainerStageSpecialtyLabel = findUI(trainerStageFrame, "TrainerStageSpecialtyLabel")
 local stageCurrentBoostIcon = findUI(trainerStageFrame, "StageCurrentBoostIcon")
+local stageNextBoostIcon = findUI(trainerStageFrame, "StageNextBoostIcon")
 local stageCurrentBoost = findUI(trainerStageFrame, "StageCurrentBoost")
 local stageNextBoost = findUI(trainerStageFrame, "StageNextBoost")
 
@@ -439,6 +440,8 @@ local cardsTweening = false
 
 local warningId = 0
 local connectedValues = {}
+local trainerStructureConnections = {}
+local connectedValueObjects = {}
 
 local function formatNumber(value)
 	value = tonumber(value) or 0
@@ -787,6 +790,27 @@ end
 
 
 --// бонусы
+local function getTrainerBaseBoosts(trainerName)
+	local trainerData = TrainerModule.getTrainerData(trainerName)
+	
+	if not trainerData then
+		return 0, 0
+	end
+	
+	if trainerName == "LedyTrainer" then
+		return TrainerModule.multiplierToPercent(trainerData.EnergyMultiplier), 0
+	elseif trainerName == "BellaTrainer" then
+		return TrainerModule.multiplierToPercent(trainerData.MoneyMultiplier), 0
+	elseif trainerName == "MonikaTrainer" then
+		return TrainerModule.multiplierToPercent(trainerData.PetLuckMultiplier),
+			TrainerModule.multiplierToPercent(trainerData.RaceXPMultiplier)
+	elseif trainerName == "JoeTrainer" then
+		return TrainerModule.multiplierToPercent(trainerData.RacePowerMultiplier),
+			TrainerModule.multiplierToPercent(trainerData.AccelerationMultiplier)
+	end
+	return 0, 0
+end
+
 local function getTrainerBoosts(trainerName, stage, level)
 	local info = TRAINER_INFO[trainerName]
 	
@@ -800,13 +824,9 @@ local function getTrainerBoosts(trainerName, stage, level)
 	
 	local totalMultiplier = stageMultiplier * levelMultiplier
 	
-	local boost1 = math.floor( 
-		(info.BaseBoost1 or 0) * totalMultiplier
-	)
-	
-	local boost2 = math.floor(
-		(info.BaseBoost2 or 0) * totalMultiplier
-	)
+	local baseBoost1, baseBoost2 = getTrainerBaseBoosts(trainerName)
+	local boost1 = math.floor(baseBoost1 * totalMultiplier)
+	local boost2 = math.floor(baseBoost2 * totalMultiplier)
 	
 	return boost1, boost2
 end
@@ -1023,7 +1043,13 @@ end
 
 --// ребования ранкап
 local function getCurrentRequirements(trainerName, stage)
-	return TrainerModule.getStageRequirements(trainerName, stage)
+	local requirements = TrainerModule.getStageRequirements(trainerName, stage)
+
+	if type(requirements) ~= "table" then
+		warn("[TrainerUI] Requirements missing:", trainerName, stage)
+		return {}
+	end
+	return requirements
 end
 
 local function updateRequirementBar(index, requirement)
@@ -1069,28 +1095,32 @@ local function updateStageBoost()
 	
 	local currentBoost1, currentBoost2 = getTrainerBoosts(selectedTrainerName, stage, level)
 	local nextStage = math.min(stage + 1, 5)
-	local nextBoost1, nextBoost2 = getTrainerBoosts(selectedTrainerName, nextStage, 1)
+	local nextBoost1, nextBoost2 = getTrainerBoosts(selectedTrainerName, nextStage, level)
 	
 	if selectedTrainerName == "LedyTrainer" then
 		setImageIfValid(stageCurrentBoostIcon, ICONS.BoostEnergy)
+		setImageIfValid(stageNextBoostIcon, ICONS.BoostEnergy)
 		
 		stageCurrentBoost.Text = "+" .. currentBoost1 .. "% ENERGY"
 		stageNextBoost.Text = "+" .. nextBoost1 .. "% ENERGY"
 		
 	elseif selectedTrainerName == "BellaTrainer" then
 		setImageIfValid(stageCurrentBoostIcon, ICONS.BoostMoney)
+		setImageIfValid(stageNextBoostIcon, ICONS.BoostMoney)
 		
 		stageCurrentBoost.Text = "+" .. currentBoost1 .. "% MONEY"
 		stageNextBoost.Text = "+" .. nextBoost1 .. "% MONEY"
 		
 	elseif selectedTrainerName == "MonikaTrainer" then
 		setImageIfValid(stageCurrentBoostIcon, ICONS.BoostPetLuck)
+		setImageIfValid(stageNextBoostIcon, ICONS.BoostPetLuck)
 		
 		stageCurrentBoost.Text = "+" .. currentBoost1 .. "% LUCK / +" .. currentBoost2 .. "% XP"
 		stageNextBoost.Text = "+" .. nextBoost1 .. "% LUCK / +" .. nextBoost2 .. "% XP"
 		
 	elseif selectedTrainerName == "JoeTrainer" then
 		setImageIfValid(stageCurrentBoostIcon, ICONS.BoostPower)
+		setImageIfValid(stageNextBoostIcon, ICONS.BoostPower)
 		
 		stageCurrentBoost.Text = "+" .. currentBoost1 .. "% POWER / +" .. currentBoost2 .. "% ACC"
 		stageNextBoost.Text = "+" .. nextBoost1 .. "% POWER / +" .. nextBoost2 .. "% ACC"
@@ -1106,7 +1136,7 @@ local function updateStageFrame()
 	end
 	
 	local stage = getTrainerValue(trainerName, "Stage", 1)
-	local stageName = TrainerModule.Stage[stage]
+	local stageName = TrainerModule.getStageName[stage]
 	
 	stageNameTrainer.Text = info.DisplayName .. " _ " .. stageName
 	trainerStageSpecialtyLabel.Text = info.Specialty
@@ -1173,12 +1203,26 @@ local function disconnectDataConnections()
 		connection:Disconnect()
 	end
 	table.clear(connectedValues)
+	table.clear(connectedValueObjects)
+end
+
+local function disconnectStructureConnections()
+	for _, connection in ipairs(trainerStructureConnections) do
+		connection:Disconnect()
+	end
+	table.clear(trainerStructureConnections)
 end
 
 local function connectValue(valueObject)
 	if not valueObject or not valueObject:IsA("ValueBase") then
 		return
 	end
+	
+	if connectedValueObjects[valueObject] then
+		return
+	end
+	
+	connectedValueObjects[valueObject] = true
 	
 	local connection = valueObject.Changed:Connect(function()
 		updateMainTrainerUI()
@@ -1193,17 +1237,69 @@ end
 
 local function connectTrainerData()
 	disconnectDataConnections()
-	
-	local trainerRoot = player:FindFirstChild("Trainer")
-	
-	if trainerRoot then
-		for _, trainerFolder in ipairs(trainerRoot:GetChildren()) do
-			for _, object in ipairs(trainerFolder:GetDescendants()) do
-				connectValue(object)
-			end
-		end
+	disconnectStructureConnections()
+
+	local trainerRoot =
+		player:FindFirstChild("Trainer")
+
+	if not trainerRoot then
+		warn(
+			"[TrainerUI] Trainer folder not found"
+		)
+
+		return
 	end
-	
+
+	-- Подключаем все уже существующие значения.
+	for _, object in ipairs(
+		trainerRoot:GetDescendants()
+		) do
+		connectValue(object)
+	end
+
+	-- Подключаем значения, которые будут
+	-- добавлены после загрузки DataStore.
+	local descendantAddedConnection =
+		trainerRoot.DescendantAdded:Connect(
+			function(object)
+				connectValue(object)
+
+				task.defer(function()
+					updateMainTrainerUI()
+
+					if trainerStageFrame.Visible then
+						updateStageFrame()
+					end
+				end)
+			end
+		)
+
+	table.insert(
+		trainerStructureConnections,
+		descendantAddedConnection
+	)
+
+	local descendantRemovingConnection =
+		trainerRoot.DescendantRemoving:Connect(
+			function(object)
+				connectedValueObjects[object] = nil
+
+				task.defer(function()
+					updateMainTrainerUI()
+
+					if trainerStageFrame.Visible then
+						updateStageFrame()
+					end
+				end)
+			end
+		)
+
+	table.insert(
+		trainerStructureConnections,
+		descendantRemovingConnection
+	)
+
+	-- Общие ресурсы игрока.
 	connectValue(energy)
 	connectValue(money)
 	connectValue(rebirth)
@@ -1266,10 +1362,11 @@ trainerEquipResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 	if resultType == "NotEnoughCurrency" then
 		showWarning("NOT ENOUGH CURRENCY!", 3)
 	elseif resultType == "NotEnoughEggHatched" then
-		local requiredPets = TRAINER_INFO.MonikaTrainer.RequiredPets or 0
+		local monikaData = TrainerModule.getTrainerData("MonikaTrainer")
+		local requiredPets = monikaData and tonumber(monikaData.RequiredPets) or 0
 		local currentPets = eggHatched and eggHatched.Value or 0
-		local missingEggs = math.max(0, requiredPets - currentPets)
-		showWarning("NEED " .. formatNumber(missingEggs) .. " MORE EGG HATCHED!", 4)
+		local missingPets = math.max(0, requiredPets - currentPets)
+		showWarning("NEED " .. formatNumber(missingPets) .. " MORE EGG HATCHED!", 4)
 	elseif resultType == "CurrencyMissing" then
 		showWarning("CURRENCY NOT FOUND!", 3)
 	else
@@ -1290,7 +1387,7 @@ levelUpButton.MouseButton1Click:Connect(function()
 	
 	local level = getTrainerValue(selectedTrainerName, "Level", 1)
 	local stage = getTrainerValue(selectedTrainerName, "Stage", 1)
-	local maxLevel = TrainerModule.Stage[stage]
+	local maxLevel = TrainerModule.getStageMaxLevel[stage]
 	
 	if level >= maxLevel then 
 		showWarning("MAX LEVEL FOR THIS RANK!", 3)
@@ -1379,34 +1476,43 @@ end)
 
 --// результат RANK UP
 local function buildMissingText(missing)
-	local lines = {}
-	
+	local missingParts = {}
+
 	for _, item in pairs(missing or {}) do
-		local requirementType = item.Type or "Requirement"
-		
-		local current = item.Current or 0
-		
-		local need = item.Need or 0
-		
-		table.insert(lines, getRequirementName(requirementType)
-			.. ": " .. formatRequirementValue(requirementType, current)
-			.. " / " .. formatRequirementValue(requirementType, need)
-		)
-		
-		if item.Spend == true and item.BalanceCompleted == false then
-			
-			table.insert(lines, "BALANCE " .. getRequirementName(requirementType)
-				.. ": " .. formatNumber(item.BalanceCurrent or 0)
-				.. " / " .. formatNumber(need)
-			)
+		local requirementType =
+			item.Type or "Requirement"
+
+		local need =
+			tonumber(item.Need) or 0
+
+		local current =
+			tonumber(item.Current) or 0
+
+		local missingProgress = math.max(0, need - current)
+
+		-- Для расходуемых требований сервер
+		-- дополнительно проверяет настоящий баланс.
+		if item.Spend == true
+			and item.BalanceCompleted == false then
+
+			local currentBalance =tonumber(item.BalanceCurrent) or 0
+
+			local missingBalance = math.max(0, need - currentBalance)
+
+			if missingBalance > 0 then
+				table.insert(missingParts, formatRequirementValue(requirementType, missingBalance) .. " " .. getRequirementName(requirementType))
+			end
+
+		elseif missingProgress > 0 then
+			table.insert(missingParts, formatRequirementValue(requirementType, missingProgress) .. " "	.. getRequirementName(requirementType))
 		end
 	end
-	
-	if #lines == 0 then
+
+	if #missingParts == 0 then
 		return "REQUIREMENTS NOT COMPLETED!"
 	end
-	
-	return table.concat(lines, "\n")
+
+	return "NEED " .. table.concat(missingParts, " AND ")
 end
 
 trainerStageResultEvent.OnClientEvent:Connect(function(success, trainerName, resultType, data)
@@ -1415,13 +1521,25 @@ trainerStageResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 	end
 	
 	if success then 
-		showWarning("RANK UP COMPLETE!", 4)
+		local srRobuxReward = data and tonumber(data.SrRobuxReward) or 0
 		
-		task.wait(0.1)
-		
-		updateMainTrainerUI()
-		updateStageFrame()
-		return
+		if srRobuxReward > 0 then
+			showWarning("MYTHIC RANK COMPLETE! +" .. formatNumber(srRobuxReward) .. " SrPoint", 5)
+		else
+			local newStageName = data and data.NewStageName
+			
+			if newStageName then
+				showWarning("RANK UP COMPLETED! " .. string.upper(tostring(newStageName)), 4)
+			else 
+				showWarning("RANK UP COMPLETE!", 4)
+				
+				task.wait(0.1)
+				
+				updateMainTrainerUI()
+				updateStageFrame()
+				return
+			end
+		end
 	end
 	
 	if resultType == "NotOwned" then
@@ -1436,6 +1554,10 @@ trainerStageResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 		showWarning("LEVEL: " .. currentLevel .. " / " .. needLevel, 4)
 	elseif resultType == "MissingRequirements" then
 		showWarning(buildMissingText(data), 6)
+	elseif resultType == "StageDataMissing" then
+		showWarning("RANK DATA NOT FOUND!", 3)
+	elseif resultType == "DataMissing" then
+		showWarning("TRAINER DATA NOT FOUND!", 3)
 	else
 		showWarning("RANK UP FAILED!", 3)
 	end
@@ -1473,9 +1595,20 @@ trainerWarningLabel.Visible = false
 applyCardLayout(folderCards)
 
 setupAllCardViewports()
-connectTrainerData()
+
+local trainerRoot = player:WaitForChild("Trainer", 15)
+if not trainerRoot then
+	warn("[TrainerUI] Trainer folder load timeout")
+else
+	connectTrainerData()
+	updateMainTrainerUI()
+	
+	if trainerStageFrame.Visible then
+		updateStageFrame()
+	end
+end
 
 selectTrainer("LedyTrainer")
-updateMainTrainerUI()
+
 
 print("TrainerUI loaded")
