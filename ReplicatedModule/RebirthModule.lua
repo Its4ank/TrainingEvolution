@@ -13,7 +13,7 @@ RebirthModule.EnergyBonusPerRebirth = 0.10
 RebirthModule.XpBonusPerRebirth = 0.03
 RebirthModule.MoneyBonusPerRebirth = 0.01
 
---RebirthModule.MaxRebirthPerOperation = 1_000_000 -- в будущем
+RebirthModule.MaxRebirthPerOperation = 1_000_000
 
 RebirthModule.Buttons = {
 	RebirthButton1 = 1,
@@ -25,18 +25,11 @@ RebirthModule.Buttons = {
 	RebirthButton7 = 500,
 }
 
-function RebirthModule.IsXpMultiplierUnlocked(player)
-	-- infoinefoiunefoiun
-	return false
-end
-
 function RebirthModule.GetXpMultiplier(player)
-	if not RebirthModule.IsXpMultiplierUnlocked(player) then 
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
 		return 1
 	end
-	
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then return 1 end
 	
 	local rebirth = leaderstats:FindFirstChild("Rebirth")
 	if not rebirth then return 1 end
