@@ -3,17 +3,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local RebirthModule = require(
-	ReplicatedStorage.Modules.RebirthModule
-)
-
-local ShopModule = require(
-	ReplicatedStorage.Modules.ShopModule
-)
-
-local UpgradeModule = require(
-	ReplicatedStorage.Modules.UpgradeModule
-)
+local RebirthModule = require(ReplicatedStorage.Modules.RebirthModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 
 --// RemoteEvents
 
@@ -169,6 +162,8 @@ local function doRebirth(player, amount)
 	-- вся энергия полностью сбрасывается.
 	energy.Value = 0
 	rebirth.Value += amount
+	
+	TrainerModule.addEquippedTrainerProgress(player, "Rebirth", amount)
 
 	return true
 end
