@@ -1398,7 +1398,6 @@ buyUpgradeButton.Activated:Connect(function()
 end)
 
 equipButton.MouseButton1Click:Connect(function()
-	print("Equip1")
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
@@ -1418,11 +1417,9 @@ equipButton.MouseButton1Click:Connect(function()
 	if response and response.Success then
 		loadAllTrailData()
 	end
-	print("Equip2")
 end)
 
 stageOpenButton.MouseButton1Click:Connect(function()
-	print("Open1")
 	local trailData = allTrailData[selectedTrail]
 	
 	if not trailData then
@@ -1468,7 +1465,6 @@ stageOpenButton.MouseButton1Click:Connect(function()
 	
 	trailStageBlur.Visible = true
 	trailStage.Visible = true
-	print("Open2")
 end)
 
 stageUpButton.MouseButton1Click:Connect(function()
