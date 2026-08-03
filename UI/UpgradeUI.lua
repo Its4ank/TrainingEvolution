@@ -388,8 +388,6 @@ local function selectUpgrade(upgradeName)
 	refreshSelectedUpgrade()
 end
 
-print("BLA")
-
 local function setupLevelFrameButtons()
 	for slotIndex = 1, visibleSlotCount do
 		local levelFrame = levelFrames[slotIndex]
