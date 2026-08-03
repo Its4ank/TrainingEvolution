@@ -1,4 +1,4 @@
---// TreadmillServer
+--// TreadmillServer 1.2
 
 --// Services
 local Players = game:GetService("Players")
@@ -7,7 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 --// Modules
 local TreadmillModule = require(ServerScriptService.Modules.TreadmillModule)
-local TrainerModule = require(ServerScriptService.Modules.TrainerModule)
+local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
 --// RemopteEvents
@@ -276,20 +276,24 @@ local function startTraining(player, treadmillId)
 			local dt = now - data.LastTimeUpdate
 			data.LastTimeUpdate = now
 			
-			TreadmillModule.AddTrainingTime(player, data.TreadmillId, dt)
-			
-			TreadmillModule.AddTrainerTrainingTime(player, dt)
+			if dt > 0 then
+				TreadmillModule.AddTrainingTime(player, data.TreadmillId, dt)
+
+				TreadmillModule.AddTrainerTrainingTime(player, dt)
+			end
 			
 			local interval = getTrainingInterval(player)
+			local energyDelta = now - data.LastEnergyLick
 			
-			if now - data.LastEnergyTick >= interval then 
+			if energyDelta >= interval then 
 				data.LastEnergyTick = now 
 				
 				local leaderstats = player:FindFirstChild("leaderstats")
 				local energy = leaderstats and leaderstats:FindFirstChild("Energy")
 				
 				if energy then
-					local gainedEnergy = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
+					local energyPerSecond = TreadmillModule.GetFinalEnergyPerSecond(player, data.Treadmill)
+					local gainedEnergy = energyPerSecond * energyDelta
 					
 					gainedEnergy = math.floor(gainedEnergy)
 					
