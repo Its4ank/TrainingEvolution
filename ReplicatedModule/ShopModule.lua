@@ -1,11 +1,12 @@
 local ShopModule = {}
 
 ShopModule.TestGamepasses = {
-	All = true,
+	Enabled = false,
+	All = false,
 	
-	EnergyPass = true,
-	AutoRebirthPass = true,
-	MaxRebirthPass = true,
+	EnergyPass = false,
+	AutoRebirthPass = false,
+	MaxRebirthPass = false,
 }
 
 ShopModule.Passes = {
@@ -140,20 +141,16 @@ ShopModule.Potions = {
 }
 
 function ShopModule.IsGamepassTest(passId)
-	if ShopModule.TestGamepasses.All == false then
-		return false
-	end
-
-	if ShopModule.TestGamepasses[passId] == false then
-		return false
-	end
-	return true
+	local testConfig = ShopModule.TestGamepasses
+	
+	if testConfig.Enabled ~= true then return false end
+	if testConfig.All == true then return false end
+	
+	return testConfig[passId] == true
 end
 
 function ShopModule.HasPass(player, passId)
-	if not ShopModule.IsGamepassTest(passId) then 
-		return false
-	end
+	if not ShopModule.IsGamepassTest(passId) then return false end
 	
 	local playerData = player:FindFirstChild("PlayerData")
 	if not playerData then return false end
@@ -163,7 +160,7 @@ function ShopModule.HasPass(player, passId)
 
 	local passValue = gamepasses:FindFirstChild(passId)
 
-	return passValue ~= nil and passValue.Value == true
+	return passValue ~= nil and passValue:IsA("BoolValue") and passValue.Value == true
 end
 
 function ShopModule.HasAutoRebirth(player)
