@@ -5,15 +5,15 @@ local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 local RebirthModule = {}
 
 RebirthModule.BaseCost = 250
-RebirthModule.CostPerRebirth = 10
+RebirthModule.CostPerRebirth = 25
 
 RebirthModule.EnergyFlatBonusPerRebirth = 1
 
-RebirthModule.EnergyBonusPerRebirth = 0.10
-RebirthModule.XpBonusPerRebirth = 0.03
-RebirthModule.MoneyBonusPerRebirth = 0.01
+RebirthModule.EnergyBonusPerRebirth = 0.05
+RebirthModule.XpBonusPerRebirth = 0.001
+RebirthModule.MoneyBonusPerRebirth = 0.001
 
-RebirthModule.MaxRebirthPerOperation = 1_000_000
+RebirthModule.MaxRebirthPerOperation = 100_000_000
 
 RebirthModule.Buttons = {
 	RebirthButton1 = 1,
