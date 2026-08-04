@@ -15,7 +15,8 @@ ClientDataModule.WaitUntilReady(player)
 
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 
-local leaveRaceEvent = ReplicatedStorage:WaitForChild("LeaveRaceEvent")
+local raceFolder = ReplicatedStorage:WaitForChild("RaceFolder")
+local leaveRaceEvent = raceFolder:WaitForChild("LeaveRaceEvent")
 
 local raceStatusText = ReplicatedStorage:WaitForChild("RaceStatusText")
 local raceTimerText = ReplicatedStorage:WaitForChild("RaceTimerText")
