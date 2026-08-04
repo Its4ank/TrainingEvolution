@@ -1,4 +1,4 @@
---// UpgradeServer
+--// UpgradeServer 1.2
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -52,25 +52,46 @@ end
 
 local function migrateLegacyUpgrades(upgradeFolder)
 	for oldName, newName in pairs(LEGACY_UPGRADE_NAMES) do
-		local oldValue = upgradeFolder:FindFirstChild(oldName)
-		
-		if oldValue and not oldValue:IsA("ValueBase") then 
-			local config = UpgradeModule.GetConfig(newName)
-			
-			if config then 
-				local migratedLevel = tonumber(oldValue.Value) or 0
-				
-				migratedLevel = math.clamp(math.floor(migratedLevel), 0, config.MaxLevel)
-				
-				local newValue = UpgradeModule:FindFirstChild(newName)
-				
+		local oldValue =
+			upgradeFolder:FindFirstChild(oldName)
+
+		if oldValue and oldValue:IsA("ValueBase") then
+			local config =
+				UpgradeModule.GetConfig(newName)
+
+			if config then
+				local migratedLevel =
+					tonumber(oldValue.Value) or 0
+
+				migratedLevel = math.clamp(
+					math.floor(migratedLevel),
+					0,
+					config.MaxLevel
+				)
+
+				local newValue =
+					upgradeFolder:FindFirstChild(newName)
+
 				if not newValue then
-					createdUpgradeValue(upgradeFolder, newName, migratedLevel)
-					print("UPGRADE MIGRATED:", oldName, "->", newName)
-				elseif newValue:IsA("IntValue") and migratedLevel > newValue.Value then 
-					newValue.Valuee = migratedLevel
-					print("UPGRADE MIGRATED:", oldName, "->", newName)
+					newValue = createdUpgradeValue(
+						upgradeFolder,
+						newName,
+						migratedLevel
+					)
+				elseif newValue:IsA("IntValue")
+					and migratedLevel > newValue.Value
+				then
+					newValue.Value = migratedLevel
 				end
+
+				oldValue:Destroy()
+
+				print(
+					"UPGRADE MIGRATED:",
+					oldName,
+					"->",
+					newName
+				)
 			end
 		end
 	end
