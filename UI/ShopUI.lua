@@ -12,24 +12,32 @@ local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
+ClientDataModule.WaitUntilReady(player)
 MenuManager.init(raceGui)
 
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 local shopFolder = guiFolder:WaitForChild("ShopFolder")
+local shopHost = shopFolder:WaitForChild("ShopHost")
 local uiBalance = guiFolder:WaitForChild("UIBalance")
+
+local uiValueFrame = uiBalance:WaitForChild("UIValueFrame")
+local shopOpenButton = uiBalance:WaitForChild("ShopOpen")
+
+local shopRobuxFrame = shopHost:WaitForChild("ShopRobuxFrame")
+local detailsFrame = shopHost:WaitForChild("ShopDetailsFrame")
+local purchaseFrame = shopHost:WaitForChild("PurchaseFrame")
+local purchaseBlurFrame = shopHost:WaitForChild("PurchaseBlurFrame")
+local backButton = shopHost:WaitForChild("BackShopButton")
+local leaderShopUI = shopHost:WaitForChild("LeaderstatsShopUI")
+
+local srRobuxLabel = leaderShopUI:WaitForChild("SRRobuxLabel")
 
 local music = SoundService:WaitForChild("BackgroundMusik")
 local menuOpenSound = SoundService:WaitForChild("UISound"):WaitForChild("OpenShop")
 
-
-
-
 --// Stats
 local srRobux = ClientDataModule.GetSrRobux(player)
 local gamepasses = ClientDataModule.GetGamepasses(player)
-
-
 
 --//RemoteEvents
 local shopEventFolder = ReplicatedStorage:WaitForChild("ShopEvent")
@@ -38,28 +46,24 @@ local shopUpdateEvent = shopEventFolder:WaitForChild("ShopUpdateEvent")
 local buyPotionEvent = shopEventFolder:WaitForChild("BuyPotionEvent")
 local usePotionEvent = shopEventFolder:WaitForChild("UsePotionEvent")
 
-local uiValueFrame = uiBalance:WaitForChild("UIValueFrame")
-local shopOpenButton = uiBalance:WaitForChild("ShopOpen")
-
-local shopFrame = shopFolder:WaitForChild("ShopRobuxFrame")
-
-local srValueShopButton = shopFrame:WaitForChild("SRValueShopButton")
-local srRobuxInfoLabel = shopFrame:WaitForChild("SrRobuxInfoLabel")
-srRobuxInfoLabel.Visible = false
-srRobuxInfoLabel.Text = ""
-
-local ScrollingFrame = shopFrame:WaitForChild("ScrollingFrame")
+--// shopRobuxFrame
+local ScrollingFrame = shopRobuxFrame:WaitForChild("ScrollingFrame")
 local potionPassBox = ScrollingFrame:WaitForChild("PotionPassBox")
 local gamePassBox = ScrollingFrame:WaitForChild("GamePassBox")
 
-local backButton = shopFrame:WaitForChild("BackShopButton")
+local srRobuxInfoLabel = shopRobuxFrame:WaitForChild("SrRobuxInfoLabel")
 
-local leaderstatsShopUI = shopFrame:WaitForChild("LeaderstatsShopUI")
-local srRobuxLabel = leaderstatsShopUI:WaitForChild("SRRobuxLabel")
+local srValueShopButton = shopRobuxFrame:WaitForChild("SRValueShopButton")
+local potionBoxButton = shopRobuxFrame:WaitForChild("PotionBoxButton")
+local passBoxButton = shopRobuxFrame:WaitForChild("PassBoxButton")
+local itemsBoxButton = shopRobuxFrame:WaitForChild("ItemsBoxButton")
+local currencyBoxButton = shopRobuxFrame:WaitForChild("CurrencyBoxButton")
+local codeBoxButton = shopRobuxFrame:WaitForChild("CodeBoxButton")
 
-local detailsFrame = shopFolder:WaitForChild("ShopDetailsFrame")
-local scrollingFrame = shopFrame:WaitForChild("ScrollingFrame")
+srRobuxInfoLabel.Visible = false
+srRobuxInfoLabel.Text = ""
 
+--// GamePassBox
 local passEnergyFrame = gamePassBox:WaitForChild("PassEnergyFrame")
 local passAutoRebirthFrame = gamePassBox:WaitForChild("PassAutoRebirthFrame")
 local passMaxRebirthFrame = gamePassBox:WaitForChild("PassMaxRebirthFrame")
@@ -68,20 +72,25 @@ local energyTapPassButton = passEnergyFrame:WaitForChild("TapPassButton")
 local autoRebirthTapPassButton = passAutoRebirthFrame:WaitForChild("TapPassButton")
 local maxRebirthTapPassButton = passMaxRebirthFrame:WaitForChild("TapPassButton")
 
+--// Details
 local detailsPassNameLabel = detailsFrame:WaitForChild("PassNameLabel")
 local detailsPassBoostLabel = detailsFrame:WaitForChild("PassBoostLabel")
 local detailsPassInfoLabel = detailsFrame:WaitForChild("PassInfoLabel")
 local purchaseInfoLabel = detailsFrame:WaitForChild("PurchaseInfoLabel")
 
-local buyPassButton = detailsFrame:WaitForChild("BuyPassButton")
-local buyStatusLabel = buyPassButton:WaitForChild("BuyStatusLabel")
-local buyRobuxPassButton = detailsFrame:WaitForChild("BuyRobuxPassButton")
-
 local passIconDetails = detailsFrame:WaitForChild("PassIconDetails")
+local purchaseButton = detailsFrame:WaitForChild("PurchaseButton")
+
+--// PurchaseFrame
+local buyPassButton = purchaseFrame:WaitForChild("BuyPassButton")
+local buyStatusLabel = buyPassButton:WaitForChild("BuyStatusLabel")
+local buyRobuxPassButton = purchaseFrame:WaitForChild("BuyRobuxPassButton")
+local buyRobuxStatusLabel = buyRobuxPassButton:WaitForChild("BuyRobuxStatusLabel")
+local purchaseIconPass = purchaseFrame:WaitForChild("PurchaseIconPass")
 
 local selectedPass = nil 
 
-MenuManager.register("Shop", shopFrame)
+MenuManager.register("Shop", shopHost)
 
 local potionFrames = { 
 	EnergyPotion = potionPassBox:WaitForChild("EnergyPotionFrame"),
@@ -149,7 +158,7 @@ local passes = {
 		Icon = "rbxassetid://70550586083463",
 		Boost = "Max Rebirth",
 		RobuxPrice = 139,
-		SRobuxPrice = 199,
+		SRobuxPrice = 169,
 		Info = "Unlocks max rebirth purchase for faster progression.",
 		Owned = false,
 	},
@@ -451,6 +460,31 @@ local function loadOwnedPasses()
 	end
 end
 
+local function updateOwnedPass(passId)
+	local passData = passes[passId]
+	if not passData then return end
+	
+	local passValue = gamepasses:FindFirstChild(passId)
+	if not passValue then return end
+	
+	passData.Owned = passValue.Value == true
+	updatePassCard(passId)
+	
+	if selectedPass == passId then
+		buyStatusLabel.Text = passData.Owned and "Owned" or "Buy"
+	end
+end
+
+for passId in pairs(passes) do
+	local passValue = gamepasses:FindFirstChild(passId)
+	
+	if passValue then
+		passValue.Changed:Connect(function()
+			updateOwnedPass(passId)
+		end)
+	end
+end
+
 local function openShop()
 	loadOwnedPasses()
 	
@@ -477,6 +511,13 @@ local function buySelectedPass()
 
 	if passData.Owned then
 		buyStatusLabel.Text = "Owned"
+		return
+	end
+	
+	local missing = passData.SRobuxPrice - srRobux.Value
+	
+	if missing > 0 then
+		showSRRobuxInfo("Not enoung SRRobux, Need " .. formatNumber(missing) .. " more.")
 		return
 	end
 
