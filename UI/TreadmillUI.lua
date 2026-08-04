@@ -1,4 +1,4 @@
---// TreadmillUI
+--// TreadmillUI 1.2
 
 --//Services
 local Players = game:GetService("Players")
@@ -283,6 +283,17 @@ local function getInfo(treadmillId)
 	return nil
 end
 
+local function getBestUnlockedTreadmillId()
+	for i = MAX_TREADMILLS, 1, -1 do
+		local info = getInfo(i)
+		
+		if info and info.Unlocked then
+			return i
+		end
+	end
+	return 1
+end
+
 local function updateChoiceIcons()
 	local choices = { 
 		[1] = treadViewChoice1,
@@ -459,13 +470,36 @@ local function refreshSelectedTreadmill()
 	updateDetails(info)
 end
 
+local function updateBoostTreadmillLabel()
+	local treadmillId = selectedTreadmillId
+	
+	if not treadmillHost.Visible then
+		treadmillId = getBestUnlockedTreadmillId()
+	end
+	
+	local info = getInfo(treadmillId)
+	if not info then return end
+	
+	boostTreadmillLabel.Text = "+" .. formatShort(info.CurrentEnergy)
+end
+
+local function refreshAllTreadmillUI()
+	updateLeaderstatsUI()
+	updateAllBillboards()
+	updateBoostTreadmillLabel()
+	
+	if treadmillHost.Visible then
+		refreshSelectedTreadmill()
+	end
+end
+
 local function openTreadmillMenu()
 	treadmillHost.Visible = true 
 	treadmillViewport.Visible = true 
 	treadmillLocation.Visible = true 
 	treadmillDetails.Visible = true 
 	
-	selectedTreadmillId = 1
+	selectedTreadmillId = getBestUnlockedTreadmillId()
 	refreshSelectedTreadmill()
 end
 
@@ -586,19 +620,12 @@ end)
 task.spawn(function()
 	while true do 
 		task.wait(1)
-		
-		updateLeaderstatsUI()
-		updateAllBillboards()
-		
-		if treadmillHost.Visible then 
-			refreshSelectedTreadmill()
-		end
+		refreshAllTreadmillUI()
 	end
 end)
 
 setupBillboards()
-updateLeaderstatsUI()
-updateAllBillboards()
-refreshSelectedTreadmill()
+selectedTreadmillId = getBestUnlockedTreadmillId()
+refreshAllTreadmillUI()
 
 print("TreadmillUI loaded")
