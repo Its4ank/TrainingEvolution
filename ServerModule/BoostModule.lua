@@ -2,7 +2,7 @@ local Players = game:GetService("Players")
 
 local BoostModule = {}
 
-local USE_FAKE_TOP_PLAYERS = true
+local USE_FAKE_TOP_PLAYERS = false
 
 local FAKE_TOP_PLAYERS = {
 	{ Name = "FakeTop1", Rebirth = 50, Energy = 1000000},
@@ -552,8 +552,9 @@ function BoostModule.GetLuckMultiplier(player)
 	local timeBoost = BoostModule.GetTimeMultiplier(player)
 	local potionBoost = BoostModule.GetPersonalPotionBoost(player)
 	local serverBoost = BoostModule.GetServerPotionBoost()
+	local premiumBoost = BoostModule.GetPremiumBoost(player)
 	
-	return topBoost.Luck * timeBoost * potionBoost.Luck * serverBoost.Luck
+	return timeBoost * potionBoost.Luck * serverBoost.Luck * premiumBoost.Luck
 end
 
 return BoostModule
