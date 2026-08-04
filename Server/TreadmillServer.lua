@@ -283,7 +283,7 @@ local function startTraining(player, treadmillId)
 			end
 			
 			local interval = getTrainingInterval(player)
-			local energyDelta = now - data.LastEnergyLick
+			local energyDelta = now - data.LastEnergyTick
 			
 			if energyDelta >= interval then 
 				data.LastEnergyTick = now 
@@ -292,7 +292,7 @@ local function startTraining(player, treadmillId)
 				local energy = leaderstats and leaderstats:FindFirstChild("Energy")
 				
 				if energy then
-					local energyPerSecond = TreadmillModule.GetFinalEnergyPerSecond(player, data.Treadmill)
+					local energyPerSecond = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
 					local gainedEnergy = energyPerSecond * energyDelta
 					
 					gainedEnergy = math.floor(gainedEnergy)
