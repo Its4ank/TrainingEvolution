@@ -266,7 +266,7 @@ function BoostModule.RemovePlayer(player)
 		end
 
 		if lastLeaveValue then
-			lastLeaveValue.Value = os.time()
+			lastLeaveValue.Value = now
 		end
 	end
 	
@@ -287,7 +287,7 @@ function BoostModule.RemovePlayer(player)
 	
 	task.delay(TIME_BOOST_RESET_AFTER, function()
 		if not Players:GetPlayerByUserId(userId) then
-			playerTimeBoosts[player.UserId] = nil
+			playerTimeBoosts[userId] = nil
 			playerLeaveTimes[userId] = nil
 		end
 	end)
