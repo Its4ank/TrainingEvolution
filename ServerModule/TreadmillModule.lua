@@ -36,11 +36,11 @@ TreadmillModule.Treadmills = {
 	
 	[3] = {
 		Name = "Treadmill 3",
-		BaseEnergy = 124,
-		EnergyPerLevel = 8,
+		BaseEnergy = 1800,
+		EnergyPerLevel = 100,
 		
-		LevelPriceBase = 25000,
-		LevelPriceMultiplier = 1.55,
+		LevelPriceBase = 5000,
+		LevelPriceMultiplier = 1.6,
 	},
 }
 
