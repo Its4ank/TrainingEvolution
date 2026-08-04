@@ -328,7 +328,11 @@ local moneyBoostLabel = findUI(trainerMenu, "MoneyBoostLabel")
 local moneyFrame = findUI(trainerMenu, "MoneyFrame")
 local petPowerFrame = findUI(trainerMenu, "PetPowerFrame")
 local petPowerBoost1 = findUI(trainerMenu, "Pet/PowerBoost1")
+local petPowerLabel1 = findUI(trainerMenu, "Pet/PowerLabel1")
+local petPowerBoostLabel1 = findUI(trainerMenu, "Pet/PowerBoostLabel1")
 local petPowerBoost2 = findUI(trainerMenu, "Pet/PowerBoost2")
+local petPowerLabel2 = findUI(trainerMenu, "Pet/PowerLabel2")
+local petPowerBoostLabel2 = findUI(trainerMenu, "Pet/PowerBoostLabel2")
 
 --// leaderstats
 local leaderstatsUITrainer = findUI(trainerMenu, "leaderstatsUITrainer")
@@ -537,6 +541,21 @@ end
 
 local function isTrainerEquipped(trainerName)
 	return getTrainerValue(trainerName, "Equipped", false) == true
+end
+
+local function getEquippedTrainerName()
+	local trainerRoot = player:FindFirstChild("Trainer")
+	if not trainerRoot then return end 
+	
+	for trainerName in pairs(TRAINER_INFO) do
+		local trainerFolder = trainerRoot:FindFirstChild(trainerName)
+		local equipped = trainerFolder and trainerFolder:FindFirstChild("Equipped")
+		
+		if equipped and equipped:IsA("BoolValue") and equipped.Value == true then
+			return trainerName
+		end
+	end
+	return nil
 end
 
 local function getRequirementName(requirementType)
@@ -885,30 +904,42 @@ local function updateBoostSection(trainerName, stage, level)
 		petPowerBoost2.Size = SELECTED_BOOST_SIZE
 		petPowerFrame.Visible = true
 		
-		setBoostLabelText( 
-			petPowerBoost1, 
-			"PET LUCK\n+" .. boost1 .. "%"
-		)
+		if petPowerLabel1 then
+			petPowerLabel1.Text = "PET LUCK"
+		end
 		
-		setBoostLabelText(
-			petPowerBoost2,
-			"RACE XP\n+" .. boost2 .. "%"
-		)
+		if petPowerBoostLabel1 then
+			petPowerBoostLabel1.Text = "+" .. tostring(boost1) .. "%"
+		end
+		
+		if petPowerLabel2 then
+			petPowerLabel2.Text = "RACE XP"
+		end
+		
+		if petPowerBoostLabel2 then
+			petPowerBoostLabel2.Text = "+" .. tostring(boost2) .. "%"
+		end
 		
 	elseif trainerName == "JoeTrainer" then 
 		petPowerBoost1.Size = SELECTED_BOOST_SIZE
 		petPowerBoost2.Size = SELECTED_BOOST_SIZE
 		petPowerFrame.Visible = true
 		
-		setBoostLabelText( 
-			petPowerBoost1,
-			"POWER\n+" .. boost1 .. "%"
-		)
+		if petPowerLabel1 then
+			petPowerLabel1.Text = "RACE POWER"
+		end
 		
-		setBoostLabelText( 
-			petPowerBoost2,
-			"ACCELERATION\n+" .. boost2 .. "%"
-		)
+		if petPowerBoostLabel1 then
+			petPowerBoostLabel1.Text = "+" .. tostring(boost1) .. "%"
+		end
+		
+		if petPowerLabel2 then
+			petPowerLabel2.Text = "ACCELERATION"
+		end
+		
+		if petPowerBoostLabel2 then
+			petPowerBoostLabel2.Text = "+" .. tostring(boost2) .. "%"
+		end
 	end
 end
 
@@ -1136,7 +1167,7 @@ local function updateStageFrame()
 	end
 	
 	local stage = getTrainerValue(trainerName, "Stage", 1)
-	local stageName = TrainerModule.getStageName[stage]
+	local stageName = TrainerModule.getStageName(stage)
 	
 	stageNameTrainer.Text = info.DisplayName .. " _ " .. stageName
 	trainerStageSpecialtyLabel.Text = info.Specialty
@@ -1387,7 +1418,7 @@ levelUpButton.MouseButton1Click:Connect(function()
 	
 	local level = getTrainerValue(selectedTrainerName, "Level", 1)
 	local stage = getTrainerValue(selectedTrainerName, "Stage", 1)
-	local maxLevel = TrainerModule.getStageMaxLevel[stage]
+	local maxLevel = TrainerModule.getStageMaxLevel(stage)
 	
 	if level >= maxLevel then 
 		showWarning("MAX LEVEL FOR THIS RANK!", 3)
@@ -1515,51 +1546,125 @@ local function buildMissingText(missing)
 	return "NEED " .. table.concat(missingParts, " AND ")
 end
 
-trainerStageResultEvent.OnClientEvent:Connect(function(success, trainerName, resultType, data)
-	if trainerName and trainerName ~= selectedTrainerName then
+trainerStageResultEvent.OnClientEvent:Connect(function(
+	success,
+	trainerName,
+	resultType,
+	data
+)
+	if trainerName
+		and trainerName ~= selectedTrainerName then
+
 		return
 	end
-	
-	if success then 
-		local srRobuxReward = data and tonumber(data.SrRobuxReward) or 0
-		
+
+	-- Успешный Rank Up
+	if success then
+		local srRobuxReward =
+			data
+			and tonumber(
+				data.SrRobuxReward
+			)
+			or 0
+
 		if srRobuxReward > 0 then
-			showWarning("MYTHIC RANK COMPLETE! +" .. formatNumber(srRobuxReward) .. " SrPoint", 5)
+			showWarning(
+				"MYTHIC RANK COMPLETE! +"
+					.. formatNumber(
+						srRobuxReward
+					)
+					.. " SrPoint",
+				5
+			)
 		else
-			local newStageName = data and data.NewStageName
-			
+			local newStageName =
+				data
+				and data.NewStageName
+
 			if newStageName then
-				showWarning("RANK UP COMPLETED! " .. string.upper(tostring(newStageName)), 4)
-			else 
-				showWarning("RANK UP COMPLETE!", 4)
-				
-				task.wait(0.1)
-				
-				updateMainTrainerUI()
-				updateStageFrame()
-				return
+				showWarning(
+					"RANK UP COMPLETED! "
+						.. string.upper(
+							tostring(
+								newStageName
+							)
+						),
+					4
+				)
+			else
+				showWarning(
+					"RANK UP COMPLETE!",
+					4
+				)
 			end
 		end
+
+		task.wait(0.1)
+
+		updateMainTrainerUI()
+
+		if trainerStageFrame.Visible then
+			updateStageFrame()
+		end
+
+		return
 	end
-	
+
+	-- Ошибки Rank Up
 	if resultType == "NotOwned" then
-		showWarning("TRAINER IS NOT OWNED!", 3)
-		
+		showWarning(
+			"TRAINER IS NOT OWNED!",
+			3
+		)
+
 	elseif resultType == "MaxStage" then
-		showWarning("MAX RANK!", 3)
-	elseif resultType == "NeedLevel" then 
-		local currentLevel = data and data.CurrentLevel or 1
-		local needLevel = data and data.NeedLevel or 5
-		
-		showWarning("LEVEL: " .. currentLevel .. " / " .. needLevel, 4)
+		showWarning(
+			"MAX RANK!",
+			3
+		)
+
+	elseif resultType == "NeedLevel" then
+		local currentLevel =
+			data
+			and data.CurrentLevel
+			or 1
+
+		local needLevel =
+			data
+			and data.NeedLevel
+			or 5
+
+		showWarning(
+			"LEVEL: "
+				.. tostring(currentLevel)
+				.. " / "
+				.. tostring(needLevel),
+			4
+		)
+
 	elseif resultType == "MissingRequirements" then
-		showWarning(buildMissingText(data), 6)
+		showWarning(
+			buildMissingText(data),
+			6
+		)
+
 	elseif resultType == "StageDataMissing" then
-		showWarning("RANK DATA NOT FOUND!", 3)
+		showWarning(
+			"RANK DATA NOT FOUND!",
+			3
+		)
+
 	elseif resultType == "DataMissing" then
-		showWarning("TRAINER DATA NOT FOUND!", 3)
+		showWarning(
+			"TRAINER DATA NOT FOUND!",
+			3
+		)
+
 	else
-		showWarning("RANK UP FAILED!", 3)
+		showWarning(
+			"RANK UP FAILED!",
+			3
+		)
 	end
 end)
 
@@ -1568,8 +1673,12 @@ closeTrainer.MouseButton1Click:Connect(function()
 	MenuManager.close("Trainer")
 end)
 
-closeTrainerMenuEvent.OnClientEvent:Connect(function()
-	MenuManager.close("Trainer")
+closeTrainerMenuEvent.OnClientEvent:Connect(function(action)
+	if action == "Open" then
+		local equippedTrainerName = getEquippedTrainerName()
+		selectTrainer(equippedTrainerName or "LedyTrainer")
+		MenuManager.close("Trainer")
+	end
 end)
 
 --// автообновление раз в секунду
@@ -1608,7 +1717,9 @@ else
 	end
 end
 
-selectTrainer("LedyTrainer")
+local initialTrainer = getEquippedTrainerName() or "LedyTrainer"
+
+selectTrainer(initialTrainer)
 
 
 print("TrainerUI loaded")
