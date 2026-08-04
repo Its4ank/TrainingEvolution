@@ -1,5 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
+local DataStoreService = game:GetService("DataStoreService")
+local processedReceiptStore = DataStoreService:GetDataStore("TrainingEvolution_ProcessedReceipts_v1")
 
 local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
@@ -11,7 +13,6 @@ local BetaPurchaseTracker = require(game.ServerScriptService.Modules.BetaPurchas
 local shopEventFolder = ReplicatedStorage:WaitForChild("ShopEvent")
 local buyPassEvent = shopEventFolder:WaitForChild("BuyPassEvent")
 local shopUpdateEvent = shopEventFolder:WaitForChild("ShopUpdateEvent")
-local buyRobuxPassEvent = shopEventFolder:WaitForChild("BuyRobuxPassEvent")
 local buyPotionEvent = shopEventFolder:WaitForChild("BuyPotionEvent")
 local usePotionEvent = shopEventFolder:WaitForChild("UsePotionEvent")
 
@@ -21,11 +22,6 @@ local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
 
 
 local PASSES = ShopModule.Passes
-
-local PASS_PRODUCTS = {
-	EnergyPass = 0000000000
-}
-
 local POTIONS = ShopModule.Potions
 
 local function getPotionValue(player, potionId)
@@ -156,19 +152,48 @@ buyPassEvent.OnServerEvent:Connect(function(player, passId, payType)
 		return
 	end
 	
-	local srRobux = playerData:FindFirstChild("SrRobux")
-	if not srRobux then return end
-	
-	if srRobux.Value < passData.SRobuxPrice then
-		shopUpdateEvent:FireClient(player, passId, false, "Not Enough")
+	if payType == "SRRobux" then
+		local srRobux = playerData:FindFirstChild("SrRobux")
+		if not srRobux then return end
+		
+		if srRobux.Value < passData.SRobuxPrice then
+		    shopUpdateEvent:FireClient(player, passId, false, "Not Enough")
+			return
+		end
+		
+		srRobux.Value -= passData.SRobuxPrice
+		passValue.Value = true
+
+		shopUpdateEvent:FireClient(player, passId, true, "Owned")
 		return
 	end
-	
-	srRobux.Value -= passData.SRobuxPrice
-	passValue.Value = true
-	
-	shopUpdateEvent:FireClient(player, passId, true, "Owned")
+	warn("INVALID PASS PAYMENT TYPE:", player.Name, passId, payType)
 end)
+
+local function isReceiptProcessed(purchaseId)
+	local success, result = pcall(function()
+		return processedReceiptStore:GetAsync(tostring(purchaseId))
+	end)
+	
+	if not success then
+		warn("RECEIPT CHECK FAILED:", purchaseId, result)
+		return nil
+	end
+	
+	return result == true
+end
+
+local function markReceiptProcessed(purchaseId)
+	local success, result = pcall(function()
+		processedReceiptStore:SetAsync(tostring(purchaseId), true)
+	end)
+	
+	if not success then
+		warn("RECEIPT SAVE FAILED:", purchaseId, result)
+		return false
+	end
+	return true
+end
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
 	if not wasPurchased then return end
@@ -192,16 +217,6 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 	end
 end)
 
-buyRobuxPassEvent.OnServerEvent:Connect(function(player, passId)
-	local productId = PASS_PRODUCTS[passId]
-	if not productId then return end
-	
-	MarketplaceService:PromptProductPurchase(
-		player,
-		productId
-	)
-end)
-
 local productToPotion = {}
 
 for potionId, potionData in pairs(POTIONS) do 
@@ -216,13 +231,29 @@ for potionId, potionData in pairs(POTIONS) do
 end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+	local purchaseId = tostring(receiptInfo.PurchaseId)
+	local alreadyProcessed = isReceiptProcessed(purchaseId)
+	
+	if alreadyProcessed == nil then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	
+	if alreadyProcessed then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	
 	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if not player then 
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	
+	if player:GetAttribute("DataReady") ~= true then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	
 	local productData = productToPotion[receiptInfo.ProductId]
 	if not productData then 
+		warn("UNKNOWN DEVELOPER PRODUCT:", receiptInfo.ProductId, purchaseId)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	
@@ -232,6 +263,12 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 	end
 	
 	potionValue.Value += productData.Amount
+	
+	local receiptSaved = markReceiptProcessed(purchaseId)
+	if not receiptSaved then
+		potionValue.Value -= productData.Amount
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
 	
 	BetaPurchaseTracker.addPurchase(player, "Potions", productData.PotionId, productData.Amount)
 	
