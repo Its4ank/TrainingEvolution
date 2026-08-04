@@ -142,25 +142,40 @@ ShopModule.Potions = {
 
 function ShopModule.IsGamepassTest(passId)
 	local testConfig = ShopModule.TestGamepasses
-	
-	if testConfig.Enabled ~= true then return false end
-	if testConfig.All == true then return false end
-	
+
+	if testConfig.Enabled ~= true then
+		return false
+	end
+
+	if testConfig.All == true then
+		return true
+	end
+
 	return testConfig[passId] == true
 end
 
 function ShopModule.HasPass(player, passId)
-	if not ShopModule.IsGamepassTest(passId) then return false end
-	
+	-- Тестовый режим отдельно выдаёт пропуск
+	if ShopModule.IsGamepassTest(passId) then
+		return true
+	end
+
+	-- Настоящий купленный пропуск
 	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return false end
+	if not playerData then
+		return false
+	end
 
 	local gamepasses = playerData:FindFirstChild("Gamepasses")
-	if not gamepasses then return false end
+	if not gamepasses then
+		return false
+	end
 
 	local passValue = gamepasses:FindFirstChild(passId)
 
-	return passValue ~= nil and passValue:IsA("BoolValue") and passValue.Value == true
+	return passValue ~= nil
+		and passValue:IsA("BoolValue")
+		and passValue.Value == true
 end
 
 function ShopModule.HasAutoRebirth(player)
