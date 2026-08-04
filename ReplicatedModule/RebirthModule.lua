@@ -53,8 +53,13 @@ end
 function RebirthModule.GetMaxRebirthAmount(currentRebirth, currentEnergy)
 	local oneCost = RebirthModule.GetOneRebirthCost(currentRebirth)
 	if oneCost <= 0 then return 0 end 
+	
+	currentEnergy = math.max(0, tonumber(currentEnergy) or 0)
+	
+	local maxAmount = math.floor(currentEnergy / oneCost)
+	local maxPerOperation = math.max(1, math.floor(tonumber(RebirthModule.MaxRebirthPerOperation) or 1_000_000))
 
-	return math.floor(currentEnergy / oneCost)
+	return math.clamp(maxAmount, 0, maxPerOperation)
 end
 
 function RebirthModule.GetEnergyMultiplier(player)
