@@ -123,6 +123,9 @@ local function updateBoostUI(player)
 	
 	local premiumBoost = BoostModule.GetPremiumBoost(player)
 	
+	local timePercent = math.max(0, (timeMultiplier - 1) * 100)
+	timePercent = math.round(timePercent * 10) / 10
+	
 	boostUIEvent:FireClient(player, {
 		TopPlace = topPlace,
 		
@@ -151,10 +154,6 @@ end)
 
 playerDataLoadedEvent.Event:Connect(function(player)
 	BoostModule.InitPlayer(player)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-	BoostModule.RemovePlayer(player)
 end)
 
 for _, player in ipairs(Players:GetPlayers()) do
