@@ -135,8 +135,11 @@ local function getPotionTimerValue(player, boostType)
 	return potionTimers:FindFirstChild(boostType .. "PotionTimeLeft")
 end
 
-function BoostModule.ActivatePersonalPotion(player, boostType)
+function BoostModule.ActivatePersonalPotion(player, boostType, amount)
 	local userId = player.UserId
+	
+	amount = math.floor(tonumber(amount) or 1)
+	if amount <= 0 then return false end
 	
 	if not playerPotionBoosts[userId] then
 		playerPotionBoosts[userId] = getDefaultPotionBoosts()
@@ -145,20 +148,29 @@ function BoostModule.ActivatePersonalPotion(player, boostType)
 	local potionData = playerPotionBoosts[userId][boostType]
 	if not potionData then
 		warn("Unknown personal potion type:", boostType)
-		return
+		return false
+	end
+	
+	local duration = POTION_DURATIONS[boostType]
+	if not duration then
+		warn("Potion duration missing:", boostType)
+		return false
 	end
 	
 	local now = os.time()
 	local currentTimeLeft = math.max(0, potionData.ExpiresAt - now)
-	local duration = POTION_DURATIONS[boostType] or 900
+	
+	local addedDuration = duration * amount
+	local newTimeLeft = currentTimeLeft + addedDuration
 	
 	potionData.Multiplier = PERSONAL_POTION_MULTIPLIER
-	potionData.ExpiresAt = now + currentTimeLeft + duration
+	potionData.ExpiresAt = now + newTimeLeft
 	
 	local timerValue = getPotionTimerValue(player, boostType)
 	if timerValue then
-		timerValue.Value = currentTimeLeft + duration
+		timerValue.Value = newTimeLeft
 	end
+	return true
 end
 
 function BoostModule.ActivateServerPotion()
@@ -234,8 +246,44 @@ end
 
 function BoostModule.RemovePlayer(player)
 	local userId = player.UserId
+	local now = os.time()
 	
-	playerLeaveTimes[userId] = os.time()
+	local boostData = getBoostData(player)
+	if boostData then
+		local lastLeaveValue = boostData:FindFirstChild("LastLeaveTime")
+		local secondsValue = boostData:FindFirstChild("TimeBoostSeconds")
+		local percentValue = boostData:FindFirstChild("TimeBoostPercent")
+		local timeData = playerTimeBoosts[userId]
+
+		if timeData then
+			if secondsValue then
+				secondsValue.Value = timeData.Seconds
+			end
+
+			if percentValue then
+				percentValue.Value = timeData.Percent
+			end
+		end
+
+		if lastLeaveValue then
+			lastLeaveValue.Value = os.time()
+		end
+	end
+	
+	local potionData = playerPotionBoosts[userId]
+	
+	if potionData then
+		for boostType, potionInfo in pairs(potionData) do
+			local timerValue = getPotionTimerValue(player, boostType)
+			
+			if timerValue then
+				timerValue.Value = math.max(0, potionInfo.ExpiresAt - now)
+			end
+		end
+	end
+	
+	playerLeaveTimes[userId] = now
+	playerPotionBoosts[userId] = nil
 	
 	task.delay(TIME_BOOST_RESET_AFTER, function()
 		if not Players:GetPlayerByUserId(userId) then
@@ -243,23 +291,6 @@ function BoostModule.RemovePlayer(player)
 			playerLeaveTimes[userId] = nil
 		end
 	end)
-	
-	local boostData = getBoostData(player)
-	if boostData then
-		local lastLeaveValue = boostData:FindFirstChild("LastLeaveTime")
-		local secondsValue = boostData:FindFirstChild("TimeBoostSeconds")
-		local percentValue = boostData:FindFirstChild("TimeBoostPercent")
-		local data = playerTimeBoosts[userId]
-		
-		if data then 
-			if secondsValue then secondsValue.Value = data.Seconds end
-			if percentValue then percentValue.Value = data.Percent end
-		end
-		
-		if lastLeaveValue then
-			lastLeaveValue.Value = os.time()
-		end
-	end
 end
 
 function BoostModule.StartTimeBoostLoop()
@@ -438,18 +469,6 @@ function BoostModule.GetServerPotionBoost()
 		end
 	end
 	return result
-end
-
-function BoostModule.SetPersonalPotionBoost(player, boostType, multiplier)
-	local data = playerPotionBoosts[player.UserId]
-	if not data then
-		data = getDefaultPotionBoosts()
-		playerPotionBoosts[player.UserId] = data
-	end
-	
-	if data[boostType] then
-		data[boostType] = multiplier
-	end
 end
 
 function BoostModule.GetPotionTimeLeft(player)
