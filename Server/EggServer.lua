@@ -84,7 +84,7 @@ local function canProcessEggRequest(player)
 end
 
 local function getEggPosition(eggName)
-	local eggObject = workspace:FindFirstChild(eggName)
+	local eggObject = workspace:FindFirstChild(eggName, true)
 	
 	if not eggObject then
 		return nil
@@ -139,7 +139,7 @@ local function rollPetFromEgg(player, eggName)
 		if rarityPower > 0 then
 			finalChance *= 1 + (petLuckBonus * rarityPower)
 			finalChance *= boostLuckMultiplier
-			finalChance += trainerLuckMultiplier
+			finalChance *= trainerLuckMultiplier
 		end
 		
 		table.insert(weightedPets, {
@@ -287,7 +287,7 @@ end
 
 --Connect eggs in workspace
 for eggName, _ in pairs(eggData) do
-	local egg = workspace:FindFirstChild(eggName)
+	local egg = workspace:FindFirstChild(eggName, true)
 	if egg then
 		local prompt = egg:FindFirstChildWhichIsA("ProximityPrompt", true)
 		if prompt then
