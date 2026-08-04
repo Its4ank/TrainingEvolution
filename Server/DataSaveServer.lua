@@ -10,9 +10,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ItemModule = require(game.ServerScriptService.Modules.ItemModule)
 local XPModule = require(game.ServerScriptService.Modules.XPModule)
 local PlayerDataSetupModule = require(game.ServerScriptService.Modules.PlayerDataSetupModule)
+local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 
 local trainerEvent = ReplicatedStorage:WaitForChild("TrainerEvent")
 local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
+
+local grantPotionPurchaseFunction = ServerScriptService:FindFirstChild("GrantPotionPurchaseFunction")
+if not grantPotionPurchaseFunction then
+	grantPotionPurchaseFunction = Instance.new("BindableFunction")
+	grantPotionPurchaseFunction.Name = "GrantPotionPurchaseFunction"
+	grantPotionPurchaseFunction.Parent = ServerScriptService
+end
 
 local sessionLockMap = MemoryStoreService:GetSortedMap("TrainingEvolution_SessionLocks_v1")
 local SERVER_ID = game.JobId
@@ -20,7 +28,7 @@ local SERVER_ID = game.JobId
 local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
-local AUTOSAVE_TIME = 120
+local AUTOSAVE_TIME = 30
 local SESSION_LOCK_TTL = 300
 local SESSION_LOCK_REFRESH_TIME = 60
 
@@ -38,6 +46,7 @@ local foldersToSave = {
 	"Potions",
 	"PotionTimers",
 	"BoostData",
+	"PurchaseReceipts",
 }
 
 local function isSavableValue(obj)
@@ -169,19 +178,44 @@ local function loadPlayer(player)
 	return true
 end
 
-local function savePlayer(player)
+local playerSaveLocks = {}
+
+local function lockPlayerSave(player)
+	local userId = player.UserId
+	while playerSaveLocks[userId] do
+		task.wait()
+	end
+	playerSaveLocks[userId] = true
+end
+
+local function unlockPlayerSave(player)
+	playerSaveLocks[player.UserId] = nil
+end
+
+local function savePlayerUnlocked(player)
 	local key = "Player_" .. player.UserId
 	local data = collectPlayerData(player)
-
+	
 	local success, err = pcall(function()
 		dataStore:SetAsync(key, data)
 	end)
-
+	
 	if success then
 		print("DATA SAVED:", player.Name)
-	else
+	else 
 		warn("DATA SAVE FAILED:", player.Name, err)
 	end
+	return success, err
+end
+
+local function savePlayer(player)
+	lockPlayerSave(player)
+	
+	local success, err = savePlayerUnlocked(player)
+	
+	unlockPlayerSave(player)
+	
+	return success, err
 end
 
 local function setupPotions(player)
@@ -251,8 +285,18 @@ local function setupBoostData(player)
 	end
 	
 	local percent = boostData:FindFirstChild("TimeBoostPercent")
+	if percent and not percent:IsA("NumberValue") then
+		local oldValue = tonumber(percent.Value) or 0
+		
+		percent:Destroy()
+		percent = Instance.new("NumberValue")
+		percent.Name = "TimeBoostPercent"
+		percent.Value = oldValue
+		percent.Parent = boostData
+	end
+	
 	if not percent then
-		percent = Instance.new("IntValue")
+		percent = Instance.new("NumberValue")
 		percent.Name = "TimeBoostPercent"
 		percent.Value = 0
 		percent.Parent = boostData
@@ -273,6 +317,17 @@ local function setupBoostData(player)
 		lastLeave.Value = 0
 		lastLeave.Parent = boostData
 	end
+end
+
+local function setupPurchaseReceipts(player)
+	local receipts = player:FindFirstChild("PurchaseReceipts")
+	
+	if not receipts then
+		receipts = Instance.new("Folder")
+		receipts.Name = "PurchaseReceipts"
+		receipts.Parent = player
+	end
+	return receipts
 end
 
 local function acquireSessionLock(player)
@@ -348,6 +403,80 @@ local function releaseSessionLock(player)
 	end
 end
 
+local ALLOWED_POTION_PRODUCTS = {
+	EnergyPotion = true,
+	MoneyPotion = true,
+	LuckPotion = true,
+}
+
+grantPotionPurchaseFunction.OnInvoke = function(player, purchaseId, potionId, amount)
+	if not player or not player:IsA("Player") then
+		return false, "IMVALID_PLAYER"
+	end
+	
+	if player:GetAttribute("DataReady") ~= true then
+		return false, "DATA_NOT_READY"
+	end
+	
+	if typeof(purchaseId) ~= "string" or purchaseId == "" then
+		return false, "INVALID_PURCHASE_ID"
+	end
+	
+	if typeof(potionId) ~= "string" or not ALLOWED_POTION_PRODUCTS[potionId] then
+		return false, "INVALID_POTION"
+	end
+	
+	amount = math.floor(tonumber(amount) or 0)
+	
+	if amount <= 0 or amount > 10 then
+		return false, "INVALID_AMOUNT"
+	end
+	
+	lockPlayerSave(player)
+	
+	if player:GetAttribute("DataReady") ~= true then
+		unlockPlayerSave(player)
+		return false, "DATA_NOT_READY"
+	end
+	
+	local receipts = setupPurchaseReceipts(player)
+	local receiptName = "Receipt_" .. purchaseId
+	
+	if receipts:FindFirstChild(receiptName) then
+		unlockPlayerSave(player)
+		return true, "ALREADY_PROCESSED"
+	end
+	
+	local potions = player:FindFirstChild("Potions")
+	local potionValue = potions and potions:FindFirstChild(potionId)
+	
+	if not potionValue or not potionValue:IsA("IntValue") then
+		unlockPlayerSave(player)
+		return false, "POTION_VALUE_NOT_FOUND"
+	end
+	
+	potionValue.Value += amount
+	
+	local receiptValue = Instance.new("NumberValue")
+	receiptValue.Name = receiptName
+	receiptValue.Value = os.time()
+	receiptValue.Parent = receipts
+	
+	local saved, saveError = savePlayerUnlocked(player)
+	
+	if not saved then
+		potionValue.Value -= amount
+		receiptValue:Destroy()
+		
+		unlockPlayerSave(player)
+		
+		warn("PURCHASE PROFILE SAVE FAILED:", player.Name, purchaseId, saveError)
+		return false, "SAVE_FAILED"
+	end
+	unlockPlayerSave(player)
+	return true, "PURCHASE_GRANTED"
+end
+
 Players.PlayerAdded:Connect(function(player)
 	local lockOk = acquireSessionLock(player)
 	
@@ -365,6 +494,7 @@ Players.PlayerAdded:Connect(function(player)
 	setupPotions(player)
 	setupPotionTimers(player)
 	setupBoostData(player)
+	setupPurchaseReceipts(player)
 	
 	local loadSuccess = loadPlayer(player)
 	
@@ -383,6 +513,7 @@ Players.PlayerAdded:Connect(function(player)
 	setupPotions(player)
 	setupPotionTimers(player)
 	setupBoostData(player)
+	setupPurchaseReceipts(player)
 	
 	player:SetAttribute("DataReady", true)
 	print("DATA READY:", player.Name)
@@ -391,6 +522,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	if player:GetAttribute("DataReady") == true then
+		BoostModule.RemovePlayer(player)
 		savePlayer(player)
 	end
 	
@@ -427,6 +559,7 @@ end)
 game:BindToClose(function()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player:GetAttribute("DataReady") == true then
+			BoostModule.RemovePlayer(player)
 			savePlayer(player)
 		end
 		releaseSessionLock(player)
