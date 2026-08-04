@@ -55,12 +55,9 @@ local spawnPart = workspace:FindFirstChild("SpawnLocation")
 
 
 --RemoteEvent
-local leaveRaceEvent = ReplicatedStorage:FindFirstChild("LeaveRaceEvent")
-if not leaveRaceEvent then
-	leaveRaceEvent = Instance.new("RemoteEvent")
-	leaveRaceEvent.Name = "LeaveRaceEvent"
-	leaveRaceEvent.Parent = ReplicatedStorage
-end
+local raceFolder = ReplicatedStorage:WaitForChild("RaceFolder")
+local racePopupEvent = raceFolder:WaitForChild("RacePopupEvent")
+local leaveRaceEvent = raceFolder:WaitForChild("LeaveRaceEvent")
 
 local raceStatusText = ReplicatedStorage:FindFirstChild("RaceStatusText")
 if not raceStatusText then
@@ -79,7 +76,7 @@ end
 
 
 --Constants
-local WAIT_TIME = 30
+local WAIT_TIME = 0
 local RACE_TIME = 150
 
 local raceOpen = false
@@ -271,45 +268,49 @@ end
 local function getRaceSpeedFromEnergy(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then
-		return MIN_SPEED
+		return MIN_SPEED, MIN_SPEED
 	end
 
 	local energy = leaderstats:FindFirstChild("Energy")
 	if not energy then
-		return MIN_SPEED
+		return MIN_SPEED, MIN_SPEED
 	end
 
 	local value = UpgradeModule.GetRaceEnergy(player, energy.Value)
 	if value <= 0 then
-		return MIN_SPEED
+		return MIN_SPEED, MIN_SPEED
 	end
 
 	-- 0 - 1m 16/50
 	if value < 1e6 then
 		local t = value / 1e6
-		return lerp(16, 50, t)
+		local targetSpeed = lerp(16, 50, t)
+		return targetSpeed, MIN_SPEED
 	end
 
 	-- 1m - 1b  50/100  
 	if value < 1e9 then
 		local t = (value - 1e6) / (1e9 - 1e6)
-		return lerp(50, 100, t)
+		local targetSpeed = lerp(50, 100, t)
+		return targetSpeed, 16
 	end
 
 	-- 1b - 1t  100/200
 	if value < 1e12 then
 		local t = (value - 1e9) / (1e12 - 1e9)
-		return lerp(100, 200, t)
+		local targetSpeed = lerp(100, 200, t)
+		return targetSpeed, 50
 	end
 
 	-- 1t - 1q  200/400
 	if value < 1e15 then
 		local t = (value - 1e12) / (1e15 - 1e12)
-		return lerp(200, 400, t)
+		local targetSpeed = lerp(200, 400, t)
+		return targetSpeed, 100
 	end
 
 	-- все выше 1q
-	return 400
+	return 400, 200
 end
 
 
@@ -391,14 +392,14 @@ local function startRace(player)
 	inRaceValue.Value = true
 	progressValue.Value = 0
 	resetCollectedRewards(player)
-	speedValue.Value = MIN_SPEED
+	
+	local _, initialSpeed = getRaceSpeedFromEnergy(player)
+	speedValue.Value = initialSpeed
 
 	local humanoid, hrp = lockPlayerToTrack(player)
 	if not humanoid or not hrp then
 		return
 	end
-
-	print("START:", player.Name)
 
 	activeConnections[player] = RunService.Heartbeat:Connect(function(dt)
 		local character = player.Character
@@ -460,8 +461,6 @@ local function restartRace(player)
 	local targetPos = startLine.Position + Vector3.new(0, 3, 0)
 	hrp.AssemblyLinearVelocity = Vector3.zero
 	hrp.CFrame = CFrame.new(targetPos, targetPos + startLine.CFrame.LookVector)
-
-	print("RESTART:", player.Name)
 end
 
 local function leaveRace(player)
@@ -489,8 +488,6 @@ local function leaveRace(player)
 	getOrCreateInRace(player).Value = false
 	getOrCreateRaceProgress(player).Value = 0
 	getOrCreateRaceSpeed(player).Value = 0
-
-	print("LEAVE RACE:", player.Name)
 end
 
 local function stopAllRacers()
@@ -576,6 +573,8 @@ local function connectRewardTouch(reward)
 			local finalReward = math.floor(rewardAmount * finalMultiplier)
 			money.Value += finalReward
 			
+			racePopupEvent:FireClient(player, "Money", finalReward)
+			
 			TrainerModule.addEquippedTrainerProgress(player, "Money", finalReward)
 		end
 
@@ -588,6 +587,7 @@ local function connectRewardTouch(reward)
 		local finalRaceXp = baseRaceXp * rebirthXpMultiplier * trainerRaceXpMultiplier
 		
 		XPModule.addXP(player, finalRaceXp)
+		racePopupEvent:FireClient(player, "XP", finalRaceXp)
 		
 		local pet = PetModule.getEquippedPet(player)
 		if pet then
@@ -598,7 +598,6 @@ local function connectRewardTouch(reward)
 			end
 		end
 
-		print(player.Name, "got base reward", rewardAmount, "from", reward.Name)
 
 		-- UPGRADE: GemChance + GemMore
 		local finalGemChance = UpgradeModule.GetFinalGemChance(player, GEM_CHANCE)
@@ -611,7 +610,7 @@ local function connectRewardTouch(reward)
 				local gems = playerData:FindFirstChild("Gems")
 				if gems then
 					gems.Value += finalGemReward
-					print(player.Name, "получил GEM")
+					racePopupEvent:FireClient(player, "Gems", finalGemReward)
 				end
 
 			end
