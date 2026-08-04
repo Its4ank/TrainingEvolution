@@ -1,4 +1,4 @@
---// TreadmillUI 1.2
+--// TreadmillUI
 
 --//Services
 local Players = game:GetService("Players")
