@@ -1,13 +1,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
-local DataStoreService = game:GetService("DataStoreService")
-local processedReceiptStore = DataStoreService:GetDataStore("TrainingEvolution_ProcessedReceipts_v1")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 local BetaPurchaseTracker = require(game.ServerScriptService.Modules.BetaPurchaseTracker)
 
-
+local grantPotionPurchaseFunction = ServerScriptService:WaitForChild("GrantPotionPurchaseFunction")
 
 --//RemoteEvents
 local shopEventFolder = ReplicatedStorage:WaitForChild("ShopEvent")
@@ -101,28 +100,33 @@ buyPotionEvent.OnServerEvent:Connect(function(player, potionId, amount, payType)
 end)
 
 usePotionEvent.OnServerEvent:Connect(function(player, potionId, amountMode)
+	if player:GetAttribute("DataReady") ~= true then return end
+	if typeof(potionId) ~= "string" then return end
+	
 	local potionData = POTIONS[potionId]
 	if not potionData then return end
 	
 	local potionValue = getPotionValue(player, potionId)
-	if not potionValue then return end
+	if not potionValue or not potionValue:IsA("IntValue") then return end
 	
-	local useAmount = 0
+	local useAmount
 	
 	if amountMode == "Max" then
 		useAmount = potionValue.Value
+	elseif amountMode == 1 or amountMode == 5 then
+		useAmount = amountMode
 	else
-		useAmount = tonumber(amountMode) or 0
+		warn("INVALID POTION USE AMOUNT:", player.Name, tostring(amountMode))
+		return
 	end
 	
 	if useAmount <= 0 then return end 
 	if potionValue.Value < useAmount then return end
 	
-	potionValue.Value -= useAmount
+	local activated = BoostModule.ActivatePersonalPotion(player, potionData.BoostType, useAmount)
+	if not activated then return end
 	
-	for i = 1, useAmount do 
-		BoostModule.ActivatePersonalPotion(player, potionData.BoostType)
-	end
+	potionValue.Value -= useAmount
 end)
 
 buyPassEvent.OnServerEvent:Connect(function(player, passId, payType)
@@ -170,31 +174,6 @@ buyPassEvent.OnServerEvent:Connect(function(player, passId, payType)
 	warn("INVALID PASS PAYMENT TYPE:", player.Name, passId, payType)
 end)
 
-local function isReceiptProcessed(purchaseId)
-	local success, result = pcall(function()
-		return processedReceiptStore:GetAsync(tostring(purchaseId))
-	end)
-	
-	if not success then
-		warn("RECEIPT CHECK FAILED:", purchaseId, result)
-		return nil
-	end
-	
-	return result == true
-end
-
-local function markReceiptProcessed(purchaseId)
-	local success, result = pcall(function()
-		processedReceiptStore:SetAsync(tostring(purchaseId), true)
-	end)
-	
-	if not success then
-		warn("RECEIPT SAVE FAILED:", purchaseId, result)
-		return false
-	end
-	return true
-end
-
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
 	if not wasPurchased then return end
 	
@@ -231,46 +210,63 @@ for potionId, potionData in pairs(POTIONS) do
 end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
-	local purchaseId = tostring(receiptInfo.PurchaseId)
-	local alreadyProcessed = isReceiptProcessed(purchaseId)
-	
-	if alreadyProcessed == nil then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-	
-	if alreadyProcessed then
-		return Enum.ProductPurchaseDecision.PurchaseGranted
-	end
-	
 	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
-	if not player then 
+
+	if not player then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	
+
 	if player:GetAttribute("DataReady") ~= true then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	
+
 	local productData = productToPotion[receiptInfo.ProductId]
-	if not productData then 
-		warn("UNKNOWN DEVELOPER PRODUCT:", receiptInfo.ProductId, purchaseId)
+
+	if not productData then
+		warn(
+			"UNKNOWN DEVELOPER PRODUCT:",
+			receiptInfo.ProductId,
+			receiptInfo.PurchaseId
+		)
+
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	
-	local potionValue = getPotionValue(player, productData.PotionId)
-	if not potionValue then 
+
+	local success, reason = grantPotionPurchaseFunction:Invoke(
+		player,
+		tostring(receiptInfo.PurchaseId),
+		productData.PotionId,
+		productData.Amount
+	)
+
+	if not success then
+		warn(
+			"PURCHASE GRANT FAILED:",
+			player.Name,
+			tostring(receiptInfo.PurchaseId),
+			tostring(reason)
+		)
+
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-	
-	potionValue.Value += productData.Amount
-	
-	local receiptSaved = markReceiptProcessed(purchaseId)
-	if not receiptSaved then
-		potionValue.Value -= productData.Amount
-		return Enum.ProductPurchaseDecision.NotProcessedYet
+
+	-- Статистика покупки не должна ломать сам чек
+	local trackerSuccess, trackerError = pcall(function()
+		BetaPurchaseTracker.addPurchase(
+			player,
+			"Potions",
+			productData.PotionId,
+			productData.Amount
+		)
+	end)
+
+	if not trackerSuccess then
+		warn(
+			"BETA PURCHASE TRACKER FAILED:",
+			player.Name,
+			trackerError
+		)
 	end
-	
-	BetaPurchaseTracker.addPurchase(player, "Potions", productData.PotionId, productData.Amount)
-	
+
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
