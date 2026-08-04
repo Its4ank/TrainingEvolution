@@ -132,7 +132,7 @@ local function updateBoostUI(player)
 		TimeBoost = {
 			Active = timeMultiplier > 1,
 			Multiplier = timeMultiplier,
-			Percent = math.floor((timeMultiplier - 1) * 100),
+			Percent = timePercent,
 		},
 		
 		PersonalPotions = personalPotions,
