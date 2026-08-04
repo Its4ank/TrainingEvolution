@@ -1,26 +1,64 @@
 local ShopModule = {}
 
+ShopModule.TestGamepasses = {
+	All = true,
+	
+	EnergyPass = true,
+	AutoRebirthPass = true,
+	MaxRebirthPass = true,
+}
+
 ShopModule.Passes = {
 	EnergyPass = {
+		Name = "Energy Pass",
+		Icon = "",
+		Description = "",
+		Boost = "x2 Energy",
+		
 		GamePassId = 1860533278,
+		
+		RobuxPrice = 49,
 		SRobuxPrice = 39,
+		
 		EnergyBonus = 1,
 	},
 	
 	AutoRebirthPass = { 
+		Name = "Auto Rebirth",
+		Icon = "",
+		Description = "",
+		Boost = "Auto Rebirth",
+		
 		GamePassId = 1903338380,
+		
+		RobuxPrice = 99,
 		SRobuxPrice = 129,
 	},
 	
 	MaxRebirthPass = { 
+		Name = "Max Rebirth",
+		Icon = "",
+		Description = "",
+		Boost = "Max Rebirth",
+		
 		GamePassId = 1902642397,
+		
+		RobuxPrice = 139,
 		SRobuxPrice = 169,
 	},
 }
 
 ShopModule.Potions = { 
 	EnergyPotion = { 
+		Name = "Energy Potion",
+		
+		Icon = "",
+		Description = "",
+		
+		Boost = "x2 Energy",
 		BoostType = "Energy",
+		
+		Duration = 900,
 		
 		Products = { 
 			[1] = 3605923166,
@@ -101,7 +139,22 @@ ShopModule.Potions = {
 	},
 }
 
+function ShopModule.IsGamepassTest(passId)
+	if ShopModule.TestGamepasses.All == false then
+		return false
+	end
+
+	if ShopModule.TestGamepasses[passId] == false then
+		return false
+	end
+	return true
+end
+
 function ShopModule.HasPass(player, passId)
+	if not ShopModule.IsGamepassTest(passId) then 
+		return false
+	end
+	
 	local playerData = player:FindFirstChild("PlayerData")
 	if not playerData then return false end
 
@@ -109,9 +162,8 @@ function ShopModule.HasPass(player, passId)
 	if not gamepasses then return false end
 
 	local passValue = gamepasses:FindFirstChild(passId)
-	if not passValue then return false end
 
-	return passValue.Value == true
+	return passValue ~= nil and passValue.Value == true
 end
 
 function ShopModule.HasAutoRebirth(player)
@@ -124,7 +176,7 @@ end
 
 function ShopModule.GetEnergyBonus(player)
 	if ShopModule.HasPass(player, "EnergyPass") then
-		return ShopModule.Passes.EnergyPass.EnergyBonus
+		return ShopModule.Passes.EnergyPass.EnergyBonus or 0
 	end
 	return 0
 end
