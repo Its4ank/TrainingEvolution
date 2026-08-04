@@ -21,6 +21,8 @@ local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
 local AUTOSAVE_TIME = 120
+local SESSION_LOCK_TTL = 300
+local SESSION_LOCK_REFRESH_TIME = 60
 
 local foldersToSave = {
 	"leaderstats",
@@ -154,7 +156,7 @@ local function loadPlayer(player)
 
 	if not success then
 		warn("DATA LOAD FAILED:", player.Name, data)
-		return
+		return false
 	end
 
 	if data then
@@ -164,6 +166,7 @@ local function loadPlayer(player)
 	else
 		print("NEW PLAYER DATA:", player.Name)
 	end
+	return true
 end
 
 local function savePlayer(player)
@@ -285,7 +288,7 @@ local function acquireSessionLock(player)
 				ServerId = SERVER_ID,
 				Time = os.time(),
 			}
-		end, 300)
+		end, SESSION_LOCK_TTL)
 	end)
 	
 	if not success then 
@@ -296,12 +299,53 @@ local function acquireSessionLock(player)
 	return result and result.ServerId == SERVER_ID
 end
 
+local function refreshSessionLock(player)
+	local key = "Player_" .. player.UserId
+	
+	local success, result = pcall(function()
+		return sessionLockMap:UpdateAsync(key, function(oldValue)
+			if oldValue and oldValue.ServerId and oldValue.ServerId ~= SERVER_ID then
+				return oldValue
+			end
+			
+			return {
+				ServerId = SERVER_ID,
+				Time = os.time(),
+			}
+		end, SESSION_LOCK_TTL)
+	end)
+	
+	if not success then
+		warn("SESSION LOCK REFRESH FAILED:", player.Name, result)
+		return false, "REQUEST_FAILED"
+	end
+	
+	if not result or result.ServerId ~= SERVER_ID then
+		warn("SESSION LOCK LOST:", player.Name)
+		return false, "LOCK_LOST"
+	end
+	return true
+end
+
 local function releaseSessionLock(player)
 	local key = "Player_" .. player.UserId
 	
-	pcall(function()
+	local success, currentLock = pcall(function()
+		return sessionLockMap:GetAsync(key)
+	end)
+	
+	if not success then
+		warn("SESSION LOCK CHECK FAILED:", player.Name, currentLock)
+		return
+	end
+	
+	local removeSuccess, removeError = pcall(function()
 		sessionLockMap:RemoveAsync(key)
 	end)
+	
+	if not removeSuccess then
+		warn("SESSION LOCK RELEASE FAILED:", player.Name, removeError)
+	end
 end
 
 Players.PlayerAdded:Connect(function(player)
@@ -322,7 +366,15 @@ Players.PlayerAdded:Connect(function(player)
 	setupPotionTimers(player)
 	setupBoostData(player)
 	
-	loadPlayer(player)
+	local loadSuccess = loadPlayer(player)
+	
+	if not loadSuccess then
+		warn("PLAYER DATA WAS NOT LOADED:", player.Name)
+		
+		releaseSessionLock(player)
+		player:Kick("Не удалось загрузить ваши данные. " .. "Пожалуйста, зайдите в игру еще раз.")
+		return
+	end
 	
 	PlayerDataSetupModule.setup(player)
 	XPModule.setupPlayer(player)
@@ -347,10 +399,27 @@ end)
 
 task.spawn(function()
 	while true do
+		task.wait(SESSION_LOCK_REFRESH_TIME)
+		
+		for _, player in ipairs(Players:GetPlayers()) do
+			local refreshed, reason = refreshSessionLock(player)
+			
+			if not refreshed and reason == "LOCK_LOST" then
+				player:SetAttribute("DataReady", false)
+				player:Kick("Ваша игровая сессия была открыта " .. "на другом сервере. Пожалуйста зайдите снова.")
+			end
+		end
+	end
+end)
+
+task.spawn(function()
+	while true do
 		task.wait(AUTOSAVE_TIME)
 
 		for _, player in ipairs(Players:GetPlayers()) do
-			savePlayer(player)
+			if player:GetAttribute("DataReady") == true then
+				savePlayer(player)
+			end
 		end
 	end
 end)
@@ -362,8 +431,6 @@ game:BindToClose(function()
 		end
 		releaseSessionLock(player)
 	end
-
-	task.wait(2)
 end)
 
 print("DataSaveServer loaded")
