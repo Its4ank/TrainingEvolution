@@ -191,13 +191,15 @@ local function giveDailyReward(player, day, slot)
 	end
 	
 	if slot == 4 then 
-		addPotion(player, "EnergyPotion", 1)
-		addPotion(player, "MoneyPotion", 1)
-		addPotion(player, "LuckPotion", 1)
+		local energyGiven = addPotion(player, "EnergyPotion", 1)
+		local moneyGiven = addPotion(player, "MoneyPotion", 1)
+		local luckGiven = addPotion(player, "LuckPotion", 1)
+		
+		return energyGiven and moneyGiven and luckGiven
 	end
 	
 	if slot == 5 then 
-		addPotion(player, "MoneyPotion", 1)
+		return addPotion(player, "MoneyPotion", 1)
 	end
 	
 	if slot == 6 then 
