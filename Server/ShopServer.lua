@@ -210,6 +210,8 @@ for potionId, potionData in pairs(POTIONS) do
 end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+	local purchaseId = tostring(receiptInfo.PurchaseId)
+
 	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
 
 	if not player then
@@ -226,46 +228,70 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		warn(
 			"UNKNOWN DEVELOPER PRODUCT:",
 			receiptInfo.ProductId,
-			receiptInfo.PurchaseId
+			purchaseId
 		)
 
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	local success, reason = grantPotionPurchaseFunction:Invoke(
-		player,
-		tostring(receiptInfo.PurchaseId),
-		productData.PotionId,
-		productData.Amount
-	)
+	-- Защищаем ProcessReceipt от ошибки внутри BindableFunction
+	local invokeSuccess, grantSuccess, reason = pcall(function()
+		return grantPotionPurchaseFunction:Invoke(
+			player,
+			purchaseId,
+			productData.PotionId,
+			productData.Amount
+		)
+	end)
 
-	if not success then
+	if not invokeSuccess then
+		warn(
+			"PURCHASE FUNCTION ERROR:",
+			player.Name,
+			purchaseId,
+			tostring(grantSuccess)
+		)
+
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	if not grantSuccess then
 		warn(
 			"PURCHASE GRANT FAILED:",
 			player.Name,
-			tostring(receiptInfo.PurchaseId),
+			purchaseId,
 			tostring(reason)
 		)
 
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	-- Статистика покупки не должна ломать сам чек
-	local trackerSuccess, trackerError = pcall(function()
-		BetaPurchaseTracker.addPurchase(
-			player,
-			"Potions",
-			productData.PotionId,
-			productData.Amount
-		)
-	end)
+	-- Записываем покупку в BetaPurchaseTracker только при первой выдаче.
+	-- При ALREADY_PROCESSED повторно статистику не увеличиваем.
+	if reason == "PURCHASE_GRANTED" then
+		local trackerSuccess, trackerResult = pcall(function()
+			return BetaPurchaseTracker.addPurchase(
+				player,
+				"Potions",
+				productData.PotionId,
+				productData.Amount
+			)
+		end)
 
-	if not trackerSuccess then
-		warn(
-			"BETA PURCHASE TRACKER FAILED:",
-			player.Name,
-			trackerError
-		)
+		if not trackerSuccess then
+			warn(
+				"BETA PURCHASE TRACKER ERROR:",
+				player.Name,
+				purchaseId,
+				tostring(trackerResult)
+			)
+		elseif trackerResult ~= true then
+			warn(
+				"BETA PURCHASE TRACKER SAVE FAILED:",
+				player.Name,
+				purchaseId
+			)
+		end
 	end
 
 	return Enum.ProductPurchaseDecision.PurchaseGranted
