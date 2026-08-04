@@ -5,10 +5,17 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
---// Player
-local gui = script.Parent
+local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 
-local treadmillFolder = gui:WaitForChild("TreadmillFolder")
+--// Player
+local raceGui = script.Parent
+local player = Players.LocalPlayer
+
+local guiFolder = raceGui:WaitForChild("GuiFolder")
+local uiBalance = guiFolder:WaitForChild("UIBalance")
+local treadOpen = uiBalance:WaitForChild("TreadmillOpen")
+local boostTreadmillLabel = treadOpen:WaitForChild("BoostTreadmillLabel")
+local treadmillFolder = guiFolder:WaitForChild("TreadmillFolder")
 
 local treadmillHost = treadmillFolder:WaitForChild("TreadmillHost")
 local treadBlur = treadmillFolder:WaitForChild("TreadBlur")
@@ -20,6 +27,11 @@ local treadmillViewport = treadmillHost:WaitForChild("TreadmillViewport")
 local treadmillLocation = treadmillHost:WaitForChild("TreadmillLocation")
 local treadmillDetails = treadmillHost:WaitForChild("TreadmillDetails")
 local treadCloseButton = treadmillHost:WaitForChild("TreadCloseButton")
+
+--// leaderstats
+local treadLeaderstatsUI = treadmillHost:WaitForChild("TreadLeaderstatsUI")
+local energyLabel = treadLeaderstatsUI:WaitForChild("EnergyLabel")
+local rebirthLabel = treadLeaderstatsUI:WaitForChild("RebirthLabel")
 
 --// Tier Frame 
 local tierCurrentName = treadTierFrame:WaitForChild("TierCurrentName")
@@ -84,6 +96,24 @@ local MAX_TREADMILLS = 3
 
 local selectedTreadmillId = 1
 local currentInfo = nil
+
+local billboardData = {}
+
+for i = 1, MAX_TREADMILLS do
+	local billboard = treadmillFolder:WaitForChild("BillboardTread" .. i)
+	local boardHost = billboard:WaitForChild("BoardHost")
+	
+	local boardIconStage = boardHost:WaitForChild("BoardIconStage")
+	local boardStageName = boardHost:WaitForChild("BoardStageName")
+	local boardLvlNumber = boardHost:WaitForChild("BoardLvlNumber")
+	
+	billboardData[i] = {
+		Billboard = billboard,
+		BoardIconStage = boardIconStage,
+		BoardStageName = boardStageName,
+		BoardLvlNumber = boardLvlNumber,
+	}
+end
 
 --// Icons
 local TREADMILL_ICONS = { 
@@ -176,6 +206,45 @@ local function showWarning(text)
 			treadWarningLabel.Visible = false
 		end
 	end)
+end
+
+local function getMainPart(object)
+	if object:IsA("BasePart") then 
+		return object
+	end
+    return object:FindFirstChildWhichIsA("BasePart", true)
+end
+
+--// functions
+local function setupBillboards()
+	for i = 1, MAX_TREADMILLS do
+		local treadmillObject = workspace:FindFirstChild("Treadmill" .. i)
+		local data = billboardData[i]
+
+		if treadmillObject and data then
+			local mainPart = getMainPart(treadmillObject)
+
+			if mainPart then
+				data.Billboard.Adornee = mainPart
+				data.Billboard.Enabled = true
+			else
+				warn("No BasePart found for Treadmill" .. i)
+			end
+		end
+	end
+end
+
+local function updateLeaderstatsUI()
+	local energy = ClientDataModule.GetEnergy(player)
+	local rebirth = ClientDataModule.GetRebirth(player)
+
+	if energy then 
+		energyLabel.Text = formatShort(energy.Value)
+	end
+
+	if rebirth then 
+		rebirthLabel.Text = formatShort(rebirth.Value)
+	end
 end
 
 local function getProgress(current, required)
@@ -326,21 +395,44 @@ local function updateTierFrame(info)
 	end
 end
 
+local function updateBillboard(treadmillId, info)
+	local data = billboardData[treadmillId]
+	if not data or not info then return end
+	
+	setImage(data.BoardIconStage, info.StageIcon)
+	
+	data.BoardLvlNumber.Text = tostring(info.Level)
+	
+	if info.Unlocked then 
+		data.BoardStageName.Text = info.StageName or "Unknown"
+	else
+		data.BoardStageName.Text = "LOCKED"
+	end
+end
+
+local function updateAllBillboards()
+	for i = 1, MAX_TREADMILLS do
+		local info = getInfo(i)
+		updateBillboard(i, info)
+	end
+end
+
 local function updateDetails(info)
 	if not info then return end 
 	
 	currentInfo = info
+	boostTreadmillLabel.Text = "+" .. formatShort(info.CurrentEnergy)
 	treadStatusLabel.Text = info.Name or ("Treadmill " .. selectedTreadmillId)
 	updateChoiceIcons()
 	
 	if not info.Unlocked then 
-		lockedTreadFrame.Visible = true 
+		lockedTreadFrame.Visible = true
 		treadmillDetails.Visible = false
 		return
 	end
 	
 	lockedTreadFrame.Visible = false
-	treadmillDetails.Visible = true 
+	treadmillDetails.Visible = true
 	
 	treadStageName.Text = info.StageName or "Unknown"
 	treadStageNumber.Text = "Stage " .. tostring(info.Stage)
@@ -400,6 +492,10 @@ local function closeTierFrame()
 end
 
 --// Buttons 
+treadOpen.MouseButton1Click:Connect(function()
+	openTreadmillMenu()
+end)
+
 treadStoneChoice.MouseButton1Click:Connect(function()
 	openTreadmillMenu()
 end)
@@ -491,8 +587,18 @@ task.spawn(function()
 	while true do 
 		task.wait(1)
 		
+		updateLeaderstatsUI()
+		updateAllBillboards()
+		
 		if treadmillHost.Visible then 
 			refreshSelectedTreadmill()
 		end
 	end
 end)
+
+setupBillboards()
+updateLeaderstatsUI()
+updateAllBillboards()
+refreshSelectedTreadmill()
+
+print("TreadmillUI loaded")
