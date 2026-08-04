@@ -293,7 +293,7 @@ local function startTraining(player, treadmillId)
 				
 				if energy then
 					local energyPerSecond = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
-					local gainedEnergy = energyPerSecond * energyDelta
+					local gainedEnergy = energyPerSecond
 					
 					gainedEnergy = math.floor(gainedEnergy)
 					
