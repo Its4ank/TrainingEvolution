@@ -25,10 +25,10 @@ end
 local sessionLockMap = MemoryStoreService:GetSortedMap("TrainingEvolution_SessionLocks_v1")
 local SERVER_ID = game.JobId
 
-local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
+local DATA_STORE_NAME = "TrainingEvolution_Data_v2"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
-local AUTOSAVE_TIME = 30
+local AUTOSAVE_TIME = 60
 local SESSION_LOCK_TTL = 300
 local SESSION_LOCK_REFRESH_TIME = 60
 
@@ -384,22 +384,46 @@ end
 
 local function releaseSessionLock(player)
 	local key = "Player_" .. player.UserId
-	
+
 	local success, currentLock = pcall(function()
 		return sessionLockMap:GetAsync(key)
 	end)
-	
+
 	if not success then
-		warn("SESSION LOCK CHECK FAILED:", player.Name, currentLock)
+		warn(
+			"SESSION LOCK CHECK FAILED:",
+			player.Name,
+			currentLock
+		)
 		return
 	end
-	
+
+	-- Ключ уже отсутствует
+	if not currentLock then
+		return
+	end
+
+	-- Этот Lock уже принадлежит другому серверу.
+	-- Удалять его запрещено.
+	if currentLock.ServerId ~= SERVER_ID then
+		warn(
+			"SESSION LOCK NOT OWNED:",
+			player.Name,
+			tostring(currentLock.ServerId)
+		)
+		return
+	end
+
 	local removeSuccess, removeError = pcall(function()
 		sessionLockMap:RemoveAsync(key)
 	end)
-	
+
 	if not removeSuccess then
-		warn("SESSION LOCK RELEASE FAILED:", player.Name, removeError)
+		warn(
+			"SESSION LOCK RELEASE FAILED:",
+			player.Name,
+			removeError
+		)
 	end
 end
 
