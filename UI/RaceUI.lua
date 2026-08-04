@@ -7,10 +7,11 @@ local SoundService = game:GetService("SoundService")
 local UserInputService = game:GetService("UserInputService")
 
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
+local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
+ClientDataModule.WaitUntilReady(player)
 
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 
@@ -172,10 +173,7 @@ local function getTargetSpeedFromEnergy(value)
 end
 
 local function getRacePowerEnergy()
-	local racePowerLevel = racePowerUpgrade.Value
-	local racePowerMultiplier = 1 + (racePowerLevel * 0.10)
-
-	return energy.Value * racePowerMultiplier
+	return UpgradeModule.GetRaceEnergy(player, energy.Value)
 end
 
 local function getTrack()
