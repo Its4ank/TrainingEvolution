@@ -93,7 +93,7 @@ end
 
 function ClientDataModule.GetTreadmill(player, treadmillId)
 	local treadmills = ClientDataModule.GetTreadmills(player)
-	return treadmills:WaitForChild("Treadmills" .. tostring(treadmillId))
+	return treadmills:WaitForChild("Treadmill" .. tostring(treadmillId))
 end
 
 function ClientDataModule.GetTreadmillLevel(player, treadmillId)
