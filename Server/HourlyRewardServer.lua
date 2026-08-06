@@ -13,23 +13,12 @@ local requestHourlyRewardUpdateEvent = rewardEventFolder:WaitForChild("RequestHo
 local MAX_HOURLY_REWARDS = 12
 local DAY_SECONDS = 24 * 60 * 60
 
-local UNLOCK_TIMES = {
-	[1] = 5 * 60,
-	[2] = 10 * 60,
-	[3] = 15 * 60,
-	[4] = 25 * 60,
-	[5] = 35 * 60,
-	[6] = 50 * 60,
-	[7] = 65 * 60,
-	[8] = 85 * 60,
-	[9] = 105 * 60,
-	[10] = 130 * 60,
-	[11] = 155 * 60,
-	[12] = 180 * 60,
-}
-
 local function getNow()
 	return os.time()
+end
+
+local function getHourlyResetId(resetTime)
+	return "Reset_" .. tostring(math.floor(tonumber(resetTime) or 0))
 end
 
 local function getNextNidnight()
@@ -103,66 +92,101 @@ end
 
 local function buildHourlyData(player)
 	checkHourlyReset(player)
-	
+
 	local rewardsFolder = setupHourlyRewards(player)
 	local now = getNow()
-	
-	local sessionSeconds = rewardsFolder.HourlySessionSeconds.Value
-	local resetTime = rewardsFolder.HourlyResetTime.Value
-	local resetTimeLeft = math.max(0, resetTime - now)
-	
+
+	local sessionSeconds =
+		rewardsFolder.HourlySessionSeconds.Value
+
+	local resetTime =
+		rewardsFolder.HourlyResetTime.Value
+
+	local resetTimeLeft =
+		math.max(0, resetTime - now)
+
+	local resetId =
+		getHourlyResetId(resetTime)
+
 	local rewardsData = {}
-	
+
 	for slot = 1, MAX_HOURLY_REWARDS do
-		local config = RewardModule.getHourlyRewardConfig(slot)
-		local claimedValue = rewardsFolder["HourlyReward" .. slot .. "Claimed"]
-		local maxValueObj = rewardsFolder["HourlyReward" .. slot .. "MaxValue"]
-		
-		local rewardAmount
-		
-		if config.Placeholder then
-			rewardAmount = RewardModule.getPotionRewardAmount(player)
-		else
-			rewardAmount = RewardModule.calculateScalingReward( 
+		local claimedValue = rewardsFolder["HourlyReward"
+			.. slot
+			.. "Claimed"
+		]
+
+		local maxValueObj = rewardsFolder["HourlyReward"
+			.. slot
+			.. "MaxValue"
+		]
+
+		local rewardData, reason =
+			RewardModule.GetHourlyReward(
 				player,
-				config.Type,
-				config.WealthStage,
-				maxValueObj.Value
+				slot,
+				maxValueObj.Value,
+				resetId
+			)
+
+		if rewardData then
+			if rewardData.Amount
+				> maxValueObj.Value
+			then
+				maxValueObj.Value =
+					rewardData.Amount
+			else
+				rewardData.Amount =
+					maxValueObj.Value
+			end
+
+			local unlockTime =
+				RewardModule
+				.GetHourlyUnlockTime(slot)
+
+			local timeLeft =
+				math.max(
+					0,
+					unlockTime
+					- sessionSeconds
+				)
+
+			local isUnlocked =
+				sessionSeconds >= unlockTime
+
+			local isClaimed =
+				claimedValue.Value
+
+			local isAvailable =
+				isUnlocked
+				and not isClaimed
+
+			rewardData.Slot = slot
+			rewardData.UnlockTime = unlockTime
+			rewardData.TimeLeft = timeLeft
+			rewardData.IsUnlocked = isUnlocked
+			rewardData.IsAvailable = isAvailable
+			rewardData.IsClaimed = isClaimed
+
+			table.insert(
+				rewardsData,
+				rewardData
+			)
+		else
+			warn(
+				"HOURLY REWARD BUILD FAILED:",
+				player.Name,
+				slot,
+				reason
 			)
 		end
-		
-		if rewardAmount > maxValueObj.Value then
-			maxValueObj.Value = rewardAmount
-		else 
-			rewardAmount = maxValueObj.Value
-		end
-		
-		local unlockTime = UNLOCK_TIMES[slot]
-		local timeLeft = math.max(0, unlockTime - sessionSeconds)
-		
-		local isUnlocked = sessionSeconds >= unlockTime
-		local isClaimed = claimedValue.Value
-		local isAvailable = isUnlocked and not isClaimed
-		
-		table.insert(rewardsData, {
-			Slot = slot,
-			Type = config.Type,
-			Amount = rewardAmount,
-			DisplayText = RewardModule.getRewardDisplayText(config.Type, rewardAmount),
-			
-			UnlockTime = unlockTime,
-			TimeLeft = timeLeft,
-			
-			IsUnlocked = isUnlocked,
-			IsAvailable = isAvailable,
-			IsClaimed = isClaimed,
-		})
 	end
-	
+
 	return {
 		SessionSeconds = sessionSeconds,
 		ResetTimeLeft = resetTimeLeft,
-		Rewards = rewardsData
+		ResetTime = resetTime,
+		Rewards = rewardsData,
 	}
 end
 
@@ -184,7 +208,11 @@ claimHourlyRewardEvent.OnServerEvent:Connect(function(player, slot)
 	
 	local rewardsFolder = setupHourlyRewards(player)
 	local sessionSeconds = rewardsFolder.HourlySessionSeconds.Value
-	local unlockTime = UNLOCK_TIMES[slot]
+	local unlockTime = RewardModule.GetHourlyUnlockTime(slot)
+	if not unlockTime then
+		sendHourlyUpdate(player)
+		return
+	end
 	
 	local claimedValue = rewardsFolder["HourlyReward" .. slot .. "Claimed"]
 	local maxValueObj = rewardsFolder["HourlyReward" .. slot .. "MaxValue"]
@@ -199,21 +227,70 @@ claimHourlyRewardEvent.OnServerEvent:Connect(function(player, slot)
 		return
 	end
 	
-	local amount = maxValueObj.Value
-	
-	if amount <= 0 then
-		local config = RewardModule.getHourlyRewardConfig(slot)
-		
-		if config.Placeholder then
-			amount = RewardModule.getPotionRewardAmount(player)
-		else
-			amount = RewardModule.calculateScalingReward(player, config.Type, config.WealthStage, 0)
-		end
-		
-		maxValueObj.Value = amount
+	local resetTime =
+		rewardsFolder.HourlyResetTime.Value
+
+	local resetId =
+		getHourlyResetId(resetTime)
+
+	local rewardData, buildReason =
+		RewardModule.GetHourlyReward(
+			player,
+			slot,
+			maxValueObj.Value,
+			resetId
+		)
+
+	if not rewardData then
+		warn(
+			"HOURLY CLAIM BUILD FAILED:",
+			player.Name,
+			slot,
+			buildReason
+		)
+
+		sendHourlyUpdate(player)
+		return
 	end
-	
-	local success = RewardModule.giveHourlyReward(player, slot, amount)
+
+	if rewardData.Amount > maxValueObj.Value then
+		maxValueObj.Value = rewardData.Amount
+	else
+		rewardData.Amount = maxValueObj.Value
+	end
+
+	local success, giveReason =
+		RewardModule.GiveReward(
+			player,
+			rewardData
+		)
+
+	if success then
+		claimedValue.Value = true
+	else
+		if giveReason == "StorageFull" then
+			warn(
+				"Hourly pet reward storage full:",
+				player.Name,
+				slot
+			)
+
+		elseif giveReason == "AlreadyClaimed" then
+			-- Модуль уже подтверждает, что эта
+			-- награда была выдана.
+			claimedValue.Value = true
+
+		else
+			warn(
+				"HOURLY REWARD GIVE FAILED:",
+				player.Name,
+				slot,
+				giveReason
+			)
+		end
+	end
+
+	sendHourlyUpdate(player)
 	
 	if success then
 		claimedValue.Value = true
