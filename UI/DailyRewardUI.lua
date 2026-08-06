@@ -1,8 +1,10 @@
+--// DailyRewardUI
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
-local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
+
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
@@ -15,6 +17,7 @@ local rewardEventFolder = ReplicatedStorage:WaitForChild("RewardEvent")
 local dailyUpdateEvent = rewardEventFolder:WaitForChild("DailyRewardUpdateEvent")
 local claimDailyRewardEvent = rewardEventFolder:WaitForChild("ClaimDailyRewardEvent")
 local dailyRewardMessageEvent = rewardEventFolder:WaitForChild("DailyRewardMessageEvent")
+local requestDailyRewardUpdateEvent = rewardEventFolder:WaitForChild("RequestDailyRewardUpdateEvent")
 
 local dailyRewardFrame = rewardFolderUI:WaitForChild("DailyRewardFrame")
 
@@ -31,7 +34,11 @@ local streakLabel = strikRewardFrame:WaitForChild("StreakLabel")
 local strikImageLabel = strikRewardFrame:WaitForChild("StrikImageLabel")
 local chestStrikButton = strikRewardFrame:WaitForChild("ChestStrikButton")
 local claimChestButton = dailyRewardFrame:WaitForChild("ClaimChestButton")
-local closeReward = dailyRewardFrame:WaitForChild("CloseRewardButton")
+local closeRewardButton = dailyRewardFrame:WaitForChild("CloseRewardButton")
+
+--// Settings
+local VISIBLE_REWARD_SLOTS = 7
+local DAYS_PER_WEEK = 7
 
 local streakImages = {
 	[0] = "rbxassetid://96634192024275",
@@ -44,10 +51,16 @@ local streakImages = {
 	[7] = "rbxassetid://109460695683413",
 }
 
+--// Runtime data
 local rewardSlots = {}
-local lastDailyData = nil
-local lockHideTask = nil
 
+local lastDailyData = nil
+local visibleRewards = {}
+
+local lockHideTask = nil
+local localTimerConnection = nil
+
+--// Helpers
 local function formatTime(seconds)
 	seconds = math.max(0, math.floor(seconds))
 	
@@ -78,57 +91,100 @@ local function showLockText(text)
 	end)
 end
 
-local function openMenu()
-	MenuManager.open("DailyRewards")
+local function getOptionalObject(parent, objectNames)
+	for _, objectName in ipairs(objectNames) do 
+		local object = parent:FindFirstChild(objectName, true)
+		
+		if object then return object end
+	end
+	return nil
 end
 
-local function closeMenu()
-	MenuManager.close("DailyRewards")
+local function setButtonEnabled(button, enabled)
+	button.Active = enabled
+	button.AutoButtonColor = enabled
+	button.Selectable = enabled
 end
-
-openRewardButton.MouseButton1Click:Connect(function()
-	MenuManager.toggleBlur("DailyRewards")
-end)
-
-local closeRewardButton = dailyRewardFrame:WaitForChild("CloseRewardButton")
-
-closeRewardButton.MouseButton1Click:Connect(function()
-	MenuManager.close("DailyRewards")
-end)
 
 local function setupRewardSlots()
-	for i = 1, 7 do
-		local rewardImage = dailyRewardFrame:WaitForChild("Rewards" .. i .. "Image")
-		
+	for slotNumber = 1, VISIBLE_REWARD_SLOTS do 
+		local rewardImage = dailyRewardFrame:WaitForChild("Rewards" .. slotNumber .. "Image")
 		local claimButton = rewardImage:WaitForChild("ClaimRewardButton")
-		local claimLabel = claimButton:WaitForChild("ClaimRewardLabel")
-		
+		local claimLabel = rewardImage:WaitForChild("ClaimRewardLabel")
 		local lockButton = rewardImage:WaitForChild("LockRewardsButton")
 		local dayLabel = rewardImage:WaitForChild("DayRewardsLabel")
 		local timerLabel = rewardImage:WaitForChild("TimerRewardLabel")
 		
-		rewardSlots[i] = {
-			RewardImage = rewardImage,
+		local rewardIcon = getOptionalObject(rewardImage, {
+			"RewardIcon",
+			"RewardIconLabel",
+			"RewardImageLabel",
+		})
+		
+		local rewardValueLabel = getOptionalObject(rewardImage, {
+			"RewardValueLabel",
+			"RewardInfoLabel",
+			"RewardAmountLabel",
+		})
+		
+		local rewardNameLabel = getOptionalObject(rewardImage, {
+			"RewardNameLabel",
+			"RewardTitleLabel",
+		})
+		
+		rewardSlots[slotNumber] = {
+			Frame = rewardImage,
+			
 			ClaimButton = claimButton,
 			ClaimLabel = claimLabel,
+			
 			LockButton = lockButton,
+			
 			DayLabel = dayLabel,
 			TimerLabel = timerLabel,
+			
+			RewardIcon = rewardIcon,
+			RewardValueLabel = rewardValueLabel,
+			RewardNameLabel = rewardNameLabel,
+			
+			RewardData = nil,
 		}
 		
 		claimButton.Visible = false
 		
 		claimButton.MouseButton1Click:Connect(function()
-			claimDailyRewardEvent:FireServer(i)
-		end)
-		
-		lockButton.MouseButton1Click:Connect(function()
-			if not lastDailyData then
+			local slot = rewardSlots[slotNumber]
+			local rewardData = slot and slot.RewardData
+			
+			if not rewardData then
+				showLockText("Reward data is loading...")
 				return
 			end
 			
-			local rewardData = lastDailyData.Rewards[i]
+			if rewardData.IsClaimed then
+				showLockText("This rewrad has already been claimed.")
+				return
+			end
+			
+			if not rewardData.IsAvailable then
+				showLockText("Reward will be available in. " .. formatTime(rewardData.TimeLeft))
+				return
+			end
+			
+			claimDailyRewardEvent:FireServer(rewardData.Day)
+		end)
+		
+		lockButton.MouseButton1Click:Connect(function()
+			local slot = rewardSlots[slotNumber]
+			local rewardData = slot and slot.RewardData
+			
 			if not rewardData then
+				showLockText("Reward data is loading...")
+				return
+			end
+			
+			if rewardData.IsClaimed then
+				showLockText("This reward has already been claimed.")
 				return
 			end
 			
@@ -137,49 +193,204 @@ local function setupRewardSlots()
 				return
 			end
 			
-			showLockText( 
-				"Reward will be available in "
-				.. formatTime(rewardData.TimeLeft)
-			)
+			showLockText("Reward will be available in " .. formatTime(rewardData.TimeLeft))
 		end)
 	end
 end
 
-local function updateDailyUI(data)
-	lastDailyData = data 
+--//Week selection
+local function getCurrentWeekBounds(data)
+	local scheduleDay = math.clamp(tonumber(data.ScheduleDay) or 1, 1, 28)
+	local weekIndex = math.floor((scheduleDay - 1) / DAYS_PER_WEEK)
+	local firstScheduleSlot = (weekIndex * DAYS_PER_WEEK) + 1
+	local lastScheduleSlot = firstScheduleSlot + DAYS_PER_WEEK - 1
 	
-	for _, rewardData in ipairs(data.Rewards) do 
-		local slot = rewardSlots[rewardData.Slot]
+	return firstScheduleSlot, lastScheduleSlot
+end
+
+local function collectVisibleRewards(data)
+	local firstSlot, lastSlot = getCurrentWeekBounds(data)
+	local result = {}
+	
+	for _, rewardData in ipairs(data.Rewards or {}) do
+		local scheduleSlot = tonumber(rewardData.ScheduleDay) or tonumber(rewardData.Slot)
+		
+		if scheduleSlot and scheduleSlot >= firstSlot and scheduleSlot <= lastSlot then
+			table.insert(result, rewardData)
+		end
+	end
+	
+	table.sort(result, function(a, b)
+		return (a.ScheduleDay or b.Slot or 0)
+	end)
+	return result
+end
+
+--// Slot visual
+local function clearRewardSlot(slot)
+	slot.RewardData = nil
+	
+	slot.DayLabel.Text = "Dat -"
+	slot.TimerLabel.Text = ""
+	
+	slot.ClaimButton.Visible = false
+	setButtonEnabled(slot.ClaimButton, false)
+	
+	slot.LockButton.Visible = true
+	setButtonEnabled(slot.LockButton, false)
+	
+	if slot.RewardValueLabel then
+		slot.RewardValueLabel.Text = ""
+	end
+	
+	if slot.RewardNameLabel then
+		slot.RewardNameLabel.Text = ""
+	end
+	
+	if slot.RewardIcon and (slot.RewardIcon:IsA("ImageLabel") or slot.RewardIcon and slot.RewardIcon:IsA("ImageButton")) then
+		slot.RewardIcon.Image = ""
+	end
+end
+
+local function updateRewardSlot(slot, rewardData)
+	slot.RewardData = rewardData
+	slot.DayLabel.Text = "Day" .. tostring(rewardData.Day)
+	
+	if slot.RewardValueLabel then
+		slot.RewardValueLabel.Text = tostring(rewardData.DisplayText or rewardData.Name or "Reward")
+	end
+	
+	if slot.RewardNameLabel then
+		slot.RewardnameLabel.Text = tostring(rewardData.Name or rewardData.Type or "Reward")
+	end
+	
+	if slot.RewardIcon and (slot.RewardIcon:IsA("ImageLabel") or slot.RewardIcon:IsA("ImageButton")) then
+		slot.RewardIcon.Image = tostring(rewardData.Icon or "")
+	end
+	
+	if rewardData.IsClaimed then
+		slot.TimerLabel.Text = "Claimed"
+		
+		slot.ClaimButton.Visible = true
+		slot.ClaimLabel.Text = "CLAIMED"
+		
+		setButtonEnabled(slot.ClaimButton, false)
+		
+		slot.LockButton.Visible = false
+		setButtonEnabled(slot.LockButton, false)
+	elseif rewardData.IsAvailable then
+		slot.TimerLabel.Text = "Available"
+		
+		slot.ClaimButton.Visible = true
+		slot.ClaimLabel.Text = "CLAIM"
+		
+		setButtonEnabled(slot.ClaimButton, true)
+		
+		slot.LockButton.Visible = false
+		setButtonEnabled(slot.LockButton, false)
+	else
+		slot.TimerLabel.Text = formatTime(rewardData.TimeLeft)
+		
+		slot.ClaimButton.Visible = false
+		setButtonEnabled(slot.CLaimButton, false)
+		
+		slot.LockButton.Visible = true
+		setButtonEnabled(slot.LockButton, true)
+	end
+end
+
+--// Streak visual
+local function updateStreakUI(data)
+	local streak = math.max(0, math.floor(tonumber(data.Streak) or 0))
+	local visualStreak = math.clamp(streak, 0, 7)
+	
+	strikIconLabel.Text = tostring(visualStreak)
+	streakLabel.Text = tostring(visualStreak)
+	
+	local imageId = streakImages[visualStreak]
+	
+	if imageId and imageId ~= "" then
+		strikImageLabel.Image = imageId
+	end
+	
+	claimChestButton.Visible = false
+end
+
+--// Full UI update
+local function updateDailyUI(data)
+	if type(data) ~= "table" then return end
+	
+	lastDailyData = data
+	visibleRewards = collectVisibleRewards(data)
+	
+	for slotNumber = 1, VISIBLE_REWARD_SLOTS do
+		local slot = rewardSlots[slotNumber]
+		local rewardData = visibleRewards[slotNumber]
+		
 		if slot then
-			slot.DayLabel.Text = "Day " .. tostring(rewardData.Day)
-			
-			if rewardData.IsAvailable then
-				slot.TimerLabel.Text = "Available"
-				slot.ClaimButton.Visible = true
-				slot.ClaimLabel.Text = "CLAIM"
-			elseif rewardData.IsClaimed then
-				slot.TimerLabel.Text = "Claimed"
-				slot.ClaimButton.Visible = true
-				slot.ClaimLabel.Text = "CLAIMED"
+			if rewardData then
+				updateRewardSlot(slot, rewardData)
 			else
-				slot.TimerLabel.Text = formatTime(rewardData.TimeLeft)
-				slot.ClaimButton.Visible = false
+				clearRewardSlot(slot)
 			end
 		end
 	end
 	
-	local streak = math.clamp(data.Streak or 0, 0, 7)
-	
-	strikIconLabel.Text = tostring(streak)
-	streakLabel.Text = tostring(streak) .. " Days"
-	
-	if streakImages[streak] and streakImages[streak] ~= "" then
-		strikImageLabel.Image = streakImages[streak]
-	end
-	
-	claimChestButton.Visible = data.ChestAvailable == true
+	updateStreakUI(data)
 end
 
+--// Local countdown
+local function startLocalCountdown()
+	if localTimerConnection then return end
+	
+	localTimerConnection = task.spawn(function()
+		while raceGui.Parent do
+			task.wait(1)
+			
+			if lastDailyData then
+				for _, rewardData in ipairs(visibleRewards) do
+					if not rewardData.IsClaimed and not rewardData.IsAvailable then
+						rewardData.TimeLeft = math.max(0, (tonumber(rewardData.TimeLeft) or 0) - 1)
+					end
+				end
+				
+				for slotNumber = 1, VISIBLE_REWARD_SLOTS do
+					local slot = rewardSlots[slotNumber]
+					local rewardData = slot and slot.RewardData
+					
+					if slot and rewardData and not rewardData.IsClaimed and not rewardData.IsAvailable then
+						slot.TimerLabel.Text = formatTime(rewardData.TimeLeft)
+					end
+				end
+			end
+		end
+	end)
+end
+
+--// Menu controls
+local function openMenu()
+	MenuManager.open("DailyRewrads")
+	
+	requestDailyRewardUpdateEvent:FireServer()
+end
+
+local function closeMenu()
+	MenuManager.close("DailyRewards")
+end
+
+openRewardButton.MouseButton1Click:Connect(function()
+	if dailyRewardFrame.Visible then
+		closeMenu()
+	else
+		openMenu()
+	end
+end)
+
+closeRewardButton.MouseButton1Click:Connect(function()
+	closeMenu()
+end)
+
+--// Server updates
 dailyUpdateEvent.OnClientEvent:Connect(function(data)
 	updateDailyUI(data)
 end)
@@ -188,19 +399,18 @@ dailyRewardMessageEvent.OnClientEvent:Connect(function(message)
 	showLockText(message)
 end)
 
+--// Chest placeholder
 chestStrikButton.MouseButton1Click:Connect(function()
-	showLockText("Reach 7 Days streak to unlock this chest!")
+	showLockText(("Streak chest rewards will be added later."))
 end)
 
 claimChestButton.MouseButton1Click:Connect(function()
-	showLockText("Chest reward will be added later")
+	showLockText("Streak chest rewards will be added later.")
 end)
 
-closeReward.MouseButton1Click:Connect(function()
-	dailyRewardFrame.Visible = false
-end)
-
+--// Initialization
 setupRewardSlots()
+startLocalCountdown()
 
 dailyRewardFrame.Visible = false
 lockTextLabel.Visible = false
