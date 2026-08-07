@@ -110,7 +110,7 @@ local function setupRewardSlots()
 	for slotNumber = 1, VISIBLE_REWARD_SLOTS do 
 		local rewardImage = dailyRewardFrame:WaitForChild("Rewards" .. slotNumber .. "Image")
 		local claimButton = rewardImage:WaitForChild("ClaimRewardButton")
-		local claimLabel = rewardImage:WaitForChild("ClaimRewardLabel")
+		local claimLabel = claimButton:WaitForChild("ClaimRewardLabel")
 		local lockButton = rewardImage:WaitForChild("LockRewardsButton")
 		local dayLabel = rewardImage:WaitForChild("DayRewardsLabel")
 		local timerLabel = rewardImage:WaitForChild("TimerRewardLabel")
@@ -372,7 +372,7 @@ end
 
 --// Menu controls
 local function openMenu()
-	MenuManager.open("DailyRewards")
+	MenuManager.openBlur("DailyRewards")
 	
 	requestDailyRewardUpdateEvent:FireServer()
 end
