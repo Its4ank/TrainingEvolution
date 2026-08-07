@@ -162,7 +162,7 @@ local function setupRewardSlots()
 			end
 			
 			if rewardData.IsClaimed then
-				showLockText("This rewrad has already been claimed.")
+				showLockText("This reward has already been claimed.")
 				return
 			end
 			
@@ -221,7 +221,10 @@ local function collectVisibleRewards(data)
 	end
 	
 	table.sort(result, function(a, b)
-		return (a.ScheduleDay or b.Slot or 0)
+		local aSlot = a.ScheduleDay or a.Slot or 0
+		local bSlot = b.ScheduleDay or b.Slot or 0
+		
+		return aSlot < bSlot
 	end)
 	return result
 end
@@ -230,7 +233,7 @@ end
 local function clearRewardSlot(slot)
 	slot.RewardData = nil
 	
-	slot.DayLabel.Text = "Dat -"
+	slot.DayLabel.Text = "Day -"
 	slot.TimerLabel.Text = ""
 	
 	slot.ClaimButton.Visible = false
@@ -254,14 +257,14 @@ end
 
 local function updateRewardSlot(slot, rewardData)
 	slot.RewardData = rewardData
-	slot.DayLabel.Text = "Day" .. tostring(rewardData.Day)
+	slot.DayLabel.Text = "Day " .. tostring(rewardData.Day)
 	
 	if slot.RewardValueLabel then
 		slot.RewardValueLabel.Text = tostring(rewardData.DisplayText or rewardData.Name or "Reward")
 	end
 	
 	if slot.RewardNameLabel then
-		slot.RewardnameLabel.Text = tostring(rewardData.Name or rewardData.Type or "Reward")
+		slot.RewardNameLabel.Text = tostring(rewardData.Name or rewardData.Type or "Reward")
 	end
 	
 	if slot.RewardIcon and (slot.RewardIcon:IsA("ImageLabel") or slot.RewardIcon:IsA("ImageButton")) then
@@ -292,7 +295,7 @@ local function updateRewardSlot(slot, rewardData)
 		slot.TimerLabel.Text = formatTime(rewardData.TimeLeft)
 		
 		slot.ClaimButton.Visible = false
-		setButtonEnabled(slot.CLaimButton, false)
+		setButtonEnabled(slot.ClaimButton, false)
 		
 		slot.LockButton.Visible = true
 		setButtonEnabled(slot.LockButton, true)
@@ -369,7 +372,7 @@ end
 
 --// Menu controls
 local function openMenu()
-	MenuManager.open("DailyRewrads")
+	MenuManager.open("DailyRewards")
 	
 	requestDailyRewardUpdateEvent:FireServer()
 end
