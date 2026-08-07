@@ -45,10 +45,40 @@ local PET_STATS = {
 		XP = 1.5,
 	},
 	
-	["Huge Queen"] = { 
+    HugeQueen = { 
 		Energy = 3.00,
 		Money = 2.50,
 		XP = 2.00,
+	},
+	
+	ErrCube = {
+		Energy = 3.50,
+		Money = 3.00,
+		XP = 2.25,
+	},
+	
+	Thunger = {
+		Energy = 4.00,
+		Money = 4.00,
+		XP = 2.50,
+	},
+	
+	CubeHead = {
+		Energy = 5.00,
+		Money = 5.00,
+		XP = 3.00,
+	},
+	
+	TheCube = {
+		Energy = 10.00,
+		Money = 10.00,
+		XP = 5.00,
+	},
+	
+	MagicalGolden = {
+		Energy = 10.00,
+		Money = 10.00,
+		XP = 5.00,
 	},
 }
 
@@ -234,19 +264,30 @@ end
 
 --Pet creation
 function PetModule.givePet(player, petName)
+	local stats = PET_STATS[petName]
+
+	if not stats then
+		warn("Unknown pet:", petName)
+		return nil, "UnknownPet"
+	end
+
 	local petsFolder = getOrCreateFolder(player, "Pets")
+
 	if PetModule.isPetStorageFull(player) then
 		warn(player.Name .. " Pet storage is full")
 		return nil, "StorageFull"
 	end
-	
-	local petId = "Pet_" .. tostring(os.time()) .. "_" .. tostring(math.random(100000, 999999))
-	
-	
+
+	local petId =
+		"Pet_"
+		.. tostring(os.time())
+		.. "_"
+		.. tostring(math.random(100000, 999999))
+
 	local petFolder = Instance.new("Folder")
 	petFolder.Name = petId
 	petFolder.Parent = petsFolder
-	
+
 	getOrCreateValue(petFolder, "StringValue", "PetName", petName)
 	getOrCreateValue(petFolder, "BoolValue", "Owned", true)
 	getOrCreateValue(petFolder, "BoolValue", "Equipped", false)
@@ -254,30 +295,37 @@ function PetModule.givePet(player, petName)
 	getOrCreateValue(petFolder, "IntValue", "XP", 0)
 	getOrCreateValue(petFolder, "IntValue", "MaxLevel", 25)
 	getOrCreateValue(petFolder, "IntValue", "FuseTier", 0)
-	
-	local energyMultiplier = getOrCreateValue(petFolder, "NumberValue", "EnergyMultiplier", 1)
-	local moneyMultiplier = getOrCreateValue(petFolder, "NumberValue", "MoneyMultiplier", 1)
-	local xpMultiplier = getOrCreateValue(petFolder, "NumberValue", "XPMultiplier", 1)
 
-	local owned = petFolder:FindFirstChild("Owned")
-	if owned then
-		owned.Value = true
-	end
+	local energyMultiplier =
+		getOrCreateValue(
+			petFolder,
+			"NumberValue",
+			"EnergyMultiplier",
+			1
+		)
 
-	-- Базовые статы по имени пета
-	local stats = PET_STATS[petName]
-	if stats then 
-		energyMultiplier.Value = stats.Energy
-		moneyMultiplier.Value = stats.Money
-		xpMultiplier.Value = stats.XP
-	else 
-		energyMultiplier.Value = 1 
-		moneyMultiplier.Value = 1 
-		xpMultiplier.Value = 1 
-	end
-	
+	local moneyMultiplier =
+		getOrCreateValue(
+			petFolder,
+			"NumberValue",
+			"MoneyMultiplier",
+			1
+		)
+
+	local xpMultiplier =
+		getOrCreateValue(
+			petFolder,
+			"NumberValue",
+			"XPMultiplier",
+			1
+		)
+
+	energyMultiplier.Value = stats.Energy
+	moneyMultiplier.Value = stats.Money
+	xpMultiplier.Value = stats.XP
+
 	PetModule.updatePetMultipliers(petFolder)
-	
+
 	return petFolder
 end
 
