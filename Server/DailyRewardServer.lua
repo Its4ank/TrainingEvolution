@@ -53,7 +53,7 @@ local function getOrCreateValue(parent, className, name, defaultValue)
 end
 
 local function waitForDataReady(player)
-	if player:GetAttribute("DataReady") == true then return end
+	if player:GetAttribute("DataReady") == true then return true end
 	
 	while player.Parent do
 		if player:GetAttribute("DataReady") == true then return true end
@@ -144,7 +144,7 @@ local function buildDailyData(player)
 	checkDailyStreakReset(player)
 	local rewardsFolder = setupDailyRewards(player)
 	local now = getNow()
-	local currentDay = rewardsFolder.DailyCurentDay.Value
+	local currentDay = rewardsFolder.DailyCurrentDay.Value
 	local streak = rewardsFolder.DailyStreak.Value
 	local nextClaimTime = rewardsFolder.NextDailyClaimTime.Value
 	local currentCycleInfo = RewardModule.GetDailyCycleInfo(currentDay)
@@ -214,9 +214,9 @@ local function buildDailyData(player)
 		
 		Streak = streak,
 		
-		nextClaimTime = nextClaimTime,
+		NextClaimTime = nextClaimTime,
 		
-		currentRewardAvailable = currentRewardAvailable,
+		CurrentRewardAvailable = currentRewardAvailable,
 		
 		CurrentReward = currentReward,
 		
@@ -289,6 +289,10 @@ claimDailyRewardEvent.OnServerEvent:Connect(function(player, requestDay)
 		if giveReason == "StorageFull" then
 			sendMessage(player, "Your pet backpack is full. Free up space and claim the reward.")
 		elseif giveReason == "AlreadyClaimed" then
+			rewardsFolder.LastDailyClaimTime.Value = now
+			rewardsFolder.NextDailyClaimTime.Value = now + DAY_SECONDS
+			
+			rewardsFolder.DailyStreak.Value += 1
 			rewardsFolder.DailyCurrentDay.Value += 1
 			rewardsFolder.DailyCurrentMaxValue.Value = 0
 		elseif giveReason == "OnceRewardAlreadyClaimed" then
@@ -303,7 +307,7 @@ claimDailyRewardEvent.OnServerEvent:Connect(function(player, requestDay)
 	
 	rewardsFolder.LastDailyClaimTime.Value = now
 	rewardsFolder.NextDailyClaimTime.Value = now + DAY_SECONDS
-	rewardsFolder.DailyCurrentDay.Value += 1
+	rewardsFolder.DailyStreak.Value += 1
 	rewardsFolder.DailyCurrentDay.Value += 1
 	rewardsFolder.DailyCurrentMaxValue.Value = 0
 	
@@ -318,7 +322,7 @@ end)
 
 --// Player lifecycle
 local function onPlayerAdded(player)
-	task.sapwn(function()
+	task.spawn(function()
 		local ready = waitForDataReady(player)
 		if not ready or not player.Parent then return end 
 		
