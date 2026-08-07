@@ -62,14 +62,14 @@ RewardModule.RewardTypes = {
 	
 	Pet = {
 		Name = "Pet",
-		Icon = "",
+		Icon = "rbxassetid://129654646355724",
 		Category = "Pet",
 		Scalable = false,
 	},
 	
 	PetStorage = {
 		Name = "Pet Storage",
-		Icon = "rbxassetid://78847875630401",
+		Icon = "rbxassetid://85897444660228",
 		Category = "Permanent",
 		Scalable = false,
 	},
@@ -97,175 +97,175 @@ RewardModule.WealthMultiplier = {
 
 RewardModule.DailySchedule = {
 	[1] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "EnergyPotion", Amount = 2,},
+		[3] = {Type = "PotionBundle", Amount = 3,},
 	
 	},
 	
 	[2] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "PotionBundle", Amount = 1,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "Money", Wealth = 3,},
 	},
 	
 	[3] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Gems", Wealth = 1,},
+		[2] = {Type = "MoneyPotion", Amount = 2,},
+		[3] = {Type = "Gems", Wealth = 3,},
 	},
 	
 	[4] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Money", Wealth = 1,},
+		[2] = {Type = "LuckPotion", Amount = 2,},
+		[3] = {Type = "MoneyPotion", Amount = 3,},
 	},
 	
 	[5] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "PetStorage", Amount = 10,},
+		[2] = {Type = "Gems", Wealth = 2,},
+		[3] = {Type = "TimeBoostBonus", Amount = 0.5,},
 	},
 	
 	[6] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "LuckPotion", Amount = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 
 	},
 
 	[7] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Pet", PetName = "HugeQueen",},
+		[2] = {Type = "Pet", PetName = "ErrCube",},
+		[3] = {Type = "Pet", PetName = "Thunget",},
 	},
 
 	[8] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Money", Wealth = 1,},
+		[2] = {Type = "PetStorage", Amount = 15,},
+		[3] = {Type = "EnergyPotion", Amount = 3,},
 	},
 
 	[9] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "EnergyPotion", Amount = 1,},
+		[2] = {Type = "Energy", Wealth = 2,},
+		[3] = {Type = "Gems", Wealth = 3,},
 	},
 
 	[10] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Gems", Wealth = 1,},
+		[2] = {Type = "Gems", Wealth = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 	},
 	
 	[11] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "LuckPotion", Amount = 1,},
+		[2] = {Type = "PotionBundle", Amount = 2,},
+		[3] = {Type = "Money", Amount = 3,},
 
 	},
 
 	[12] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "MoneyPotion", Amount = 3,},
 	},
 
 	[13] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Gems", Wealth = 1,},
+		[2] = {Type = "Energy", Wealth = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 	},
 
 	[14] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "EquippedPetSlot", Amount = 1,},
+		[2] = {Type = "Pet", PetName = "CubeHead",},
+		[3] = {Type = "PetStorage", Amount = 25,},
 	},
 
 	[15] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "TimeBoostBonus", Amount = 0.5,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "LuckPotion", Amount = 3,},
 	},
 
 	[16] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "EnergyPotion", Amount = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 
 	},
 
 	[17] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "EnergyPotion", Amount = 1,},
+		[2] = {Type = "Gems", Amount = 2,},
+		[3] = {Type = "MoneyPotion", Amount = 3,},
 	},
 
 	[18] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Money", Wealth = 1,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "Money", Wealth = 3,},
 	},
 
 	[19] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "PotionBundle", Amount = 1,},
+		[2] = {Type = "LuckPotion", Amount = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 	},
 
 	[20] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Gems", Wealth = 1,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "EnergyPotion", Amount = 3,},
 	},
 	
 	[21] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Pet", PetName = "TheCube",},
+		[2] = {Type = "TimeBoostBonus", Amount = 0.5,},
+		[3] = {Type = "Pet", PetName = "MagicalGolder",},
 	},
 	
 	[22] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "MoneyPotion", Amount = 1,},
+		[2] = {Type = "Energy", Wealth = 2,},
+		[3] = {Type = "Money", Wealth = 3,},
 	},
 	
 	[23] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Money", Wealth = 1,},
+		[2] = {Type = "MoneyPotion", Amount = 2,},
+		[3] = {Type = "PotionBundle", Amount = 3,},
 	},
 	
 	[24] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "Gems", Wealth = 2,},
+		[3] = {Type = "Gems", Wealth = 3,},
 	},
 	
 	[25] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "EnergyPotion", Amount = 1,},
+		[2] = {Type = "Money", Wealth = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 	},
 	
 	[26] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Gems", Wealth = 1,},
+		[2] = {Type = "PotionBundle", Amount = 2,},
+		[3] = {Type = "MoneyPotion", Amount = 3,},
 	},
 		
 	[27] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "Energy", Wealth = 1,},
+		[2] = {Type = "Energy", Wealth = 2,},
+		[3] = {Type = "Energy", Wealth = 3,},
 	},
 	
 	[28] = {
-		[1] = {Type = "Energy"},
-		[2] = {Type = "Money"},
-		[3] = {Type = "Gems"},
+		[1] = {Type = "EquippedPetSlot", Amount = 1,},
+		[2] = {Type = "EquippedPetSlot", Amount = 1,},
+		[3] = {Type = "EquippedPetSlot", Amount = 1,},
 	},
 }
 
