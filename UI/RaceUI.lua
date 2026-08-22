@@ -1,462 +1,1204 @@
---// RaceUI LocalScript
+--// RaceUI 1.3
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
-local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 
-local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
-local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
+local RaceModule = require(ReplicatedStorage.Modules.RaceModule)
+local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
-local raceGui = script.Parent
 local player = Players.LocalPlayer
+local raceGui = script.Parent
+
 ClientDataModule.WaitUntilReady(player)
 
+while player:GetAttribute("ReadyServerReady") ~= true do task.wait() end
+
+--// General helpers
+local function setText(object, value)
+	if object and (object:IsA("TextLabel") or object:IsA("TextButton")) then
+		object.Text = tostring(value)
+	end
+end
+
+local function setImage(object, image)
+	if object and (object:IsA("ImageLabel") or object:IsA("ImageButton")) then
+		object.Image = image or ""
+	end
+end
+
+local function setBarScale(bar, scale)
+	if not bar then return end 
+	
+	bar.Size = UDim2.new(math.max(0, tonumber(scale) or 0), 0, bar.Size.Y.Scale, bar.Size.Y.Offset)
+end
+
+local function formatNumber(number)
+	local success, result = pcall(RaceModule.FormatNumber, number)
+	if success then return result end
+	return tostring(math.floor(tonumber(number) or 0))
+end
+
+local function formatDistance(distance)
+	local success, result = pcall(RaceModule.FormatDistance, distance)
+	if success then return result end 
+	return formatNumber(distance) .. "M"
+end
+
+local function formatMultiplier(multiplier)
+	local success, result = pcall(RaceModule.FormatMultiplier, multiplier)
+	if success then return result end
+	return "x" .. tostring(multiplier or 1)
+end
+
+local function findDescendant(parent, name)
+	if parent.Name == name then return parent end
+	
+	for _, descendant in ipairs(parent:GetDescendants()) do
+		if descendant.Name == name then
+			return descendant
+		end
+	end
+	return nil
+end
+
+local function getThumbnail(userId, size)
+	local success, image = pcall(Players.GetUserThumbnailAsync, Players, userId, 
+		Enum.ThumbnailType.HeadShot, 
+		size or Enum.ThumbnailSize.Size100x100)
+	if success then return image end
+	return ""
+end
+
+--// Replicated race object
+local replicatedRaceFolder = ReplicatedStorage:WaitForChild("RaceFolder")
+
+local leaveRaceEvent = replicatedRaceFolder:WaitForChild("LeaveRaceEvent")
+local raceActionEvent = replicatedRaceFolder:WaitForChild("RaceActionEvent")
+local raceActionResultEvent = replicatedRaceFolder:WaitForChild("RaceActionResultEvent")
+local raceWarningEvent = replicatedRaceFolder:WaitForChild("RaceWarningEvent")
+
+local racePreviewFunction = replicatedRaceFolder:WaitForChild("RacePreviewFunction")
+local raceTopData = replicatedRaceFolder:WaitForChild("RaceTopData")
+
+local raceStatusText = replicatedRaceFolder:WaitForChild("RaceStatusText")
+local raceTimerText = replicatedRaceFolder:WaitForChild("RaceTimerText")
+
+--// Player data
+local leaderstats = ClientDataModule.GetLeaderstats(player)
+local playerData = ClientDataModule.GetPlayerData(player)
+local resourcesFolder = ClientDataModule.GetResources(player)
+
+local energyValue = ClientDataModule.GetEnergy(player)
+local rebirthValue = ClientDataModule.GetRebirth(player)
+local moneyValue = ClientDataModule.GetMoney(player)
+local raceTouchValue = ClientDataModule.GetRaceTouch(player)
+local xpValue = resourcesFolder:WaitForChild("XPModule")
+
+local raceData = playerData:WaitForChild("RaceData")
+local stageValue = raceData:WaitForChild("Stage")
+local roadLevelValue = raceData:WaitForChild("RoadLevel")
+local rewardLevelValue = raceData:WaitForChild("RewardLevel")
+
+local raceRecordValue = leaderstats:WaitForChild("RaceRecord")
+local inRaceValue = player:WaitForChild("InRace")
+local raceProgressValue = player:WaitForChild("RaceProgress")
+local raceSpeedValue = player:WaitForChild("RaceSpeed")
+local raceTargetSpeedValue = player:WaitForChild("RaceTargetSpeed")
+local raceLapDistanceValue = player:WaitForChild("RaceLapDistance")
+local raceRoundDistanceValue = player:WaitForChild("RaceRoundDistance")
+local raceTrackDistanceValue = player:WaitForChild("RaceTrackDistance")
+
+--// Main UI references
 local guiFolder = raceGui:WaitForChild("GuiFolder")
-
-local raceFolder = ReplicatedStorage:WaitForChild("RaceFolder")
-local leaveRaceEvent = raceFolder:WaitForChild("LeaveRaceEvent")
-
-local raceStatusText = ReplicatedStorage:WaitForChild("RaceStatusText")
-local raceTimerText = ReplicatedStorage:WaitForChild("RaceTimerText")
-
-local backgroundMusic = SoundService:WaitForChild("BackgroundMusik")
-local raceMusik = SoundService:WaitForChild("RaceSound"):WaitForChild("RaceSounds")
-
 local raceFolder = guiFolder:WaitForChild("RaceFolder")
 
---// Race UI
-local racePanel = raceFolder:WaitForChild("RacePanel")
 local speedometer = raceFolder:WaitForChild("Speedometer")
-local leaveButton = raceFolder:WaitForChild("LeaveButton")
+local arrow = raceFolder:WaitForChild("Arrow")
+local tickCurrentSpeed = raceFolder:WaitForChild("TickCurrentSpeed")
 
---// Race Timer
+local speedTicks = {
+	raceFolder:WaitForChild("Tick1"),
+	raceFolder:WaitForChild("Tick2"),
+	raceFolder:WaitForChild("Tick3"),
+	raceFolder:WaitForChild("Tick4"),
+	raceFolder:WaitForChild("Tick5"),
+}
+
 local raceTimer = raceFolder:WaitForChild("RaceTimer")
 local raceStatusLabel = raceTimer:WaitForChild("RaceStatus")
 local timerStatusLabel = raceTimer:WaitForChild("TimerStatus")
 
---// Speedometer
-local energyValueLabel = speedometer:WaitForChild("EnergyValueLabel")
-local tickLabels = speedometer:WaitForChild("TickLabels")
-local arrow = speedometer:WaitForChild("Arrow")
-
-local tick1 = tickLabels:WaitForChild("Tick1")
-local tick2 = tickLabels:WaitForChild("Tick2")
-local tick3 = tickLabels:WaitForChild("Tick3")
-local tick4 = tickLabels:WaitForChild("Tick4")
-local tick5 = tickLabels:WaitForChild("Tick5")
-local tick6 = tickLabels:WaitForChild("Tick6")
-
-local progressBar = speedometer:FindFirstChild("ProgressBar")
-local progressFill = progressBar and progressBar:FindFirstChild("Fill")
-
---// Race Panel
-local panelIcon = racePanel:WaitForChild("Icon")
---local panelTextLabel = racePanel:WaitForChild("TextLabel")
-
-panelIcon.Image = Players:GetUserThumbnailAsync(
-	player.UserId,
-	Enum.ThumbnailType.HeadShot,
-	Enum.ThumbnailSize.Size100x100
-)
+local racePanel = raceFolder:WaitForChild("RacePanel")
+local panelIconTemplate = racePanel:WaitForChild("Icon")
 
 local panelLines = {
-	Line1 = racePanel:WaitForChild("Line1"),
-	Line2 = racePanel:WaitForChild("Line2"),
-	Line3 = racePanel:WaitForChild("Line3"),
+	racePanel:WaitForChild("Line1"),
+	racePanel:WaitForChild("Line2"),
+	racePanel:WaitForChild("Line3"),
 }
 
-local rewardLineMap = {
-	Reward1 = "Line1",
-	Reward2 = "Line1",
-	Reward3 = "Line1",
-	Reward4 = "Line1",
-	Reward5 = "Line1",
-	Reward6 = "Line1",
-	Reward7 = "Line1",
-	Reward8 = "Line1",
-
-	Reward9 = "Line2",
-	Reward10 = "Line2",
-	Reward11 = "Line2",
-	Reward12 = "Line2",
-	Reward13 = "Line2",
-	Reward14 = "Line2",
-
-	Reward15 = "Line3",
-	Reward16 = "Line3",
+local raceTop = raceFolder:WaitForChild("RaceTop")
+local topImages = {
+	raceTop:WaitForChild("Top1"),
+	raceTop:WaitForChild("Top2"),
+	raceTop:WaitForChild("Top3"),
 }
 
-local segmentColors = {
-	Color3.fromRGB(255, 60, 60),
-	Color3.fromRGB(255, 150, 40),
-	Color3.fromRGB(255, 230, 60),
-	Color3.fromRGB(80, 255, 80),
-	Color3.fromRGB(60, 220, 255),
-	Color3.fromRGB(80, 120, 255),
-	Color3.fromRGB(180, 80, 255),
-	Color3.fromRGB(255, 80, 200),
+local topRecordLabels = {
+	raceTop:WaitForChild("Top1Record"),
+	raceTop:WaitForChild("Top2Record"),
+	raceTop:WaitForChild("Top3Record"),
 }
 
---// Player data
-local inRaceValue = player:WaitForChild("InRace")
-local raceSpeedValue = player:WaitForChild("RaceSpeed")
-local raceProgressValue = player:WaitForChild("RaceProgress")
+local raceWarningLabel = raceFolder:WaitForChild("RaceWarningLabel")
+local leaveButton = raceFolder:WaitForChild("LeaveButton")
 
-local energy = ClientDataModule.GetEnergy(player)
+--// RaceHost references
+local raceHost = raceFolder:WaitForChild("RaceHost")
+local raceHostBlur = raceHost:WaitForChild("RaceHostBlur")
+local leaderstatsMenu = raceHost:WaitForChild("LeaderstatsMenu")
+local raceMenu = raceHost:WaitForChild("RaceMenu")
+local stageMenu = raceHost:WaitForChild("StageMenu")
 
-local upgradesFolder = player:WaitForChild("Upgrades")
-local racePowerUpgrade = upgradesFolder:WaitForChild("RacePower")
+local raceMenuClose = raceMenu:WaitForChild("RaceMenuClose")
+local moneyLead = raceMenu:WaitForChild("MoneyLead")
+local raceRecordLabel = raceMenu:WaitForChild("RaceRecordLabel")
+local raceTouchLead = raceMenu:WaitForChild("RaceTouchLead")
+local xpLead = raceMenu:WaitForChild("XpLead")
 
---// Settings
-local MIN_SPEED = 10
-local MAX_ARROW_ROTATION = 170
+--// Section references
+local detailsFolder = raceMenu:WaitForChild("DetailsFolder")
+local sectionFolder = raceMenu:WaitForChild("SectionFolder")
+local rewardFolder = raceMenu:WaitForChild("RewardFolder")
 
-speedometer.Visible = false
-leaveButton.Visible = false
-racePanel.Visible = true
-raceTimer.Visible = true
+local nameDetails = detailsFolder:WaitForChild("NameDetails")
+local frameRewardDetail = detailsFolder:WaitForChild("FrameRewards")
+local frameStageDetail = detailsFolder:WaitForChild("FrameStageDetail")
+local frameUpgradeDetail = detailsFolder:WaitForChild("FrameUpgradeDetail")
 
---// Helpers
-local function findDescendantByName(parent, targetName)
-	for _, obj in ipairs(parent:GetDescendants()) do
-		if obj.Name == targetName then
-			return obj
-		end
+local rewardDetailsButton = sectionFolder:WaitForChild("RewardDetails")
+local stageDetailsButton = sectionFolder:WaitForChild("StageDetails")
+local upgradeDetailsButton = sectionFolder:WaitForChild("UpgradeDetails")
+
+local rewMultNumber = rewardDetailsButton:WaitForChild("RewMultNumber")
+
+local summaryStageIcon = stageDetailsButton:WaitForChild("StaStageIcon")
+local summaryStageBonus = stageDetailsButton:WaitForChild("StaStageBonus")
+local summaryStageDistance = stageDetailsButton:WaitForChild("StaStageDistance")
+local summaryStageName = stageDetailsButton:WaitForChild("StaStageName")
+
+local summaryUpgradeLevel = upgradeDetailsButton:WaitForChild("UpgLvlLevel")
+local summaryUpgradeRewards = upgradeDetailsButton:WaitForChild("UpgRewardNumber")
+
+--// Reward detail references
+local rewUpgBonus = frameRewardDetail:WaitForChild("RewUpgBonus")
+local rewUpgLevel = frameRewardDetail:WaitForChild("RewUpgLevel")
+local rewLvlBar = frameRewardDetail:WaitForChild("RewLvlBar")
+local rewCurNumber = frameRewardDetail:WaitForChild("RewCurNumber")
+
+local rewCurUpgMoney = frameRewardDetail:WaitForChild("RewCurUpgMoney")
+local rewCurUpgGems = frameRewardDetail:WaitForChild("RewCurUpgGems")
+local rewCurUpgXP = frameRewardDetail:WaitForChild("RewCurUpgXP")
+
+local rewNextUpgMoney = frameRewardDetail:WaitForChild("RewNextUpgMoney")
+local rewNextUpgGems = frameRewardDetail:WaitForChild("RewNextUpgGems")
+local rewNextUpgXP = frameRewardDetail:WaitForChild("RewNextUpgXP")
+
+--// Road upgrade detail references
+local roadUpgradeButton = frameUpgradeDetail:WaitForChild("UpgradeButton")
+local roadUpgradePrice = roadUpgradeButton:WaitForChild("UpgPrice")
+local roadLevelNumber = frameUpgradeDetail:WaitForChild("UpgLvlNumber")
+local roadLevelBar = frameUpgradeDetail:WaitForChild("UpgLvlBar")
+
+local currentRewardNumber = frameUpgradeDetail:WaitForChild("UpgCurRewNumber")
+local nextRewardNumber = frameUpgradeDetail:WaitForChild("UpgNextRewNumber")
+local currentDistanceNumber = frameUpgradeDetail:WaitForChild("UpgCurDisNumber")
+local nextDistanceNumber = frameUpgradeDetail:WaitForChild("UpgNextDisNumber")
+
+--// Stage detail references
+local stageMenuOpen = frameStageDetail:WaitForChild("StageMenuOpen")
+local detailStageBonus = frameStageDetail:WaitForChild("StaStageBonus")
+local detailStageLevel = frameStageDetail:WaitForChild("StaLvlNumber")
+local detailStageBar = frameStageDetail:WaitForChild("StaLvlBar")
+local detailStageName = frameStageDetail:WaitForChild("StaStageName")
+local detailStageIcon = frameStageDetail:WaitForChild("StaStageIcon")
+
+--// RewardFolder references
+local rewardBar = rewardFolder:WaitForChild("RewardBar")
+local rewardButtonTemplate = rewardBar:WaitForChild("RewardButton")
+
+--// StageMenu references
+local stageClose = stageMenu:WaitForChild("StageClose")
+local stageCurrentIcon = stageMenu:WaitForChild("StaCurIcon")
+local stageNextIcon = stageMenu:WaitForChild("StaArrowIcon")
+local stageArrowIcon = stageMenu:WaitForChild("StaArrowIcon")
+
+local stageCurrentBoost = stageMenu:WaitForChild("StaCurBoost")
+local stageNextBoost = stageMenu:WaitForChild("StaNextBoost")
+
+local stageRequiredLevel = stageMenu:WaitForChild("StaRequirLvl")
+local stageRequiredRaceTouch = stageMenu:WaitForChild("StaRequirRaceTouch")
+local stageRequiredMoney = stageMenu:WaitForChild("StaRequirMoney")
+local stageRequiredRebirth = stageMenu:WaitForChild("StaRequirRebirth")
+local stageRequiredEnergy = stageMenu:WaitForChild("StaRequirEnergy")
+
+local stageRequirementBar = stageMenu:WaitForChild("StaRequirBar")
+local stageRequirementPercent = stageMenu:WaitForChild("StaRequirePercent")
+local stageUpButton = stageMenu:WaitForChild("StageUpButton")
+
+--// Stage leaderstats references
+local stageEnergyLead = leaderstatsMenu:WaitForChild("EnergyLead")
+local stageMoneyLead = leaderstatsMenu:WaitForChild("MoneyLead")
+local stageRaceTouchLead = leaderstatsMenu:WaitForChild("RaceTouchLead")
+local stageRebirthLead = leaderstatsMenu:WaitForChild("RebirthLead")
+
+--// Musik
+local backgroundMusik = SoundService:WaitForChild("BackgroundMusik")
+local raceSoundFolder = SoundService:WaitForChild("RaceSound")
+local raceMusic = raceSoundFolder and raceSoundFolder:FindFirstChild("RaceSounds")
+local wasInRace = false
+
+local function startRaceMusic()
+	if backgroundMusik then
+		backgroundMusik.Volume = 0
+		backgroundMusik:Pause()
 	end
-
-	return nil
-end
-
-local function formatShort(n)
-	if n >= 1e15 then
-		return string.format("%.2fQ", n / 1e15)
-	elseif n >= 1e12 then
-		return string.format("%.2fT", n / 1e12)
-	elseif n >= 1e9 then
-		return string.format("%.2fB", n / 1e9)
-	elseif n >= 1e6 then
-		return string.format("%.2fM", n / 1e6)
-	elseif n >= 1e3 then
-		return string.format("%.2fK", n / 1e3)
-	else
-		return tostring(math.floor(n))
+	
+	if raceMusic then
+		raceMusic.TimePosition = 0
+		raceMusic.Volume = 0.7
+		raceMusic.Looped = true
+		raceMusic:Play()
 	end
-end
-
-local function lerp(a, b, t)
-	return a + (b - a) * t
-end
-
-local function getTargetSpeedFromEnergy(value)
-	if value <= 0 then
-		return 16
-	end
-
-	if value < 1e6 then
-		return lerp(16, 50, value / 1e6)
-	end
-
-	if value < 1e9 then
-		return lerp(50, 100, (value - 1e6) / (1e9 - 1e6))
-	end
-
-	if value < 1e12 then
-		return lerp(100, 200, (value - 1e9) / (1e12 - 1e9))
-	end
-
-	if value < 1e15 then
-		return lerp(200, 400, (value - 1e12) / (1e15 - 1e12))
-	end
-
-	return 400
-end
-
-local function getRacePowerEnergy()
-	return UpgradeModule.GetRaceEnergy(player, energy.Value)
-end
-
-local function getTrack()
-	return workspace:WaitForChild("RaceTrack")
-end
-
-local function getRewardZ(rewardName)
-	local reward = findDescendantByName(getTrack(), rewardName)
-
-	if not reward then
-		return nil
-	end
-
-	return reward.Position.Z
-end
-
-local function getLineLocalProgressByZ(z, lineName)
-	local startZ
-	local endZ
-
-	if lineName == "Line1" then
-		startZ = getRewardZ("Reward1")
-		endZ = getRewardZ("Reward8")
-	elseif lineName == "Line2" then
-		startZ = getRewardZ("Reward9")
-		endZ = getRewardZ("Reward14")
-	elseif lineName == "Line3" then
-		startZ = getRewardZ("Reward15")
-		endZ = getRewardZ("Reward16")
-	end
-
-	if not startZ or not endZ then
-		return 0
-	end
-
-	local total = endZ - startZ
-	if total <= 0 then
-		return 0
-	end
-
-	return math.clamp((z - startZ) / total, 0, 1)
-end
-
-local function getPlayerPanelLineAndProgress()
-	local character = player.Character
-	local hrp = character and character:FindFirstChild("HumanoidRootPart")
-
-	if not hrp then
-		return panelLines.Line1, 0
-	end
-
-	local z = hrp.Position.Z
-
-	local reward8Z = getRewardZ("Reward8")
-	local reward14Z = getRewardZ("Reward14")
-
-	if reward8Z and z <= reward8Z then
-		return panelLines.Line1, getLineLocalProgressByZ(z, "Line1")
-	end
-
-	if reward14Z and z <= reward14Z then
-		return panelLines.Line2, getLineLocalProgressByZ(z, "Line2")
-	end
-
-	return panelLines.Line3, getLineLocalProgressByZ(z, "Line3")
-end
-
-local function createRewardMarkers()
-	for _, line in pairs(panelLines) do
-		for _, child in ipairs(line:GetChildren()) do
-			if child.Name:find("_Marker") or child.Name:find("_Segment") then
-				child:Destroy()
-			end
-		end
-	end
-
-	local lineRewards = {
-		Line1 = {"Reward1", "Reward2", "Reward3", "Reward4", "Reward5", "Reward6", "Reward7", "Reward8"},
-		Line2 = {"Reward9", "Reward10", "Reward11", "Reward12", "Reward13", "Reward14"},
-		Line3 = {"Reward15", "Reward16"},
-	}
-
-	for lineName, rewards in pairs(lineRewards) do
-		local line = panelLines[lineName]
-
-		for index = 1, #rewards - 1 do
-			local rewardA = findDescendantByName(getTrack(), rewards[index])
-			local rewardB = findDescendantByName(getTrack(), rewards[index + 1])
-
-			if rewardA and rewardB and line then
-				local startProgress = getLineLocalProgressByZ(rewardA.Position.Z, lineName)
-				local endProgress = getLineLocalProgressByZ(rewardB.Position.Z, lineName)
-
-				local segment = Instance.new("Frame")
-				segment.Name = rewards[index] .. "_Segment"
-				segment.AnchorPoint = Vector2.new(0, 0.5)
-				segment.Position = UDim2.new(startProgress, 0, 0.5, 0)
-				segment.Size = UDim2.new(endProgress - startProgress, 0, 1, 0)
-				segment.BackgroundColor3 = segmentColors[((index - 1) % #segmentColors) + 1]
-				segment.BorderSizePixel = 0
-				segment.ZIndex = line.ZIndex + 1
-				segment.Parent = line
-			end
-		end
-
-		for _, rewardName in ipairs(rewards) do
-			local reward = findDescendantByName(getTrack(), rewardName)
-
-			if reward and line then
-				local progress = getLineLocalProgressByZ(reward.Position.Z, lineName)
-
-				local marker = Instance.new("Frame")
-				marker.Name = rewardName .. "_Marker"
-				marker.Size = UDim2.new(0, 8, 0, 8)
-				marker.AnchorPoint = Vector2.new(0.5, 0.5)
-				marker.Position = UDim2.new(progress, 0, 0.5, 0)
-				marker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-				marker.BorderSizePixel = 0
-				marker.ZIndex = line.ZIndex + 3
-				marker.Parent = line
-
-				local corner = Instance.new("UICorner")
-				corner.CornerRadius = UDim.new(1, 0)
-				corner.Parent = marker
-			end
-		end
-	end
-end
-
---// Music
-local function startRaceMusik()
-	backgroundMusic.Volume = 0
-	backgroundMusic:Pause()
-
-	raceMusik.TimePosition = 0
-	raceMusik.Volume = 0.7
-	raceMusik.Looped = true
-	raceMusik:Play()
 end
 
 local function stopRaceMusic()
-	raceMusik:Stop()
-
-	backgroundMusic.Volume = 0.3
-	backgroundMusic:Resume()
+	if raceMusic then
+		raceMusic:Stop()
+	end
+	
+	if backgroundMusik then
+		backgroundMusik.Volume = 0.3
+		backgroundMusik:Resume()
+	end
 end
 
---// UI Updates
-local wasInRace = false
+--// Speedometer
+local speedometerObjects = {speedometer, arrow, tickCurrentSpeed}
 
+for _, tick in ipairs(speedTicks) do
+	table.insert(speedometerObjects, tick)
+end
+
+local function setSpeedometerVisible(visible)
+	for _, object in ipairs(speedometerObjects) do
+		object.Visible = visible
+	end
+end
+
+local function getEffectiveEnergy()
+	return UpgradeModule.GetRaceEnergy(player, energyValue.Value)
+end
+
+local function updateSpeedometer()
+	local ticks = RaceModule.GetSpeedometerTicks(getEffectiveEnergy())
+	
+	for index, label in ipairs(speedTicks) do
+		setText(label, formatNumber(ticks[index] or 0))
+	end
+	
+	setText(tickCurrentSpeed, formatNumber(raceSpeedValue.Value))
+	
+	arrow.Rotation = RaceModule.GetSpeedometerArrowRotation(raceSpeedValue.Value, raceTargetSpeedValue.Value)
+end
+
+--// Timer
+local function updateTimer()
+	setText(raceStatusLabel, raceStatusText.Value)
+	setText(timerStatusLabel, raceTimerText.Value)
+end
+
+--// Race visibility
 local function updateRaceVisibility()
 	local visible = inRaceValue.Value
-
-	speedometer.Visible = visible
-	leaveButton.Visible = visible
-	racePanel.Visible = true
-	raceTimer.Visible = true
-
+	
+	setSpeedometerVisible(visible)
+	
+	if leaveButton then
+		leaveButton.Visible = visible
+	end
+	
 	if visible and not wasInRace then
 		wasInRace = true
-		startRaceMusik()
+		startRaceMusic()
 	elseif not visible and wasInRace then
 		wasInRace = false
 		stopRaceMusic()
 	end
 end
 
-local function updateSpeedometerTicks()
-	local currentEnergy = getRacePowerEnergy()
 
-	if currentEnergy < 1 then
-		currentEnergy = 1
+--// Local 3D gates
+local raceTrack = workspace:WaitForChild(RaceModule.WorldNames.RaceTrack)
+local raceStartPoint = findDescendant(raceTrack, RaceModule.WorldNames.RaceStartPoint)
+local localGateFolder
+
+local function findGateTemplate(templateName)
+	local template = replicatedRaceFolder:WaitForChild(templateName, true)
+	
+	if template then return template end
+	
+	template = ReplicatedStorage:FindFirstChild(templateName, true)
+	
+	if template then return template end
+	return findDescendant(raceTrack, templateName)
+end
+
+local rewardGateTemplate = findGateTemplate(RaceModule.WorldNames.RewardGateTemplate)
+local finishGateTemplate = findGateTemplate(RaceModule.WorldNames.FinishGateTemplate)
+
+local function setLocalGateProperties(object)
+	for _, descendant in ipairs(object:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+		end
 	end
-
-	local step = currentEnergy / 5
-
-	tick1.Text = formatShort(0)
-	tick2.Text = formatShort(step)
-	tick3.Text = formatShort(step * 2)
-	tick4.Text = formatShort(step * 3)
-	tick5.Text = formatShort(step * 4)
-	tick6.Text = formatShort(step * 5)
+	
+	if object:IsA("BasePart") then
+		object.Anchored = true
+		object.CanCollide = false
+		object.CanTouch = false
+		object.CanQuery = false
+	end
 end
 
-local function updateEnergyLabel()
-	local currentEnergy = getRacePowerEnergy()
-	energyValueLabel.Text = formatShort(currentEnergy)
+local function pivotObject(object, cframe)
+	if object:IsA("Model") then
+		object:PivotTo(cframe)
+	elseif object:IsA("BasePart") then
+		object.CFrame = cframe
+	end
 end
 
-local function updateArrow()
-	local currentEnergy = getRacePowerEnergy()
-	local targetSpeed = getTargetSpeedFromEnergy(currentEnergy)
-	local currentSpeed = raceSpeedValue.Value
+local function setGateRewardName(gate, rewardName)
+	local label = findDescendant(gate, "RewardNumber") 
+		or findDescendant(gate, "RewardLabel")
+	
+	if label and (label:IsA("TextLabel") or label:IsA("TextButton")) then
+		lable.Text = rewardName
+	end
+end
 
-	if targetSpeed <= MIN_SPEED then
-		arrow.Rotation = -120
+local function destroyLocalGates()
+	if localGateFolder then
+		localGateFolder:Destroy()
+		localGateFolder = nil
+	end
+end
+
+local function rebuildLocalGates()
+	destroyLocalGates()
+	
+	if not inRaceValue.Value or not raceStartPoint then return end 
+	if not rewardGateTemplate or not finishGateTemplate then
+		warn("RaceUI: RewardGate or FinisGate template was not found")
 		return
 	end
-
-	local alpha = math.clamp((currentSpeed - MIN_SPEED) / (targetSpeed - MIN_SPEED), 0, 1)
-
-	arrow.Rotation = -120 + (MAX_ARROW_ROTATION * alpha)
+	
+	localGateFolder = Instance.new("Folder")
+	localGateFolder.Name = "LocalRaceGates_" .. player.UserId
+	localGateFolder.Parent = workspace
+	
+	local checkpoints = RaceModule.GetRewardCheckpoint(stageValue.Value, roadLevelValue.Value)
+	
+	for _, checkpoint in ipairs(checkpoints) do
+		local gate = rewardGateTemplate:Clone()
+		gate.Name = checkpoint.Name
+		gate.Parent = localGateFolder
+		
+		setLocalGateProperties(gate)
+		setGateRewardName(gate, checkpoint.Name)
+		
+		pivotObject(gate, RaceModule.GetWorldCFrameAtDistance(raceStartPoint.CFrame, checkpoint.Distance))
+	end
+	
+	local finishGate = finishGateTemplate:Clone()
+	finishGate.Name = "LocalFinishGate"
+	finishGate.Parent = localGateFolder
+	
+	setLocalGateProperties(finishGate)
+	pivotObject(finishGate, RaceModule.GetWorldCFrameAtDistance(raceStartPoint.CFrame, raceTrackDistanceValue.Value))
 end
 
-local function updateRacePanel()
-	local currentLine, localProgress = getPlayerPanelLineAndProgress()
-	localProgress = math.clamp(localProgress, 0, 1)
+--// RacePanel player icons
+local playerPanelIcons = {}
 
-	panelIcon.Position = UDim2.new(
-		currentLine.Position.X.Scale + (currentLine.Size.X.Scale * localProgress),
-		currentLine.Position.X.Offset + (currentLine.Size.X.Offset * localProgress),
-		currentLine.Position.Y.Scale,
-		currentLine.Position.Y.Offset
+panelIconTemplate.Visible = false
+
+local function getPlayerPanelData(targetPlayer)
+	local targetPlayerData = targetPlayer:FindFirstChild("PlayerData")
+	local targetRaceData = targetPlayerData and targetPlayerData:FindFirstChild("RaceData")
+	
+	if not targetRaceData then return nil end
+	
+	local targetStage = targetRaceData:FindFirstChild("Stage")
+	local targetRoadLevel = targetRaceData:FindFirstChild("RoadLevel")
+	local targetLapDistance = targetPlayer:FindFirstChild("RaceLapDistance")
+	local targetInRace = targetPlayer:FindFirstChild("InRace")
+	
+	if not targetStage or not targetRoadLevel or not targetLapDistance or not targetInRace then return nil end
+	
+	return {
+		Stage = targetStage,
+		RoadLevel = targetRoadLevel,
+		LapDistance = targetLapDistance,
+		InRace = targetInRace,
+	}
+end
+
+local function createPlayerPanelIcon(targetPlayer)
+	local icon = panelIconTemplate:Clone()
+	icon.Name = "PlayerIcon_" .. targetPlayer.UserId
+	icon.Image = getThumbnail(targetPlayer.UserId)
+	icon.Visible = true
+	icon.Parent = racePanel
+	
+	playerPanelIcons[targetPlayer] = icon
+	
+	return icon
+end
+
+local function removePlayerPanelIcon(targetPlayer)
+	local icon = playerPanelIcons[targetPlayer]
+	
+	if icon then
+		icon:Destroy()
+		playerPanelIcons[targetPlayer] = nil
+	end
+end
+
+local function updatePlayerPanelIcons()
+	for _, targetPlayer in ipairs(Players:GetPlayers()) do
+		local data = getPlayerPanelData(targetPlayer)
+		
+		if data and data.InRace.Value then
+			local icon = playerPanelIcons[targetPlayer] 
+				or createPlayerPanelIcon(targetPlayer)
+			
+			local point = RaceModule.GetPlayerPanelPoint(
+				data.Stage.Value, data.RoadLevel.Value, data.LapDistance.Value
+			)
+			
+			local line = panelLines[point.LineIndex]
+			
+			if line then
+				icon.Position = UDim2.new( 
+					line.Position.X.Scale + line.Size.X.Scale * point.Progress, 
+					line.Position.X.Offset + line.Size.X.Offset * point.Progress,
+					line.Position.Y.Scale,
+					line.Position.Y.Offset
+				)
+			end
+		else
+			removePlayerPanelIcon(targetPlayer)
+		end
+	end
+	
+	for targetPlayer in pairs(playerPanelIcons) do
+		if not targetPlayer.Parent then
+			removePlayerPanelIcon(targetPlayer)
+		end
+	end
+end
+
+--// Optional RacePabel reward and finish icons
+local panelRewardTemplate = racePanel:FindFirstChild("RewardIcon")
+local panelFinishTemplate = racePanel:FindFirstChild("FinishIcon")
+local panelMarkers = {}
+
+if panelRewardTemplate then
+	panelRewardTemplate.Visible = false
+end
+
+if panelFinishTemplate then
+	panelFinissTmplate.Visible = false
+end
+
+local function clearPanelMarkers()
+	for _, marker in ipairs(panelMarkers) do
+		marker:Destroy()
+	end
+	
+	panelMarkers = {}
+end
+
+local function positionPanelObject(object, point)
+	local line = panelLines[point.LineIndex]
+	
+	if not line then return end 
+	
+	object.Position = UDim2.new( 
+		line.Position.X.Scale + line.Size.X.Scale * point.Progress,
+		line.Position.X.Offset + line.Size.X.Offset * point.Progress,
+		line.Position.Y.Scale,
+		line.Position.Y.Offset
 	)
-
-	--panelTextLabel.Text = math.floor(raceProgressValue.Value * 100) .. "%"
 end
 
-local function updateProgressBar()
-	if progressFill then
-		local progress = math.clamp(raceProgressValue.Value, 0, 1)
-		progressFill.Size = UDim2.new(progress, 0, 1, 0)
+local function rebuildPanelMarkers()
+	clearPanelMarkers()
+	
+	if not panelRewardTemplate then return end 
+	
+	local rewardCount = RaceModule.GetRewardCount(stageValue.Value, roadLevelValue.Value)
+	
+	for rewardIndex = 1, rewardCount do
+		local marker = panelRewardTemplate:Clone()
+		marker.Name = "RewardMarker_R" .. rewardIndex
+		marker.Visible = true
+		marker.Parent = racePanel
+		
+		local numberLabel = findDescendant(marker, "RewardNumber")
+		
+		if numberLabel and numberLabel:IsA("TextLabel") then
+			numberLabel.Text = "R" .. rewardIndex
+		end
+		
+		positionPanelObject(marker, RaceModule.GetRewardPanelPoint( 
+			stageValue.Value, roadLevelValue.Value, rewardIndex
+		))
+		
+		table.insert(panelMarkers, marker)
 	end
-
-	updateRacePanel()
+	
+	if panelFinishTemplate then
+		local finishMarker = panelFinishTemplate:Clone()
+		finishMarker.Name = "FinishMarker"
+		finishMarker.Visible = true
+		finishMarker.Parent = racePanel
+		
+		positionPanelObject(
+			finishMarker, RaceModule.GetPanelPointByAlpha(stageValue.Value, roadLevelValue.Value, 1)
+		)
+		table.insert(panelMarkers, finishMarker)
+	end
 end
 
-local function updateRaceTimerUI()
-	raceStatusLabel.Text = raceStatusText.Value
-	timerStatusLabel.Text = raceTimerText.Value
+--// Top 1-3
+local topThumbnailCache = {}
+
+local function updateRaceTop()
+	for place = 1, #topImages do
+		local userIdValue = raceTopData:FindFirstChild("Top" .. place .. "UserId")
+		local distanceValue = raceTopData:FindFirstChild("Top" .. place .. "Distance")
+		
+		local userId = userIdValue and userIdValue.Value or 0
+		local distance = distanceValue and distanceValue.Value or 0
+		
+		if userId > 0 then
+			local image = topThumbnailCache[userId]
+			
+			if not image then
+				image = getThumbnail(userId)
+				topThumbnailCache[userId] = image
+			end
+			
+			topImages[place].Image = image
+			topImages[place].Visible = true
+			topRecordLabels[place].Text = formatDistance(distance)
+			topRecordLabels[place].Visible = true
+		else
+			topImages[place].Image = ""
+			topImages[place].Visible = false
+			topRecordLabels[place].Text = ""
+			topRecordLabels[place].Visible = false
+		end
+	end
 end
 
-local function updateAllRaceUI()
+--// Reward preview
+local selectedRewardIndex = 1
+local previewCache = {}
+local previewRequestsInProgress = false
+
+local function getFallbackRewardPreview(rewardIndex, rewardLevel)
+	local success, reward = pcall( 
+		RaceModule.calculateFinalReward, rewardIndex, stageValue.Value, rewardLevel, {}
+	)
+	
+	if success and reward then return reward end
+	
+	local baseReward = RaceModule.GetBaseReward(rewardIndex) or {}
+	local multiplier = RaceModule.GetStageRewardMultiplier(stageValue.Value) 
+		* RaceModule.GetRewardBonus(rewardLevel)
+	
+	return {
+		Money = math.floor((tonumber(baseReward.Money) or 0) * multiplier),
+		Gems = math.floor((tonumber(baseReward.Gems) or 0) * multiplier),
+		XP = (tonumber(baseReward.XP) or 0) * multiplier,
+		RaceTouch = tonumber(baseReward.RaceTouch) or 1,
+		GemChance = RaceModule.Settings.BaseGemChance,
+	}
+end
+
+local function getRewardPreview(rewardIndex)
+	local cached = previewCache[rewardIndex]
+	if cached then return cached end
+	
+	local currentReward = getFallbackRewardPreview(rewardIndex, rewardLevelValue.Value)
+	local nextReward = getFallbackRewardPreview(rewardIndex, rewardLevelValue.Value + 1)
+	
+	return {
+		Current = currentReward,
+		Next = nextReward,
+	}
+end
+
+local function requestServerPreview()
+	if not racePreviewFunction or previewRequestsInProgress then return end 
+	
+	previewRequestsInProgress = true
+	
+	task.spawn(function()
+		local success, result = pcall(racePreviewFunction.InvokeServer, racePreviewFunction)
+		
+		if success and type(result) == "table" then
+			previewCache = result
+		end
+		
+		previewRequestsInProgress = false
+	end)
+end
+
+local function clearRewardPreviewCache()
+	previewCache = {}
+	requestServerPreview()
+end
+
+--// Reward detail UI
+local function updateRewardDetail()
+	local stageCap = RaceModule.GetRewardLevelCap(stageValue.Value)
+	local localRewardLevel = RaceModule.GetLocalRewardLevel(stageValue.Value, rewardLevelValue.Value)
+	local preview = getRewardPreview(selectedRewardIndex)
+	local current = preview.Current or {}
+	local nextReward = preview.Next or current
+	
+	setText(rewUpgBonus, formatMultiplier(RaceModule.GetRewardBonus(rewardLevelValue.Value)))
+	setText(rewUpgLevel, localRewardLevel .. "/5")
+	setText(rewCurNumber, "R" .. selectedRewardIndex)
+	
+	setBarScale(rewLvlBar, RaceModule.GetRewardLevelBarScale(stageValue.Value, rewardLevelValue.Value))
+	
+	setText(rewCurUpgMoney, "+" .. formatNumber(current.Money or 0))
+	setText(rewCurUpgGems, formatNumber((current.GemChance or 0) * 100) .. "% / +" .. formatNumber(current.Gems or 0))
+	setText(rewCurUpgXP, "+" .. formatNumber(current.XP or 0))
+	
+	if rewardLevelValue.Value < stageCap then
+		setText(rewNextUpgMoney, "+" .. formatNumber(nextReward.Money or 0))
+		setText(rewNextUpgGems, formatNumber((nextReward.GemChance or 0) * 100) .. "% / +" .. formatNumber(nextReward.Gems or 0))
+		setText(rewNextUpgXP, "+" .. formatNumber(nextReward.XP or 0))
+	else 
+		setText(rewNextUpgMoney, "MAX")
+		setText(rewNextUpgGems, "MAX")
+		setText(rewNextUpgXP, "MAX")
+	end
+end
+
+--// Reward buttons on RewardBar
+local rewardButtons = {}
+
+rewardButtonTemplate.Visible = false
+
+local function clearRewardButtons()
+	for _, button in ipairs(rewardButtons) do 
+		button:Destroy()
+	end
+	rewardButtons = {}
+end
+
+local function updateRewardButtonPrice(button)
+	local rewardFrame = button:FindFirstChild("RewardFrame")
+	if not rewardFrame then return end
+	
+	local currentNumber = rewardFrame:FindFirstChild("RewCurNumber")
+	local requiredMoney = rewardFrame:FindFirstChild("RewRequirMoney")
+	local requiredRaceTouch = rewardFrame:FindFirstChild("RewRequireRaceTouch")
+	local requiredXP = rewardFrame:FindFirstChild("RewRequireXp")
+	
+	local targetLevel = rewardLevelValue.Value + 1
+	local stageCap = RaceModule.GetRewardLevelCap(stageValue.Value)
+	local price = RaceModule.GetRewardUpgradePrice(targetLevel)
+	
+	setText(currentNumber, button:GetAttribute("RewardName") or "R1")
+	
+	if rewardLevelValue.Value >= stageCap or not price then
+		setText(requiredMoney, "MAX")
+		setText(requiredRaceTouch, "MAX")
+		setText(requiredXP, "MAX")
+	else 
+		setText(requiredMoney, formatNumber(price.Money))
+		setText(requiredRaceTouch, formatNumber(price.RaceTouch))
+		setText(requiredXP, formatNumber(price.XP))
+	end
+end
+
+local function rebuildRewardButtons()
+	clearRewardButtons()
+	
+	local rewardCount = RaceModule.GetRewardCount(stageValue.Value, roadLevelValue.Value)
+	
+	selectedRewardIndex = math.clamp(selectedRewardIndex, 1, rewardCount)
+	
+	for rewardIndex = 1, rewardCount do 
+		local button = rewardButtonTemplate:Clone()
+		button.Name = "RewardButton_R" .. rewardIndex
+		button.SetAttribute("RewardIndex", rewardIndex)
+		button.SetAttribute("RewardName", "R" .. rewardIndex)
+		button.Visible = true
+		button.Parent = rewardButtonTemplate.Parent
+		
+		local positionScale = RaceModule.GetRewardBarPosition(stageValue.Value, roadLevelValue.Value, rewardIndex)
+		
+		button.Position = UDim2.new( 
+			rewardBar.Position.X.Scale + positionScale,
+			rewardBar.Position.X.Offset,
+			button.Position.Y.Scale,
+			button.Position.Y.Offset
+		)
+		
+		updateRewardButtonPrice(button)
+		
+		button.MouseButton1Click:Connect(function()
+			selectedRewardIndex = rewardIndex
+			updateRewardDetail()
+		end)
+		
+		local rewardFrame = button:FindFirstChild("RewardFrame")
+		local upgradeButton = rewardFrame and rewardFrame:FindFirstChild("RewUpgrade")
+		
+		if upgradeButton and upgradeButton:IsA("GuiButton") then
+			upgradeButton.MouseButton1Click:Connect(function()
+				selectedRewardIndex = rewardIndex
+				raceActionEvent:FireServer("UpgradeReward")
+			end)
+		end
+		table.insert(rewardButtons, button)
+	end
+end
+
+local function updateAllRewardButtonPrices()
+	for _, button in ipairs(rewardButtons) do
+		updateRewardButtonPrice(button)
+	end
+end
+
+--// Road upgrade UI
+local function updateRoadUpgradeDetail()
+	local stage = stageValue.Value
+	local level = roadLevelValue.Value
+	local rewardCount = RaceModule.GetRewardCount(stage, level)
+	local trackDistance = RaceModule.GetTrackDistance(stage, level)
+	local price = RaceModule.GetRoadUpgradePrice(stage, level)
+	local preview = RaceModule.GetNextProgressionPreview(stage, level)
+	
+	setText(roadLevelNumber, level .. "/5")
+	setBarScale(roadLevelBar, RaceModule.GetRoadLevelBarScale(level))
+	
+	setText(currentRewardNumber, rewardCount)
+	setText(currentDistanceNumber, formatDistance(trackDistance))
+	
+	if preview then
+		setText(nextRewardNumber, preview.RewardCount)
+		setText(nextDistanceNumber, formatDistance(preview.Distance))
+	else 
+		setText(nextRewardNumber, "MAX")
+		setText(nextDistanceNumber, "MAX")
+	end
+	
+	if price then
+		setText(roadUpgradePrice, formatNumber(price))
+		roadUpgradeButton.Active = true
+		roadUpgradeButton.AutoButtonColor = true
+	else 
+		setText(roadUpgradePrice, "MAX")
+		roadUpgradeButton.Active = false
+		roadUpgradeButton.AutoButtonColor = false
+	end
+end
+
+--/ Stage sumary and detail UI
+local function updateStageInformation()
+	local stage = stageValue.Value
+	local level = roadLevelValue.Value
+	local stageName = RaceModule.GetStageName(stage)
+	local stageIcon = RaceModule.GetStageIcon(stage)
+	local stageBonus = RaceModule.GetStageRewardMultiplier(stage)
+	local distance = RaceModule.GetTrackDistance(stage, level)
+	
+	setImage(summaryStageIcon, stageIcon)
+	setText(summaryStageBonus, formatMultiplier(stageBonus))
+	setText(summaryStageDistance, formatDistance(distance))
+	setText(summaryStageName, stageName)
+	
+	setImage(detailStageIcon, stageIcon)
+	setText(detailStageBonus, formatMultiplier(stageBonus))
+	setText(detailStageLevel, stage .. "/5")
+	setText(detailStageName, stageName)
+	setBarScale(detailStageBar, RaceModule.GetStageLevelBarScale(stage))
+	
+	setText(rewMultNumber, formatMultiplier(RaceModule.GetRewardBonus(rewardLevelValue.Value)))
+	setText(summaryUpgradeLevel, level .. "/5")
+	setText(summaryUpgradeRewards, RaceModule.GetRewardCount(stage, level) .. "/" .. (stage + 5))
+end
+
+--// StageMenuUI
+local function getStageCurrentValues()
+	return {
+		Level = roadLevelValue.Value,
+		Money = moneyValue.Value,
+		RaceTouch = raceTouchValue.Value,
+		Rebirth = rebirthValue.Value,
+		Energy = energyValue.Value,
+	}
+end
+
+local function setRequirementText(label, current, required)
+	setText(label, formatNumber(current) .. "/" .. formatNumber(require))
+end
+
+local function updateStageMenu()
+	local stage = stageValue.Value
+	local currentConfig = RaceModule.GetStageConfig(stage)
+	local nextConfig = RaceModule.Stages[stage + 1]
+	local requirements = RaceModule.GetNextStageRequirements(stage)
+	
+	setImage(stageCurrentIcon, currentConfig.Icon)
+	setText(stageCurrentBoost, formatMultiplier(currentConfig.RewardMultiplier))
+	
+	if not nextConfig or not requirements then
+		setImage(stageNextIcon, "")
+		setText(stageNextBoost, "MAX")
+		setText(stageRequiredLevel, "MAX")
+		setText(stageRequiredRaceTouch, "MAX")
+		setText(stageRequiredMoney, "MAX")
+		setText(stageRequiredRebirth, "MAX")
+		setText(stageRequiredEnergy, "MAX")
+		setText(stageRequirementPercent, "100%")
+		setBarScale(stageRequirementBar, RaceModule.UI.Bars.StageRequirementMaxScale)
+		
+		stageUpButton.Active = false
+		stageUpButton.AutoButtonColor = false
+		return
+	end
+	
+	setImage(stageNextIcon, nextConfig.Icon)
+	setText(stageNextBoost, formatMultiplier(nextConfig.RewardMultiplier))
+	
+	local currentValues = getStageCurrentValues()
+	local progressData = RaceModule.GetStageRequirementProgress(stage, currentValues)
+	
+	setRequirementText(stageRequiredLevel, currentValues.Level, requirements.Level)
+	setRequirementText(stageRequiredRaceTouch, currentValues.RaceTouch)
+	setRequirementText(stageRequiredMoney, currentValues.Money, requirements.Money)
+	setRequirementText(stageRequiredRebirth, currentValues.Rebirth, requirements.Rebirth)
+	setRequirementText(stageRequiredEnergy, currentValues.Energy, requirements.Energy)
+	
+	setText(stageRequirementPercent, progressData.Percent .. "%")
+	setBarScale(stageRequirementBar, RaceModule.GetStageRequirementBarScale(progressData.Progress))
+	
+	stageUpButton.Active = progressData.CanStageUp
+	stageUpButton.AutoButtonColor = progressData.CanStageUp
+end
+
+--// Balances
+local function updateBalances()
+	setText(moneyLead, formatNumber(moneyValue.Value))
+	setText(raceTouchLead, formatNumber(raceTouchValue.Value))
+	setText(xpLead, formatNumber(xpValue.Value))
+	setText(raceRecordLabel, formatNumber(raceRecordValue.Value))
+	
+	setText(stageEnergyLead, formatNumber(energyValue.Value))
+	setText(stageMoneyLead, formatNumber(moneyValue.Value))
+	setText(stageRaceTouchLead, formatNumber(raceTouchValue.Value))
+	setText(stageRebirthLead, formatNumber(rebirthValue.Value))
+end
+
+--// Detail section switching
+local detailFrames = {
+	Reward = frameRewardDetail,
+	Stage = frameStageDetail,
+	Upgrade = frameUpgradeDetail,
+}
+
+local detailNames = {
+	Reward = "REWARD DETAILS",
+	Stage = "STAGE DETAILS",
+	Upgrade = "UPGRADE DETAILS",
+}
+
+local function openDetail(detailName)
+	for name, frame in pairs(detailFrames) do
+		frame.Visible = name == detailName
+	end
+	
+	setText(nameDetails, detailNames[detailName] or "")
+	
+	if detailName == "Reward" then
+		updateRewardDetail()
+	elseif detailName == "Stage" then
+		updateStageInformation()
+	elseif detailName == "Upgrade" then
+		updateRoadUpgradeDetail()
+	end
+end
+
+--// StageMenu opening and arrow animation
+local function openStageMenu()
+	raceHostBlur.Visible = true
+	stageMenu.Visible = true
+	leaderstatsMenu.Visible = true
+	updateStageMenu()
+end
+
+local function closeStageMenu()
+	stageMenu.Visible = false
+	leaderstatsMenu.Visible = false
+	raceHostBlur.Visible = false
+end
+
+--// Warning label
+local warningSequence = 0
+
+local function showWarning(message)
+	warningSequence += 1
+	local sequence = warningSequence
+	
+	raceWarningLabel.Text = tostring(message)
+	raceWarningLabel.TextTransparency = 0
+	raceWarningLabel.Visible = true
+	
+	task.delay(2.5, function()
+		if sequence ~= warningSequence then return end 
+		
+		local tween = TweenService:Create(raceWarningLabel, TweenInfo.new(0.5), {TextTrancparency = 1})
+		
+		tween:Play()
+		tween.Completed:Once(function()
+			if sequence == warningSequence then
+				raceWarningLabel.Visible = false
+			end
+		end)
+	end)
+end
+
+--// Full menu refresh
+local function refreshMenu()
+	updateBalances()
+	updateStageInformation()
+	updateRoadUpgradeDetail()
+	updateRewardDetail()
+	updateAllRewardButtonPrices()
+	
+	if stageMenu.Visible then
+		updateStageMenu()
+	end
+end
+
+local function rebuildProgressionUI()
+	clearRewardPreviewCache()
+	refreshMenu()
+	rebuildRewardButtons()
+	rebuildPanelMarkers()
+	
+	if inRaceValue.Value then
+		rebuildLocalGates()
+	end
+end
+
+--// Button connections
+if leaveButton and leaveButton:IsA("GuiButton") then
+	leaveButton.MouseButton1Click:Connect(function()
+		leaveRaceEvent:FireServer()
+	end)
+end
+
+raceMenuClose.MouseButton1Click:Connect(function()
+	closeStageMenu()
+	raceHost.Visible = false
+end)
+
+rewardDetailsButton.MouseButton1Click:Connect(function()
+	openDetail("Reward")
+end)
+
+stageDetailsButton.MouseButton1Click:Connect(function()
+	openDetail("Stage")
+end)
+
+upgradeDetailsButton.MouseButton1Click:Connect(function()
+	openDetail("Upgrade")
+end)
+
+roadUpgradeButton.MouseButton1Click:Connect(function()
+	raceActionEvent:FireServer("UpgradeRoad")
+end)
+
+stageMenuOpen.MouseButton1Click:Connect(openStageMenu)
+stageClose.MouseButton1Click:Connect(closeStageMenu)
+
+stageUpButton.MouseButton1Click:Connect(function()
+	raceActionEvent:FireServer("StageUp")
+end)
+
+--// Value connections
+raceStatusText.Changed:Connect(updateTimer)
+raceTimerText.Changed:Connect(updateTimer)
+
+inRaceValue.Changed:Connect(function()
 	updateRaceVisibility()
-	updateSpeedometerTicks()
-	updateEnergyLabel()
-	updateArrow()
-	updateProgressBar()
-	updateRaceTimerUI()
+	
+	if inRaceValue.Value then
+		rebuildLocalGates()
+	else 
+		destroyLocalGates()
+	end
+end)
+
+raceSpeedValue.Changed:Connect(updateSpeedometer)
+raceTargetSpeedValue.Changed:Connect(updateSpeedometer)
+energyValue.Changed:Connect(function()
+	updateSpeedometer()
+	updateBalances()
+	updateStageMenu()
+end)
+
+stageValue.Changed:Connect(rebuildProgressionUI)
+roadLevelValue.Changed:Connect(rebuildProgressionUI)
+rewardLevelValue.Changed:Connect(function()
+	clearRewardPreviewCache()
+	refreshMenu()
+	updateAllRewardButtonPrices()
+end)
+
+moneyValue.Changed:Connect(function()
+	updateBalances()
+	updateStageMenu()
+end)
+
+raceTouchValue.Changed:Connect(function()
+	updateBalances()
+	updateStageMenu()
+end)
+
+xpValue.Changed:Connect(function()
+	updateBalances()
+	clearRewardPreviewCache()
+end)
+
+rebirthValue.Changed:Connect(function()
+	updateBalances()
+	updateStageMenu()
+	clearRewardPreviewCache()
+end)
+
+raceRecordValue.Changed:Connect(updateBalances)
+
+for place = 1, RaceModule.Settings.TopPlayerCount do 
+	local userIdValue = raceTopData:WaitForChild("Top" .. place .. "UserId")
+	local distanceValue = raceTopData:WaitForChild("Top" .. place .. "Distance")
+	
+	userIdValue.Changed:Connect(updateRaceTop)
+	distanceValue.Changed:Connect(updateRaceTop)
 end
 
---// Connections
-leaveButton.MouseButton1Click:Connect(function()
-	leaveRaceEvent:FireServer()
-end)
+raceWarningEvent.OnClientEvent:Connect(showWarning)
 
-inRaceValue:GetPropertyChangedSignal("Value"):Connect(updateRaceVisibility)
-
-energy.Changed:Connect(function()
-	updateSpeedometerTicks()
-	updateEnergyLabel()
-	updateArrow()
-end)
-
-racePowerUpgrade.Changed:Connect(function()
-	updateSpeedometerTicks()
-	updateEnergyLabel()
-	updateArrow()
-end)
-
-raceSpeedValue.Changed:Connect(function()
-	updateArrow()
-	updateRacePanel()
-end)
-
-raceProgressValue.Changed:Connect(function()
-	updateProgressBar()
-	updateRacePanel()
-end)
-
-raceStatusText.Changed:Connect(updateRaceTimerUI)
-raceTimerText.Changed:Connect(updateRaceTimerUI)
-
-RunService.RenderStepped:Connect(function()
-	if racePanel.Visible then
-		updateRacePanel()
+raceActionResultEvent.OnClientEvent:Connect(function(_, success)
+	if success then
+		task.defer(rebuildProgressionUI)
 	end
+end)
+
+raceHost:GetPropertyChangedSignal("Visible"):Connect(function()
+	if raceHost.Visible then
+		clearRewardPreviewCache()
+		refreshMenu()
+	end
+end)
+
+Players.PlayerRemoving:Connect(removePlayerPanelIcon)
+
+--// Stage arrow animation
+task.sapwn(function()
+	while true do
+		if stageMenu.Visible then
+			stageArrowIcon.Position = RaceModule.UI.StageArrow.StartPosition
+			
+			local forwardTween = TweenService:Create( 
+				stageArrowIcon,
+				TweenInfo.new(0.55, Enum.PoseEasingStyle.Sine, Enum.EasingDirection.InOut),
+				{Position = RaceModule.UI.StageArrow.EndPosition}
+			)
+			
+			forwardTween:Play()
+			forwardTween.Completed:Wait()
+			
+			if stageMenu.Visible then
+				local backwardTween = TweenService:Create( 
+					stageArrowIcon,
+					TweenInfo.new(0.55, Enum.PoseEasingStyle.Sine, Enum.EasingDirection.InOut),
+					{Position = RaceModule.UI.StageArrow.StartPosition}
+				)
+				
+				backwardTween:Play()
+				backwardTween.Completed:Wait()
+			end
+		else 
+			task.wait(0.15)
+		end
+	end
+end)
+
+--// Periodic preview refresh
+task.sapwn(function()
+	while true do
+		task.wait(2)
+		
+		if raceHost.Visible then
+			clearRewardPreviewCache()
+			updateRewardDetail()
+		end
+	end
+end)
+
+--// Render update
+RunService.RenderStepped:Connect(function()
+	updatePlayerPanelIcons()
 end)
 
 --// Start
-createRewardMarkers()
-updateAllRaceUI()
+raceHostBlur.Visible = false
+stageMenu.Visible = false
+leaderstatsMenu.Visible = false
 
-print("RaceUI loaded")
+setSpeedometerVisible(false)
+openDetail("Reward")
 
+updateTimer()
+updateRaceVisibility()
+updateSpeedometer()
+updateRaceTop()
+
+rebuildRewardButtons()
+rebuildPanelMarkers()
+refreshMenu()
+requestServerPreview()
+
+print("RaceUI 1.3 loaded")
