@@ -85,7 +85,7 @@ local function getBaseParts(object)
 		table.insert(parts, object)
 	end
 	
-	for _, decendant in ipairs(object:GetDsecendants()) do
+	for _, decendant in ipairs(object:GetDescendants()) do
 		if decendant:IsA("BasePart") then
 			table.insert(parts, decendant)
 		end
@@ -125,7 +125,7 @@ local raceTimerText = getOrCreateValue(ReplicatedStorage, "StringValue", "RaceTi
 local raceOpenValue = getOrCreateValue(raceFolder, "BoolValue", "RaceOpen", false)
 local raceRoundIdValue = getOrCreateValue(raceFolder, "IntValue", "RaceRoundId", 0)
 
-local raceTopData = getOrCreateValue(raceFolder, "RaceTopData")
+local raceTopData = getOrCreateFolder(raceFolder, "RaceTopData")
 local topSlots = {}
 
 for place = 1, settings.TopPlayerCount do
@@ -174,9 +174,9 @@ local function newRoundState()
 		Speed = settings.BaseSpeed,
 		CommittedDistance = 0,
 		SegmentMaxDistance = 0,
-		CollectedRewarda = {},
+		CollectedRewards = {},
 		TrackDistance = 0,
-		ChechPoints = {},
+		Checkpoints = {},
 	}
 end
 
@@ -213,7 +213,7 @@ local function setupPlayerRaceData(player)
 	local data = {
 		RaceData = raceData,
 		Stage = stageValue,
-		RoadLevel = rewardLevelValue,
+		RoadLevel = roadLevelValue,
 		RewardLevel = rewardLevelValue,
 		RaceRecord = raceRecordValue,
 		
@@ -222,8 +222,8 @@ local function setupPlayerRaceData(player)
 		RaceSpeed = raceSpeedValue,
 		RaceTargetSpeed = raceTargetSpeedValue,
 		LapDistance = lapDistanceValue,
-		roundDistance = roundDistanceValue,
-		trackDistance = trackDistanceValue,
+		RoundDistance = roundDistanceValue,
+		TrackDistance = trackDistanceValue,
 	}
 	
 	player:SetAttribute("RaceServerReady", true)
@@ -294,10 +294,10 @@ local function getPlayerResources(player)
 		RaceTouch = playerData:FindFirstChild("RaceTouch"),
 		Energy = leaderstats:FindFirstChild("Energy"),
 		Rebirth = leaderstats:FindFirstChild("Rebirth"),
-		XP = resources:FindFirstChild("XP"),
+		XP = resources:FindFirstChild("XPModule"),
 	}
 	
-	for _, value in ipairs(values) do
+	for _, value in pairs(values) do
 		if not value then return nil end
 	end
 	return values
@@ -377,7 +377,7 @@ end
 
 local function getAccelerationMultiplier(player)
 	return UpgradeModule.GetAccelerationMultiplier(player) 
-		* TrailModule.GetAccelerationMultiplier(player) 
+		* TrailModule.getAccelerationMultiplier(player) 
 		* getTrailAccelerationMultiplier(player)
 end
 
@@ -403,7 +403,7 @@ local function getRewardModifiers(player)
 		GemsMultiplier = 1,
 		RaceTouchMultiplier = 1,
 		GemFlatBonus = gemFlatBonus,
-		gemChanceMultiplier = gemChanceBonus,
+		GemChanceBonus = gemChanceBonus,
 	}
 end
 
@@ -433,7 +433,7 @@ local function giveCheckpointReward(player, rewardIndex)
 	
 	if reward.XP > 0 then
 		XPModule.addXP(player, reward.XP)
-		racePopupEvent:FireServer(player, "XP", reward.XP)
+		racePopupEvent:FireClient(player, "XP", reward.XP)
 	end
 	
 	if reward.Gems > 0 and math.random() < reward.GemChance then
@@ -471,7 +471,7 @@ local function teleportToSpawn(player)
 	if rootPart then
 		rootPart.AssemblyLinearVelocity = Vector3.zero
 		rootPart.AssemblyAngularVelocity = Vector3.zero
-		rootPart.CFrame = spawnPart.CFrame + Vector2.new(0, 3, 0)
+		rootPart.CFrame = spawnPart.CFrame + Vector3.new(0, 3, 0)
 	end
 end
 
@@ -535,14 +535,14 @@ local function startRace(player)
 	
 	data.InRace.Value = true
 	data.RaceSpeed.Value = state.Speed
-	data.LapDisatance.Value = 0
+	data.LapDistance.Value = 0
 	data.RaceProgress.Value = 0
 	data.RoundDistance.Value = state.CommittedDistance
 	
 	teleportToRaceStart(player)
 	
 	local activeData = {}
-	activeRecers[player] = activeData
+	activeRacers[player] = activeData
 	
 	activeData.DiedConnection = humanoid.Died:Connect(function()
 		leaveRace(player, true, false)
@@ -555,7 +555,7 @@ leaveRace = function(player, preserveRound, shouldTeleport)
 	local state = getRoundState(player)
 	
 	if activeData then
-		if activeData.DiesConnection then
+		if activeData.DiedConnection then
 			activeData.DiedConnection:Disconnect()
 		end
 		
@@ -566,7 +566,7 @@ leaveRace = function(player, preserveRound, shouldTeleport)
 	if data then
 		data.InRace.Value = false
 		data.LapDistance.Value = 0
-		data.RcaeProgress.Value = 0
+		data.RaceProgress.Value = 0
 	end
 	
 	if preserveRound then
@@ -627,7 +627,7 @@ local function updateRacer(player, deltaTime)
 	data.RaceTargetSpeed.Value = targetSpeed
 	humanoid.WalkSpeed = state.Speed
 	
-	local forwardDistance = RaceModule.GetForwarnDistance(startCFrame, rootPart.Position)
+	local forwardDistance = RaceModule.GetForwardDistance(startCFrame, rootPart.Position)
 	
 	forwardDistance = math.clamp(tonumber(forwardDistance) or 0, 0, state.TrackDistance)
 	
@@ -640,10 +640,12 @@ local function updateRacer(player, deltaTime)
 	
 	state.LapDistance.Value = currentDistance
 	state.RaceProgress.Value = currentDistance / state.TrackDistance
-	state.RoundDisatance.Value = state.CommittedDistance + currentDistance
+	state.RoundDistance.Value = state.CommittedDistance + currentDistance
 	
 	for _, checkpoint in ipairs(state.Checkpoints) do
-		if previousDistance < checkpoint.Distance and currentDistance >= checkpoint.Distance then
+		if previousDistance < checkpoint.Distance and currentDistance >= checkpoint.Distance
+			and not state.CollectedRewards[checkpoint.Name] then
+			
 			state.CollectedRewards[checkpoint.Name] = true
 			giveCheckpointReward(player, checkpoint.Index)
 		end
@@ -868,7 +870,7 @@ local function stageUp(player)
 	local missing = RaceModule.GetMissingRequirements(requirements, currentValues)
 	
 	if next(missing) then
-		fireWarning(player, missing)
+		fireMissingWarning(player, missing)
 		return false
 	end
 	
@@ -966,11 +968,11 @@ Players.PlayerRemoving:Connect(function(player)
 	if data then updatePlayerRecord(player, data) end
 	
 	local activeData = activeRacers[player]
-	if activeRacers and activeData.DiedConnection then
+	if activeData and activeData.DiedConnection then
 		activeData.DiedConnection:Disconnect()
 	end
 	
-	activeRecers[player] = nil
+	activeRacers[player] = nil
 	roundStates[player] = nil
 	savedWalkSpeeds[player] = nil
 	actionLocks[player] = nil
@@ -1023,8 +1025,12 @@ end
 local function resetAllRoundStates()
 	local playersToStop = {}
 	
-	for _, player in pairs(activeRacers) do
+	for player in pairs(activeRacers) do
 		table.insert(playersToStop, player)
+	end
+	
+	for _, player in ipairs(playersToStop) do
+		leaveRace(player, false, true)
 	end
 	
 	for _, player in ipairs(Players:GetPlayers()) do
