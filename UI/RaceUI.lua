@@ -15,7 +15,7 @@ local raceGui = script.Parent
 
 ClientDataModule.WaitUntilReady(player)
 
-while player:GetAttribute("ReadyServerReady") ~= true do task.wait() end
+while player:GetAttribute("RaceServerReady") ~= true do task.wait() end
 
 --// General helpers
 local function setText(object, value)
@@ -81,11 +81,11 @@ local raceActionEvent = replicatedRaceFolder:WaitForChild("RaceActionEvent")
 local raceActionResultEvent = replicatedRaceFolder:WaitForChild("RaceActionResultEvent")
 local raceWarningEvent = replicatedRaceFolder:WaitForChild("RaceWarningEvent")
 
-local racePreviewFunction = replicatedRaceFolder:WaitForChild("RacePreviewFunction")
+local racePreviewFunction = replicatedRaceFolder:FindFirstChild("RacePreviewFunction")
 local raceTopData = replicatedRaceFolder:WaitForChild("RaceTopData")
 
-local raceStatusText = replicatedRaceFolder:WaitForChild("RaceStatusText")
-local raceTimerText = replicatedRaceFolder:WaitForChild("RaceTimerText")
+local raceStatusText = ReplicatedStorage:WaitForChild("RaceStatusText")
+local raceTimerText = ReplicatedStorage:WaitForChild("RaceTimerText")
 
 --// Player data
 local leaderstats = ClientDataModule.GetLeaderstats(player)
@@ -155,7 +155,7 @@ local topRecordLabels = {
 }
 
 local raceWarningLabel = raceFolder:WaitForChild("RaceWarningLabel")
-local leaveButton = raceFolder:WaitForChild("LeaveButton")
+local leaveButton = raceFolder:FindFirstChild("LeaveButton")
 
 --// RaceHost references
 local raceHost = raceFolder:WaitForChild("RaceHost")
@@ -176,7 +176,7 @@ local sectionFolder = raceMenu:WaitForChild("SectionFolder")
 local rewardFolder = raceMenu:WaitForChild("RewardFolder")
 
 local nameDetails = detailsFolder:WaitForChild("NameDetails")
-local frameRewardDetail = detailsFolder:WaitForChild("FrameRewards")
+local frameRewardDetail = detailsFolder:WaitForChild("FrameRewardDetails")
 local frameStageDetail = detailsFolder:WaitForChild("FrameStageDetail")
 local frameUpgradeDetail = detailsFolder:WaitForChild("FrameUpgradeDetail")
 
@@ -229,12 +229,12 @@ local detailStageIcon = frameStageDetail:WaitForChild("StaStageIcon")
 
 --// RewardFolder references
 local rewardBar = rewardFolder:WaitForChild("RewardBar")
-local rewardButtonTemplate = rewardBar:WaitForChild("RewardButton")
+local rewardButtonTemplate = rewardFolder:WaitForChild("RewardButton")
 
 --// StageMenu references
 local stageClose = stageMenu:WaitForChild("StageClose")
 local stageCurrentIcon = stageMenu:WaitForChild("StaCurIcon")
-local stageNextIcon = stageMenu:WaitForChild("StaArrowIcon")
+local stageNextIcon = stageMenu:WaitForChild("StaNextIcon")
 local stageArrowIcon = stageMenu:WaitForChild("StaArrowIcon")
 
 local stageCurrentBoost = stageMenu:WaitForChild("StaCurBoost")
@@ -247,7 +247,7 @@ local stageRequiredRebirth = stageMenu:WaitForChild("StaRequirRebirth")
 local stageRequiredEnergy = stageMenu:WaitForChild("StaRequirEnergy")
 
 local stageRequirementBar = stageMenu:WaitForChild("StaRequirBar")
-local stageRequirementPercent = stageMenu:WaitForChild("StaRequirePercent")
+local stageRequirementPercent = stageMenu:WaitForChild("StaRequireBarPercent")
 local stageUpButton = stageMenu:WaitForChild("StageUpButton")
 
 --// Stage leaderstats references
@@ -348,13 +348,12 @@ local raceStartPoint = findDescendant(raceTrack, RaceModule.WorldNames.RaceStart
 local localGateFolder
 
 local function findGateTemplate(templateName)
-	local template = replicatedRaceFolder:WaitForChild(templateName, true)
-	
+	local template = replicatedRaceFolder:FindFirstChild(templateName, true)
 	if template then return template end
 	
 	template = ReplicatedStorage:FindFirstChild(templateName, true)
-	
 	if template then return template end
+	
 	return findDescendant(raceTrack, templateName)
 end
 
@@ -392,7 +391,7 @@ local function setGateRewardName(gate, rewardName)
 		or findDescendant(gate, "RewardLabel")
 	
 	if label and (label:IsA("TextLabel") or label:IsA("TextButton")) then
-		lable.Text = rewardName
+		label.Text = rewardName
 	end
 end
 
@@ -528,7 +527,7 @@ if panelRewardTemplate then
 end
 
 if panelFinishTemplate then
-	panelFinissTmplate.Visible = false
+	panelFinishTmplate.Visible = false
 end
 
 local function clearPanelMarkers()
@@ -729,8 +728,8 @@ local function updateRewardButtonPrice(button)
 	
 	local currentNumber = rewardFrame:FindFirstChild("RewCurNumber")
 	local requiredMoney = rewardFrame:FindFirstChild("RewRequirMoney")
-	local requiredRaceTouch = rewardFrame:FindFirstChild("RewRequireRaceTouch")
-	local requiredXP = rewardFrame:FindFirstChild("RewRequireXp")
+	local requiredRaceTouch = rewardFrame:FindFirstChild("RewRequirRaceTouch")
+	local requiredXP = rewardFrame:FindFirstChild("RewRequirXp")
 	
 	local targetLevel = rewardLevelValue.Value + 1
 	local stageCap = RaceModule.GetRewardLevelCap(stageValue.Value)
@@ -759,8 +758,8 @@ local function rebuildRewardButtons()
 	for rewardIndex = 1, rewardCount do 
 		local button = rewardButtonTemplate:Clone()
 		button.Name = "RewardButton_R" .. rewardIndex
-		button.SetAttribute("RewardIndex", rewardIndex)
-		button.SetAttribute("RewardName", "R" .. rewardIndex)
+		button:SetAttribute("RewardIndex", rewardIndex)
+		button:SetAttribute("RewardName", "R" .. rewardIndex)
 		button.Visible = true
 		button.Parent = rewardButtonTemplate.Parent
 		
@@ -870,7 +869,7 @@ local function getStageCurrentValues()
 end
 
 local function setRequirementText(label, current, required)
-	setText(label, formatNumber(current) .. "/" .. formatNumber(require))
+	setText(label, formatNumber(current) .. "/" .. formatNumber(required))
 end
 
 local function updateStageMenu()
@@ -905,7 +904,7 @@ local function updateStageMenu()
 	local progressData = RaceModule.GetStageRequirementProgress(stage, currentValues)
 	
 	setRequirementText(stageRequiredLevel, currentValues.Level, requirements.Level)
-	setRequirementText(stageRequiredRaceTouch, currentValues.RaceTouch)
+	setRequirementText(stageRequiredRaceTouch, currentValues.RaceTouch, requirements.RaceTouch)
 	setRequirementText(stageRequiredMoney, currentValues.Money, requirements.Money)
 	setRequirementText(stageRequiredRebirth, currentValues.Rebirth, requirements.Rebirth)
 	setRequirementText(stageRequiredEnergy, currentValues.Energy, requirements.Energy)
@@ -922,7 +921,7 @@ local function updateBalances()
 	setText(moneyLead, formatNumber(moneyValue.Value))
 	setText(raceTouchLead, formatNumber(raceTouchValue.Value))
 	setText(xpLead, formatNumber(xpValue.Value))
-	setText(raceRecordLabel, formatNumber(raceRecordValue.Value))
+	setText(raceRecordLabel, formatDistance(raceRecordValue.Value))
 	
 	setText(stageEnergyLead, formatNumber(energyValue.Value))
 	setText(stageMoneyLead, formatNumber(moneyValue.Value))
@@ -987,7 +986,7 @@ local function showWarning(message)
 	task.delay(2.5, function()
 		if sequence ~= warningSequence then return end 
 		
-		local tween = TweenService:Create(raceWarningLabel, TweenInfo.new(0.5), {TextTrancparency = 1})
+		local tween = TweenService:Create(raceWarningLabel, TweenInfo.new(0.5), {TextTransparency = 1})
 		
 		tween:Play()
 		tween.Completed:Once(function()
@@ -1136,14 +1135,14 @@ end)
 Players.PlayerRemoving:Connect(removePlayerPanelIcon)
 
 --// Stage arrow animation
-task.sapwn(function()
+task.spawn(function()
 	while true do
 		if stageMenu.Visible then
 			stageArrowIcon.Position = RaceModule.UI.StageArrow.StartPosition
 			
 			local forwardTween = TweenService:Create( 
 				stageArrowIcon,
-				TweenInfo.new(0.55, Enum.PoseEasingStyle.Sine, Enum.EasingDirection.InOut),
+				TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
 				{Position = RaceModule.UI.StageArrow.EndPosition}
 			)
 			
@@ -1153,7 +1152,7 @@ task.sapwn(function()
 			if stageMenu.Visible then
 				local backwardTween = TweenService:Create( 
 					stageArrowIcon,
-					TweenInfo.new(0.55, Enum.PoseEasingStyle.Sine, Enum.EasingDirection.InOut),
+					TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
 					{Position = RaceModule.UI.StageArrow.StartPosition}
 				)
 				
@@ -1167,7 +1166,7 @@ task.sapwn(function()
 end)
 
 --// Periodic preview refresh
-task.sapwn(function()
+task.spawn(function()
 	while true do
 		task.wait(2)
 		
@@ -1187,6 +1186,7 @@ end)
 raceHostBlur.Visible = false
 stageMenu.Visible = false
 leaderstatsMenu.Visible = false
+raceWarningLabel.Visible = false
 
 setSpeedometerVisible(false)
 openDetail("Reward")
