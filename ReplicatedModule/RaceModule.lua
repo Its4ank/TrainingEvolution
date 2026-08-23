@@ -1,14 +1,16 @@
 local RaceModule = {}
 
 --// Основные настройки гонки
-RaeModule.Settings = {
+RaceModule.Settings = {
 	WaitTime = 30,
 	RaceTime = 150,
 	
 	MaxTrackLength = 5000,
 	
 	MaxStage = 5,
-	MaxRoadLevel = 25,
+	MaxRoadLevel = 5,
+	MaxRewardLevel = 25,
+	RewardLevelsPerStage = 5,
 	
 	BaseSpeed = 16,
 	BaseAccelerationPerSecond = 0.2,
@@ -307,8 +309,8 @@ RaceModule.RewardUpgradeLevels = {
 		StartBonus = 1.1,
 		EndBonus = 1.3,
 		
-		StartPriceMoney = 10,
-		EndPriceMoney = 100,
+		StartPriceMoney = 50,
+		EndPriceMoney = 500,
 		
 		StartPriceTouch = 5,
 		EndPriceTouch = 25,
@@ -324,8 +326,8 @@ RaceModule.RewardUpgradeLevels = {
 		StartBonus = 1.4,
 		EndBonus = 1.7,
 
-		StartPriceMoney = 125,
-		EndPriceMoney = 250,
+		StartPriceMoney = 1000,
+		EndPriceMoney = 5000,
 
 		StartPriceTouch = 35,
 		EndPriceTouch = 75,
@@ -341,8 +343,8 @@ RaceModule.RewardUpgradeLevels = {
 		StartBonus = 1.8,
 		EndBonus = 2.1,
 
-		StartPriceMoney = 300,
-		EndPriceMoney = 500,
+		StartPriceMoney = 7500,
+		EndPriceMoney = 12500,
 
 		StartPriceTouch = 20,
 		EndPriceTouch = 50,
@@ -358,8 +360,8 @@ RaceModule.RewardUpgradeLevels = {
 		StartBonus = 2.2,
 		EndBonus = 2.5,
 
-		StartPriceMoney = 50,
-		EndPriceMoney = 100,
+		StartPriceMoney = 14000,
+		EndPriceMoney = 20000,
 
 		StartPriceTouch = 20,
 		EndPriceTouch = 50,
@@ -375,8 +377,8 @@ RaceModule.RewardUpgradeLevels = {
 		StartBonus = 2.6,
 		EndBonus = 3.0,
 
-		StartPriceMoney = 50,
-		EndPriceMoney = 100,
+		StartPriceMoney = 25000,
+		EndPriceMoney = 40000,
 
 		StartPriceTouch = 20,
 		EndPriceTouch = 50,
@@ -387,7 +389,7 @@ RaceModule.RewardUpgradeLevels = {
 }
 
 --// Вспомогательные функции
-local function interpoplate(startValue, endValue, fromLevel, toLevel, level)
+local function interpolate(startValue, endValue, fromLevel, toLevel, level)
 	if fromLevel == toLevel then return endValue end
 	
 	local alpha = (level - fromLevel) / (toLevel - fromLevel)
@@ -459,7 +461,7 @@ function RaceModule.GetTrackDistance(stage, roadLevel)
 	
 	local stageConfig = RaceModule.GetStageConfig(stage)
 	
-	local distance = stageConfig.DistancePerLevel * roadLevel
+	return stageConfig.Distance * roadLevel
 end
 
 function RaceModule.GetRewardCount(stage, roadLevel)
@@ -555,7 +557,7 @@ function RaceModule.GetRewardUpgradeData(level)
 	return {
 		Level = level,
 		
-		Bonus = interpoplate(
+		Bonus = interpolate(
 			range.StartBonus,
 			range.EndBonus,
 			range.FromLevel,
@@ -563,7 +565,7 @@ function RaceModule.GetRewardUpgradeData(level)
 			level
 		),
 		
-		PriceMoney = interpoplate(
+		PriceMoney = interpolate(
 			range.StartPriceMoney,
 			range.EndPriceMoney,
 			range.FromLevel,
@@ -571,7 +573,7 @@ function RaceModule.GetRewardUpgradeData(level)
 			level
 		),
 		
-		PriceRaceTouch = interpoplate(
+		PriceRaceTouch = interpolate(
 			range.StartPriceTouch,
 			range.EndPriceTouch,
 			range.FromLevel,
@@ -579,10 +581,9 @@ function RaceModule.GetRewardUpgradeData(level)
 			level
 		),
 		
-		PriceXP = interpoplate(
+		PriceXP = interpolate(
 			range.StartPriceXP,
 			range.EndPriceXP,
-			range.FromLevel,
 			range.FromLevel,
 			level
 		),
@@ -646,13 +647,11 @@ end
 function RaceModule.GetRewardUpgradeConfig(rewardLevel)
 	rewardLevel = clampRewardLevel(rewardLevel)
 	
-	return RaceModule.RewardUpgradeLevels[rewardLevel]
+	return RaceModule.GetRewardUpgradeData(rewardLevel)
 end
 
 function RaceModule.GetRewardUpgradeMultiplier(rewardLevel)
-	local config = RaceModule.GetRewardUpgradeConfig(rewardLevel)
-	
-	return tonumber(config.RewardMultiplier) or 1
+	return RaceModule.GetRewardBonus(rewardLevel)
 end
 
 
@@ -666,12 +665,19 @@ function RaceModule.GetNextRewardUpgrade(stage, currentRewardLevel)
 	if currentRewardLevel >= RaceModule.Settings.MaxRewardLevel then return nil end
 	
 	local nextLevel = currentRewardLevel + 1
-	local nextConfig = RaceModule.GetRewardUpgradeConfig(nextLevel)
+	local nextData = RaceModule.GetRewardUpgradeData(nextLevel)
+	
+	if not nextData then return nil end
 	
 	return {
 		Level = nextLevel,
-		RewardMultiplier = nextConfig.RewardMultiplier,
-		Price = nextConfig.Price,
+		RewardMultiplier = nextData.Bonus,
+		
+		Price = {
+			Money = nextData.PriceMoney,
+			RaceTouch = nextData.PriceRaceTouch,
+			XP = nextData.PriceXP,
+		},
 	}
 end
 
@@ -684,7 +690,7 @@ function RaceModule.GetLocalRewardLevel(stage, rewardLevel)
 	return math.clamp( 
 		rewardLevel - previousStageCap,
 		0,
-		RaceModule.Settings.RewardLevelPerStage
+		RaceModule.Settings.RewardLevelsPerStage
 	)
 end
 
@@ -702,7 +708,7 @@ function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifi
 	if not baseReward then return nil end
 	
 	local stageMultiplier = RaceModule.GetStageRewardMultiplier(stage)
-	local rewardUpgradeMultiplier = RaceModule.GetRewardUpgradeMultiplier(rewardLevel)
+	local rewardUpgradeMultiplier = RaceModule.GetRewardBonus(rewardLevel)
 	local sharedMultiplier = stageMultiplier * rewardUpgradeMultiplier
 	
 	local moneyMultiplier = tonumber(modifiers.MoneyMultiplier) or 1
@@ -710,8 +716,8 @@ function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifi
 	local gemsMultiplier = tonumber(modifiers.GemsMultiplier) or 1
 	local raceTouchMultiplier = tonumber(modifiers.RaceTouchMultiplier) or 1
 	
-	local gemFlatBonus = tostring(modifiers.GemFlatBonus) or 0
-	local gemsChanceBonus = tonumber(modifiers.GemChanceMultiplier) or 0
+	local gemFlatBonus = tonumber(modifiers.GemFlatBonus) or 0
+	local gemsChanceBonus = tonumber(modifiers.GemChanceBonus) or 0
 	
 	local baseMoney = tonumber(baseReward.Money) or 0
 	local baseGems = tonumber(baseReward.Gems) or 0
@@ -723,7 +729,7 @@ function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifi
 	local finalXP = roundNumber(baseXp * sharedMultiplier * xpMultiplier, 3)
 	
 	local finalRaceTouch = math.floor(baseRaceTouch * raceTouchMultiplier)
-	local finalGemChance = math.clamp(RaceModule.Settings.BaseGemShance + gemsChanceBonus, 0, 1)
+	local finalGemChance = math.clamp(RaceModule.Settings.BaseGemChance + gemsChanceBonus, 0, 1)
 	
 	return {
 		Money = math.max(0, finalMoney),
@@ -759,7 +765,7 @@ function RaceModule.GetStageRequirementProgress(stage, currentValues)
 			Percent = 100,
 			CanStageUp = false,
 			IsMaxStage = true,
-			Ration = {},
+			Ratios = {},
 		}
 	end
 	
@@ -777,13 +783,13 @@ function RaceModule.GetStageRequirementProgress(stage, currentValues)
 	
 	for _, requirementName in ipairs(requirementOrder) do
 		local requiredAmount = tonumber(requirements[requirementName]) or 0
-		local currentAmount = tonumber(currentValues[requirementName])
+		local currentAmount = tonumber(currentValues[requirementName]) or 0
 		local ratio
 		
 		if requiredAmount <= 0 then
 			ratio = 1
 		else 
-			ratio = math.calmp(currentAmount / requiredAmount, 0, 1)
+			ratio = math.clamp(currentAmount / requiredAmount, 0, 1)
 		end
 		
 		ratios[requirementName] = ratio
@@ -833,10 +839,11 @@ function RaceModule.HasRequiredResources(requiredValues, currentValues)
 end
 
 --// Позицилнирование обьектов в мире
-function RaceModule.GetForwarnDistance(startCFrame, worldPosition)
+function RaceModule.GetForwardDistance(startCFrame, worldPosition)
 	local direction = startCFrame.LookVector
+	local offset = worldPosition - startCFrame.Position
 	
-	return (worldPosition - startCFrame.LookVector):Dot(direction)
+	return offset:Dot(direction)
 end
 
 function RaceModule.GetWorldPositionAtDistance(startCFrame, disatnce)
@@ -924,10 +931,10 @@ function RaceModule.GetRewardPanelPoint(stage, roadLevel, rewardIndex)
 end
 
 --// Позиции RewardButton внутри RaceMeenu
-function RaceNodule.GetRewardBarPosition(stage, roadLevel, rewardIndex)
+function RaceModule.GetRewardBarPosition(stage, roadLevel, rewardIndex)
 	local rewardCount = RaceModule.GetRewardCount(stage, roadLevel)
 	
-	rewardIndex = math.calmp(math.floor(tonumber(rewardIndex) or 1), 1, rewardCount)
+	rewardIndex = math.clamp(math.floor(tonumber(rewardIndex) or 1), 1, rewardCount)
 	
 	local alpha = rewardIndex / rewardCount
 	
@@ -993,7 +1000,7 @@ end
 
 function RaceModule.GetNextSpeed(currentSpeed, targetSpeed, deltaTime, accelerationMultiplier)
 	currentSpeed = math.max(RaceModule.Settings.BaseSpeed, tonumber(currentSpeed) or RaceModule.Settings.BaseSpeed)
-	targetSpeed = math.max(RaceModule.Settings.BaseSpeed, tonumber(currentSpeed) or RaceModule.Settings.BaseSpeed)
+	targetSpeed = math.max(RaceModule.Settings.BaseSpeed, tonumber(targetSpeed) or RaceModule.Settings.BaseSpeed)
 	deltaTime = math.max(0, tonumber(deltaTime) or 0)
 	accelerationMultiplier = math.max(0, tonumber(accelerationMultiplier) or 1)
 	
@@ -1073,7 +1080,7 @@ function RaceModule.FormatNumber(number)
 				decimalPlaces = 0
 			end
 			
-			local formatted = trimZeros(string.fromat("%." .. decimalPlaces .. "f", scaleNumber))
+			local formatted = trimZeros(string.format("%." .. decimalPlaces .. "f", scaleNumber))
 			
 			if absoluteScaled < 10 and not formatted:find("%.") then
 				formatted ..= ".0"
@@ -1100,16 +1107,16 @@ function RaceModule.FormatPercent(decimalValue)
 	
 	local percent = decimalValue * 100
 	
-	return trimZeros(string.fromat("%.1f", percent))
+	return trimZeros(string.format("%.1f", percent))
 end
 
-function RaceModule.FromatTime(seconds)
+function RaceModule.FormatTime(seconds)
 	seconds = math.max(0, math.floor(tonumber(seconds) or 0))
 	
 	local minutes = math.floor(seconds / 60)
 	local reminingSeconds = seconds % 60
 	
-	return string.fromat("%d:%02d", minutes, reminingSeconds)
+	return string.format("%d:%02d", minutes, reminingSeconds)
 end
 
 return RaceModule
