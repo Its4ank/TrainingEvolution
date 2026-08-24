@@ -34,13 +34,14 @@ function PlayerDataSetupModule.setup(player)
 	--// PlayerData
 	local playerData = getOrCreateFolder(player, "PlayerData")
 	
-	getOrCreateValue(playerData, "IntValue", "Money", 0)
+	getOrCreateValue(playerData, "NumberValue", "Money", 0)
 	getOrCreateValue(playerData, "IntValue", "Gems", 0)
-	getOrCreateValue(playerData, "IntValue", "RaceTouch", 0)
+	getOrCreateValue(playerData, "NumberValue", "RaceTouch", 0)
 	getOrCreateValue(playerData, "IntValue", "SrRobux", 0)
 	getOrCreateValue(playerData, "IntValue", "MaxEquippedPets", 3)
 	getOrCreateValue(playerData, "IntValue", "EggHatched", 0)
-
+	getOrCreateValue(playerData, "IntValue", "MaxPetStorage", 50)
+	
 	getOrCreateValue(playerData, "StringValue", "LastSeenUpdate", "")
 	
 	getOrCreateValue(playerData, "BoolValue", "BetaTester", false)
