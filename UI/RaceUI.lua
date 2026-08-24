@@ -176,7 +176,7 @@ local sectionFolder = raceMenu:WaitForChild("SectionFolder")
 local rewardFolder = raceMenu:WaitForChild("RewardFolder")
 
 local nameDetails = detailsFolder:WaitForChild("NameDetails")
-local frameRewardDetail = detailsFolder:WaitForChild("FrameRewardDetails")
+local frameRewardDetail = detailsFolder:WaitForChild("FrameRewardDetail")
 local frameStageDetail = detailsFolder:WaitForChild("FrameStageDetail")
 local frameUpgradeDetail = detailsFolder:WaitForChild("FrameUpgradeDetail")
 
@@ -191,7 +191,7 @@ local summaryStageBonus = stageDetailsButton:WaitForChild("StaStageBonus")
 local summaryStageDistance = stageDetailsButton:WaitForChild("StaStageDistance")
 local summaryStageName = stageDetailsButton:WaitForChild("StaStageName")
 
-local summaryUpgradeLevel = upgradeDetailsButton:WaitForChild("UpgLvlLevel")
+local summaryUpgradeLevel = upgradeDetailsButton:WaitForChild("UpgLvlNumber")
 local summaryUpgradeRewards = upgradeDetailsButton:WaitForChild("UpgRewardNumber")
 
 --// Reward detail references
@@ -247,7 +247,7 @@ local stageRequiredRebirth = stageMenu:WaitForChild("StaRequirRebirth")
 local stageRequiredEnergy = stageMenu:WaitForChild("StaRequirEnergy")
 
 local stageRequirementBar = stageMenu:WaitForChild("StaRequirBar")
-local stageRequirementPercent = stageMenu:WaitForChild("StaRequireBarPercent")
+local stageRequirementPercent = stageMenu:WaitForChild("StaRequirBarPercent")
 local stageUpButton = stageMenu:WaitForChild("StageUpButton")
 
 --// Stage leaderstats references
@@ -464,12 +464,21 @@ end
 
 local function createPlayerPanelIcon(targetPlayer)
 	local icon = panelIconTemplate:Clone()
+	
 	icon.Name = "PlayerIcon_" .. targetPlayer.UserId
-	icon.Image = getThumbnail(targetPlayer.UserId)
+	icon.Image = ""
 	icon.Visible = true
 	icon.Parent = racePanel
 	
 	playerPanelIcons[targetPlayer] = icon
+	
+	task.spawn(function()
+		local image = getThumbnail(targetPlayer.UserId)
+		
+		if playerPanelIcons[targetPlayer] == icon and icon.Parent then
+			icon.Image = image
+		end
+	end)
 	
 	return icon
 end
@@ -527,7 +536,7 @@ if panelRewardTemplate then
 end
 
 if panelFinishTemplate then
-	panelFinishTmplate.Visible = false
+	panelFinishTemplate.Visible = false
 end
 
 local function clearPanelMarkers()
@@ -660,6 +669,8 @@ local function getRewardPreview(rewardIndex)
 	}
 end
 
+local updateRewardDetail
+
 local function requestServerPreview()
 	if not racePreviewFunction or previewRequestsInProgress then return end 
 	
@@ -670,6 +681,10 @@ local function requestServerPreview()
 		
 		if success and type(result) == "table" then
 			previewCache = result
+			
+			if updateRewardDetail then
+				task.defer(updateRewardDetail)
+			end
 		end
 		
 		previewRequestsInProgress = false
@@ -682,7 +697,7 @@ local function clearRewardPreviewCache()
 end
 
 --// Reward detail UI
-local function updateRewardDetail()
+updateRewardDetail = function()
 	local stageCap = RaceModule.GetRewardLevelCap(stageValue.Value)
 	local localRewardLevel = RaceModule.GetLocalRewardLevel(stageValue.Value, rewardLevelValue.Value)
 	local preview = getRewardPreview(selectedRewardIndex)
