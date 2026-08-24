@@ -585,6 +585,7 @@ function RaceModule.GetRewardUpgradeData(level)
 			range.StartPriceXP,
 			range.EndPriceXP,
 			range.FromLevel,
+			range.ToLevel,
 			level
 		),
 	}
