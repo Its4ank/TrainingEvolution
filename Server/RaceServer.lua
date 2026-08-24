@@ -54,6 +54,21 @@ local function getOrCreateRemoteEvent(parent, name)
 	return remote
 end
 
+local function getOrCreateRemoteFunction(parent, name)
+	local remote = parent:FindFirstChild(name)
+	
+	if remote and not remote:IsA("RemoteFunction") then 
+		error(name .. " exists, but it is not a RemoteFunction")
+	end
+	
+	if not remote then
+		remote = Instance.New("RemoteFunction")
+		remote.Name = name
+		remote.Parent = parent
+	end
+	return remote
+end
+
 local function findDescendant(parent, name)
 	if parent.Name == name then return parent end
 	
@@ -118,6 +133,7 @@ local leaveRaceEvent = getOrCreateRemoteEvent(raceFolder, "LeaveRaceEvent")
 local raceActionEvent = getOrCreateRemoteEvent(raceFolder, "RaceActionEvent")
 local raceActionResultEvent = getOrCreateRemoteEvent(raceFolder, "RaceActionResultEvent")
 local raceWarningEvent = getOrCreateRemoteEvent(raceFolder, "RaceWarningEvent")
+local racePreviewFunction = getOrCreateRemoteFunction(raceFolder, "RacePreviewFunction")
 
 local raceStatusText = getOrCreateValue(ReplicatedStorage, "StringValue", "RaceStatusText", "Race starts in")
 local raceTimerText = getOrCreateValue(ReplicatedStorage, "StringValue", "RaceTimerText", "0:00")
@@ -377,7 +393,7 @@ end
 
 local function getAccelerationMultiplier(player)
 	return UpgradeModule.GetAccelerationMultiplier(player) 
-		* TrailModule.getAccelerationMultiplier(player) 
+		* TrainerModule.getAccelerationMultiplier(player) 
 		* getTrailAccelerationMultiplier(player)
 end
 
@@ -405,6 +421,30 @@ local function getRewardModifiers(player)
 		GemFlatBonus = gemFlatBonus,
 		GemChanceBonus = gemChanceBonus,
 	}
+end
+
+racePreviewFunction.OnServerInvoke = function(player)
+	local data = getPlayerRaceData(player)
+	
+	if not data then return {} end 
+	
+	local stage = data.Stage.Value
+	local roadLevel = data.roadLevel.Value
+	local rewardLevel = data.RewardLevel.Value
+	local rewardCount = RaceModule.GetRewardCount(stage, roadLevel)
+	local rewardCap = RaceModule.GetRewardLevelCap(stage)
+	local nextRewardLevel = math.min(rewardLevel + 1, rewardCap)
+	local modifiers = getRewardModifiers(player)
+	
+	local preview = {}
+	
+	for rewardIndex = 1, rewardCount do 
+		preview[rewardIndex] = {
+			Current = RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifiers),
+			Next = RaceModule.calculateFinalReward(rewardIndex, stage, nextRewardLevel, modifiers),
+		}
+	end
+	return preview
 end
 
 local function giveCheckpointReward(player, rewardIndex)
@@ -570,19 +610,17 @@ leaveRace = function(player, preserveRound, shouldTeleport)
 	end
 	
 	if preserveRound then
-		data.RaceSpeed.Value = state.Speed
-		data.LapDistance.Value = 0
-		data.RaceProgress.Value = 0
-
 		if preserveRound then
 			data.RaceSpeed.Value = state.Speed
 			data.RoundDistance.Value = state.CommittedDistance
-		else
-			state.Speed = settings.BaseSpeed
-			state.CommittedDistance = 0
-			state.SegmentMaxDistance = 0
-			state.CollectedRewards = {}
-
+		end
+    else
+		state.Speed = settings.BaseSpeed
+		state.CommittedDistance = 0
+		state.SegmentMaxDistance = 0
+		state.CollectedRewards = {}
+		
+		if data then
 			data.RaceSpeed.Value = settings.BaseSpeed
 			data.RaceTargetSpeed.Value = settings.BaseSpeed
 			data.RoundDistance.Value = 0
@@ -638,9 +676,9 @@ local function updateRacer(player, deltaTime)
 	
 	state.SegmentMaxDistance = currentDistance
 	
-	state.LapDistance.Value = currentDistance
-	state.RaceProgress.Value = currentDistance / state.TrackDistance
-	state.RoundDistance.Value = state.CommittedDistance + currentDistance
+	data.LapDistance.Value = currentDistance
+	data.RaceProgress.Value = currentDistance / state.TrackDistance
+	data.RoundDistance.Value = state.CommittedDistance + currentDistance
 	
 	for _, checkpoint in ipairs(state.Checkpoints) do
 		if previousDistance < checkpoint.Distance and currentDistance >= checkpoint.Distance
