@@ -117,15 +117,15 @@ local guiFolder = raceGui:WaitForChild("GuiFolder")
 local raceFolder = guiFolder:WaitForChild("RaceFolder")
 
 local speedometer = raceFolder:WaitForChild("Speedometer")
-local arrow = raceFolder:WaitForChild("Arrow")
-local tickCurrentSpeed = raceFolder:WaitForChild("TickCurrentSpeed")
+local arrow = speedometer:WaitForChild("Arrow")
+local tickCurrentSpeed = speedometer:WaitForChild("TickCurrentSpeed")
 
 local speedTicks = {
-	raceFolder:WaitForChild("Tick1"),
-	raceFolder:WaitForChild("Tick2"),
-	raceFolder:WaitForChild("Tick3"),
-	raceFolder:WaitForChild("Tick4"),
-	raceFolder:WaitForChild("Tick5"),
+	speedometer:WaitForChild("Tick1"),
+	speedometer:WaitForChild("Tick2"),
+	speedometer:WaitForChild("Tick3"),
+	speedometer:WaitForChild("Tick4"),
+	speedometer:WaitForChild("Tick5"),
 }
 
 local raceTimer = raceFolder:WaitForChild("RaceTimer")
@@ -202,11 +202,11 @@ local rewCurNumber = frameRewardDetail:WaitForChild("RewCurNumber")
 
 local rewCurUpgMoney = frameRewardDetail:WaitForChild("RewCurUpgMoney")
 local rewCurUpgGems = frameRewardDetail:WaitForChild("RewCurUpgGems")
-local rewCurUpgXP = frameRewardDetail:WaitForChild("RewCurUpgXP")
+local rewCurUpgXP = frameRewardDetail:WaitForChild("RewCurUpgXp")
 
 local rewNextUpgMoney = frameRewardDetail:WaitForChild("RewNextUpgMoney")
 local rewNextUpgGems = frameRewardDetail:WaitForChild("RewNextUpgGems")
-local rewNextUpgXP = frameRewardDetail:WaitForChild("RewNextUpgXP")
+local rewNextUpgXP = frameRewardDetail:WaitForChild("RewNextUpgXp")
 
 --// Road upgrade detail references
 local roadUpgradeButton = frameUpgradeDetail:WaitForChild("UpgradeButton")
@@ -1125,11 +1125,8 @@ end)
 raceRecordValue.Changed:Connect(updateBalances)
 
 for place = 1, RaceModule.Settings.TopPlayerCount do 
-	local userIdValue = raceTopData:WaitForChild("Top" .. place .. "UserId")
-	local distanceValue = raceTopData:WaitForChild("Top" .. place .. "Distance")
-	
-	userIdValue.Changed:Connect(updateRaceTop)
-	distanceValue.Changed:Connect(updateRaceTop)
+	raceTopData:WaitForChild("Top" .. place .. "UserId").Changed:Connect(updateRaceTop)
+	raceTopData:WaitForChild("Top" .. place .. "Distance").Changed:Connect(updateRaceTop)
 end
 
 raceWarningEvent.OnClientEvent:Connect(showWarning)
