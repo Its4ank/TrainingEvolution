@@ -62,7 +62,7 @@ local function getOrCreateRemoteFunction(parent, name)
 	end
 	
 	if not remote then
-		remote = Instance.New("RemoteFunction")
+		remote = Instance.new("RemoteFunction")
 		remote.Name = name
 		remote.Parent = parent
 	end
@@ -429,7 +429,7 @@ racePreviewFunction.OnServerInvoke = function(player)
 	if not data then return {} end 
 	
 	local stage = data.Stage.Value
-	local roadLevel = data.roadLevel.Value
+	local roadLevel = data.RoadLevel.Value
 	local rewardLevel = data.RewardLevel.Value
 	local rewardCount = RaceModule.GetRewardCount(stage, roadLevel)
 	local rewardCap = RaceModule.GetRewardLevelCap(stage)
