@@ -854,9 +854,9 @@ function RaceModule.GetWorldPositionAtDistance(startCFrame, disatnce)
 end
 
 function RaceModule.GetWorldCFrameAtDistance(startCFrame, distance)
-	local position = RaceModule.GetWorldPositionAtDistance(startCFrame, distance)
-	local direction = startCFrame.LookVector
-	return CFrame.lookAt(position, position + direction, startCFrame.UpVector)
+	local safeDistance = math.max(0, tonumber(distance) or 0)
+	
+	return startCFrame + startCFrame.LookVector * safeDistance
 end
 
 function RaceModule.MeasureTrack(startCFrame, endPosition)
