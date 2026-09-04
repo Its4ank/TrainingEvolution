@@ -9,11 +9,13 @@ local TweenService = game:GetService("TweenService")
 local RaceModule = require(ReplicatedStorage.Modules.RaceModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 
 local player = Players.LocalPlayer
 local raceGui = script.Parent
 
 ClientDataModule.WaitUntilReady(player)
+MenuManager.init(raceGui)
 
 while player:GetAttribute("RaceServerReady") ~= true do task.wait() end
 
@@ -83,6 +85,7 @@ local raceWarningEvent = replicatedRaceFolder:WaitForChild("RaceWarningEvent")
 
 local racePreviewFunction = replicatedRaceFolder:FindFirstChild("RacePreviewFunction")
 local raceTopData = replicatedRaceFolder:WaitForChild("RaceTopData")
+local raceOpenValue = replicatedRaceFolder:WaitForChild("RaceOpen")
 
 local raceStatusText = ReplicatedStorage:WaitForChild("RaceStatusText")
 local raceTimerText = ReplicatedStorage:WaitForChild("RaceTimerText")
@@ -170,6 +173,8 @@ local raceRecordLabel = raceMenu:WaitForChild("RaceRecordLabel")
 local raceTouchLead = raceMenu:WaitForChild("RaceTouchLead")
 local xpLead = raceMenu:WaitForChild("XpLead")
 
+MenuManager.register("Race", raceHost)
+
 --// Section references
 local detailsFolder = raceMenu:WaitForChild("DetailsFolder")
 local sectionFolder = raceMenu:WaitForChild("SectionFolder")
@@ -232,23 +237,27 @@ local rewardBar = rewardFolder:WaitForChild("RewardBar")
 local rewardButtonTemplate = rewardFolder:WaitForChild("RewardButton")
 
 --// StageMenu references
-local stageClose = stageMenu:WaitForChild("StageClose")
-local stageCurrentIcon = stageMenu:WaitForChild("StaCurIcon")
-local stageNextIcon = stageMenu:WaitForChild("StaNextIcon")
-local stageArrowIcon = stageMenu:WaitForChild("StaArrowIcon")
+local stageUI = {
+	Close = stageMenu:WaitForChild("StageClose"),
 
-local stageCurrentBoost = stageMenu:WaitForChild("StaCurBoost")
-local stageNextBoost = stageMenu:WaitForChild("StaNextBoost")
-
-local stageRequiredLevel = stageMenu:WaitForChild("StaRequirLvl")
-local stageRequiredRaceTouch = stageMenu:WaitForChild("StaRequirRaceTouch")
-local stageRequiredMoney = stageMenu:WaitForChild("StaRequirMoney")
-local stageRequiredRebirth = stageMenu:WaitForChild("StaRequirRebirth")
-local stageRequiredEnergy = stageMenu:WaitForChild("StaRequirEnergy")
-
-local stageRequirementBar = stageMenu:WaitForChild("StaRequirBar")
-local stageRequirementPercent = stageMenu:WaitForChild("StaRequirBarPercent")
-local stageUpButton = stageMenu:WaitForChild("StageUpButton")
+	CurrentIcon = stageMenu:WaitForChild("StaCurIcon"),
+	NextIcon = stageMenu:WaitForChild("StaNextIcon"),
+	ArrowIcon = stageMenu:WaitForChild("StaArrowIcon"),
+	
+	CurrentBoost = stageMenu:WaitForChild("StaCurBoost"),
+	NextBoost = stageMenu:WaitForChild("StaNextBoost"),
+	
+	RequiredLevel = stageMenu:WaitForChild("StaRequirLvl"),
+	RequiredRaceTouch = stageMenu:WaitForChild("StaRequirRaceTouch"),
+	RequiredMoney = stageMenu:WaitForChild("StaRequirMoney"),
+	RequiredRebirth = stageMenu:WaitForChild("StaRequirRebirth"),
+	RequiredEnergy = stageMenu:WaitForChild("StaRequirEnergy"),
+	
+	RequirementBar = stageMenu:WaitForChild("StaRequirBar"),
+	RequirementPercent = stageMenu:WaitForChild("StaRequirBarPercent"),
+	
+	UpButton = stageMenu:WaitForChild("StageUpButton"),
+}
 
 --// Stage leaderstats references
 local stageEnergyLead = leaderstatsMenu:WaitForChild("EnergyLead")
@@ -345,6 +354,7 @@ end
 --// Local 3D gates
 local raceTrack = workspace:WaitForChild(RaceModule.WorldNames.RaceTrack)
 local raceStartPoint = findDescendant(raceTrack, RaceModule.WorldNames.RaceStartPoint)
+local raceMaxEndPoint = findDescendant(raceTrack, RaceModule.WorldNames.RaceMaxEndPoint)
 local localGateFolder
 
 local function findGateTemplate(templateName)
@@ -357,8 +367,8 @@ local function findGateTemplate(templateName)
 	return findDescendant(raceTrack, templateName)
 end
 
-local rewardGateTemplate = findGateTemplate(RaceModule.WorldNames.RewardGateTemplate)
-local finishGateTemplate = findGateTemplate(RaceModule.WorldNames.FinishGateTemplate)
+local rewardGateTemplate = replicatedRaceFolder:WaitForChild("RewardGate")
+local finishGateTemplate = replicatedRaceFolder:WaitForChild("FinishGate")
 
 local function setLocalGateProperties(object)
 	for _, descendant in ipairs(object:GetDescendants()) do
@@ -378,11 +388,9 @@ local function setLocalGateProperties(object)
 	end
 end
 
-local function pivotObject(object, cframe)
-	if object:IsA("Model") then
-		object:PivotTo(cframe)
-	elseif object:IsA("BasePart") then
-		object.CFrame = cframe
+local function pivotObject(object, targetCFrame)
+	if object:IsA("Model") or object:IsA("BasePart") then
+		object:PivotTo(targetCFrame * CFrame.Angles(0, math.rad(180), 0))
 	end
 end
 
@@ -405,11 +413,26 @@ end
 local function rebuildLocalGates()
 	destroyLocalGates()
 	
-	if not inRaceValue.Value or not raceStartPoint then return end 
-	if not rewardGateTemplate or not finishGateTemplate then
-		warn("RaceUI: RewardGate or FinisGate template was not found")
+	if not raceStartPoint or not raceMaxEndPoint then
+		warn("RaceUI: RaceStartPoint or " .. "RaceMaxEndPoint was not found")
 		return
 	end
+	
+	if not rewardGateTemplate or not finishGateTemplate then
+		warn("RaceUI: RewardGate or " .. "FinishGate template was not found")
+		return
+	end
+	
+	local trackOffset = raceMaxEndPoint.Position - raceStartPoint.Position
+	
+	if trackOffset.Magnitude <= 0 then
+		warn("RaceUI: race track direction is invalid")
+		return
+	end
+	
+	local trackDirection = trackOffset.Unit
+	
+	local localStartCFrame = CFrame.lookAt(raceStartPoint.Position, raceStartPoint.Position + trackDirection, Vector3.yAxis)
 	
 	localGateFolder = Instance.new("Folder")
 	localGateFolder.Name = "LocalRaceGates_" .. player.UserId
@@ -418,14 +441,28 @@ local function rebuildLocalGates()
 	local checkpoints = RaceModule.GetRewardCheckpoint(stageValue.Value, roadLevelValue.Value)
 	
 	for _, checkpoint in ipairs(checkpoints) do
-		local gate = rewardGateTemplate:Clone()
-		gate.Name = checkpoint.Name
+		local template
+		
+		if checkpoint.IsFinish then
+			template = finishGateTemplate
+		else 	
+			template = rewardGateTemplate
+		end
+		
+		local gate = template:Clone()
+		
+		if checkpoint.IsFinish then
+			gate.Name = "LocalFinishGate"
+		else
+			gate.Name = checkpoint.Name
+		end
+		
 		gate.Parent = localGateFolder
 		
 		setLocalGateProperties(gate)
 		setGateRewardName(gate, checkpoint.Name)
 		
-		pivotObject(gate, RaceModule.GetWorldCFrameAtDistance(raceStartPoint.CFrame, checkpoint.Distance))
+		pivotObject(gate, RaceModule.GetWorldCFrameAtDistance(localStartCFrame, checkpoint.Distance))
 	end
 	
 	local finishGate = finishGateTemplate:Clone()
@@ -527,8 +564,8 @@ local function updatePlayerPanelIcons()
 end
 
 --// Optional RacePabel reward and finish icons
-local panelRewardTemplate = racePanel:FindFirstChild("RewardIcon")
-local panelFinishTemplate = racePanel:FindFirstChild("FinishIcon")
+local panelRewardTemplate = racePanel:WaitForChild("RewardIcon")
+local panelFinishTemplate = racePanel:WaitForChild("FinishIcon")
 local panelMarkers = {}
 
 if panelRewardTemplate then
@@ -563,13 +600,26 @@ end
 local function rebuildPanelMarkers()
 	clearPanelMarkers()
 	
-	if not panelRewardTemplate then return end 
-	
 	local rewardCount = RaceModule.GetRewardCount(stageValue.Value, roadLevelValue.Value)
 	
 	for rewardIndex = 1, rewardCount do
-		local marker = panelRewardTemplate:Clone()
-		marker.Name = "RewardMarker_R" .. rewardIndex
+		local isFinish = rewardIndex == rewardCount
+		local template
+		
+		if isFinish then
+			template = panelFinishTemplate
+		else
+			template = panelRewardTemplate
+		end
+		
+		local marker = template:Clone()
+		
+		if isFinish then
+			marker.Name = "FinishMarker"
+		else
+			marker.Name = "RewardMarker_R" .. rewardIndex
+		end
+		
 		marker.Visible = true
 		marker.Parent = racePanel
 		
@@ -584,18 +634,6 @@ local function rebuildPanelMarkers()
 		))
 		
 		table.insert(panelMarkers, marker)
-	end
-	
-	if panelFinishTemplate then
-		local finishMarker = panelFinishTemplate:Clone()
-		finishMarker.Name = "FinishMarker"
-		finishMarker.Visible = true
-		finishMarker.Parent = racePanel
-		
-		positionPanelObject(
-			finishMarker, RaceModule.GetPanelPointByAlpha(stageValue.Value, roadLevelValue.Value, 1)
-		)
-		table.insert(panelMarkers, finishMarker)
 	end
 end
 
@@ -893,39 +931,39 @@ local function updateStageMenu()
 	local nextConfig = RaceModule.Stages[stage + 1]
 	local requirements = RaceModule.GetNextStageRequirements(stage)
 	
-	setImage(stageCurrentIcon, currentConfig.Icon)
-	setText(stageCurrentBoost, formatMultiplier(currentConfig.RewardMultiplier))
+	setImage(stageUI.CurrentIcon, currentConfig.Icon)
+	setText(stageUI.CurrentBoost, formatMultiplier(currentConfig.RewardMultiplier))
 	
 	if not nextConfig or not requirements then
-		setImage(stageNextIcon, "")
-		setText(stageNextBoost, "MAX")
-		setText(stageRequiredLevel, "MAX")
-		setText(stageRequiredRaceTouch, "MAX")
-		setText(stageRequiredMoney, "MAX")
-		setText(stageRequiredRebirth, "MAX")
-		setText(stageRequiredEnergy, "MAX")
-		setText(stageRequirementPercent, "100%")
-		setBarScale(stageRequirementBar, RaceModule.UI.Bars.StageRequirementMaxScale)
+		setImage(stageUI.NextIcon, "")
+		setText(stageUI.NextBoost, "MAX")
+		setText(stageUI.RequiredLevel, "MAX")
+		setText(stageUI.RequiredRaceTouch, "MAX")
+		setText(stageUI.RequiredMoney, "MAX")
+		setText(stageUI.RequiredRebirth, "MAX")
+		setText(stageUI.RequiredEnergy, "MAX")
+		setText(stageUI.RequirementPercent, "100%")
+		setBarScale(stageUI.RequirementBar, RaceModule.UI.Bars.StageRequirementMaxScale)
 		
 		stageUpButton.Active = false
 		stageUpButton.AutoButtonColor = false
 		return
 	end
 	
-	setImage(stageNextIcon, nextConfig.Icon)
-	setText(stageNextBoost, formatMultiplier(nextConfig.RewardMultiplier))
+	setImage(stageUI.NextIcon, nextConfig.Icon)
+	setText(stageUI.NextBoost, formatMultiplier(nextConfig.RewardMultiplier))
 	
 	local currentValues = getStageCurrentValues()
 	local progressData = RaceModule.GetStageRequirementProgress(stage, currentValues)
 	
-	setRequirementText(stageRequiredLevel, currentValues.Level, requirements.Level)
-	setRequirementText(stageRequiredRaceTouch, currentValues.RaceTouch, requirements.RaceTouch)
-	setRequirementText(stageRequiredMoney, currentValues.Money, requirements.Money)
-	setRequirementText(stageRequiredRebirth, currentValues.Rebirth, requirements.Rebirth)
-	setRequirementText(stageRequiredEnergy, currentValues.Energy, requirements.Energy)
+	setRequirementText(stageUI.RequiredLevel, currentValues.Level, requirements.Level)
+	setRequirementText(stageUI.RequiredRaceTouch, currentValues.RaceTouch, requirements.RaceTouch)
+	setRequirementText(stageUI.RequiredMoney, currentValues.Money, requirements.Money)
+	setRequirementText(stageUI.RequiredRebirth, currentValues.Rebirth, requirements.Rebirth)
+	setRequirementText(stageUI.RequiredEnergy, currentValues.Energy, requirements.Energy)
 	
-	setText(stageRequirementPercent, progressData.Percent .. "%")
-	setBarScale(stageRequirementBar, RaceModule.GetStageRequirementBarScale(progressData.Progress))
+	setText(stageUI.RequirementPercent, progressData.Percent .. "%")
+	setBarScale(stageUI.RequirementBar, RaceModule.GetStageRequirementBarScale(progressData.Progress))
 	
 	stageUpButton.Active = progressData.CanStageUp
 	stageUpButton.AutoButtonColor = progressData.CanStageUp
@@ -1030,10 +1068,7 @@ local function rebuildProgressionUI()
 	refreshMenu()
 	rebuildRewardButtons()
 	rebuildPanelMarkers()
-	
-	if inRaceValue.Value then
-		rebuildLocalGates()
-	end
+	rebuildLocalGates()
 end
 
 --// Button connections
@@ -1044,8 +1079,7 @@ if leaveButton and leaveButton:IsA("GuiButton") then
 end
 
 raceMenuClose.MouseButton1Click:Connect(function()
-	closeStageMenu()
-	raceHost.Visible = false
+	MenuManager.close("Race")
 end)
 
 rewardDetailsButton.MouseButton1Click:Connect(function()
@@ -1065,10 +1099,14 @@ roadUpgradeButton.MouseButton1Click:Connect(function()
 end)
 
 stageMenuOpen.MouseButton1Click:Connect(openStageMenu)
-stageClose.MouseButton1Click:Connect(closeStageMenu)
+stageUI.Close.MouseButton1Click:Connect(closeStageMenu)
 
-stageUpButton.MouseButton1Click:Connect(function()
+stageUI.UpButton.MouseButton1Click:Connect(function()
 	raceActionEvent:FireServer("StageUp")
+end)
+
+raceOpenValue.Changed:Connect(function()
+	raceTop.Visible = raceOpenValue.Value
 end)
 
 --// Value connections
@@ -1078,10 +1116,8 @@ raceTimerText.Changed:Connect(updateTimer)
 inRaceValue.Changed:Connect(function()
 	updateRaceVisibility()
 	
-	if inRaceValue.Value then
+	if not localGateFolder then
 		rebuildLocalGates()
-	else 
-		destroyLocalGates()
 	end
 end)
 
@@ -1150,10 +1186,10 @@ Players.PlayerRemoving:Connect(removePlayerPanelIcon)
 task.spawn(function()
 	while true do
 		if stageMenu.Visible then
-			stageArrowIcon.Position = RaceModule.UI.StageArrow.StartPosition
+			stageUI.ArrowIcon.Position = RaceModule.UI.StageArrow.StartPosition
 			
 			local forwardTween = TweenService:Create( 
-				stageArrowIcon,
+				stageUI.ArrowIcon,
 				TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
 				{Position = RaceModule.UI.StageArrow.EndPosition}
 			)
@@ -1163,7 +1199,7 @@ task.spawn(function()
 			
 			if stageMenu.Visible then
 				local backwardTween = TweenService:Create( 
-					stageArrowIcon,
+					stageUI.ArrowIcon,
 					TweenInfo.new(0.55, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut),
 					{Position = RaceModule.UI.StageArrow.StartPosition}
 				)
@@ -1199,6 +1235,7 @@ raceHostBlur.Visible = false
 stageMenu.Visible = false
 leaderstatsMenu.Visible = false
 raceWarningLabel.Visible = false
+raceTop.Visible = raceOpenValue.Value
 
 setSpeedometerVisible(false)
 openDetail("Reward")
@@ -1212,5 +1249,6 @@ rebuildRewardButtons()
 rebuildPanelMarkers()
 refreshMenu()
 requestServerPreview()
+rebuildLocalGates()
 
 print("RaceUI 1.3 loaded")
