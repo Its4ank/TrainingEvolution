@@ -123,7 +123,15 @@ if not startGate then
 	error("RaceServer: " .. worldNames.StartGate .. " was not found inside " .. raceTrack:GetFullName())
 end
 
-local startCFrame = raceStartPoint.CFrame
+local trackOffset = raceMaxEndPoint.Position - raceStartPoint.Position
+
+if trackOffset.Magnitude <- 0 then
+	error("RaceServer: RaceStartPoint and " .. "RaceMaxEndPoint have the same position")
+end
+
+local trackDirection = trackOffset.Unit
+
+local startCFrame = CFrame.lookAt(raceStartPoint.Position, raceStartPoint.Position + trackDirection, Vector3.yAxis)
 
 --// Remote and replicated race state
 local raceFolder = getOrCreateFolder(ReplicatedStorage, "RaceFolder")
@@ -610,8 +618,9 @@ leaveRace = function(player, preserveRound, shouldTeleport)
 	end
 	
 	if preserveRound then
-		if preserveRound then
+		if data then
 			data.RaceSpeed.Value = state.Speed
+			
 			data.RoundDistance.Value = state.CommittedDistance
 		end
     else
@@ -659,7 +668,12 @@ local function updateRacer(player, deltaTime)
 	local targetSpeed = getTargetSpeed(player, resources)
 	local accelerationMultiplier = getAccelerationMultiplier(player)
 	
-	state.Speed = RaceModule.GetNextSpeed(state.Speed, targetSpeed, deltaTime, accelerationMultiplier)
+	local forwardVelocity = rootPart.AssemblyLinearVelocity:Dot(startCFrame.LookVector)
+	local isMovingForward = forwardVelocity > 0.5
+	
+	if isMovingForward then
+		state.Speed = RaceModule.GetNextSpeed(state.Speed, targetSpeed, deltaTime, accelerationMultiplier)
+	end
 	
 	data.RaceSpeed.Value = state.Speed
 	data.RaceTargetSpeed.Value = targetSpeed
