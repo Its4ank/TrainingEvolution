@@ -50,7 +50,11 @@ RaceModule.UI = {
 	},
 	
 	RewardBar = {
-		LengthScale = 0.502,
+		VisualStartPosition = UDim2.new(0.378, 0, 0.783, 0),
+		
+		ButtonStartPosition = UDim2.new(0.441, 0, 0.689, 0),
+		
+		FinishPosition = UDim2.new(0.607, 0, 0.395, 0),
 	},
 	
 	StageArrow = {
@@ -60,6 +64,8 @@ RaceModule.UI = {
 	
 	RacePanel = {
 		LineSize = UDim2.new(0.824, 0, 0.155, 0),
+		
+		MarkerYOffset = 0.050,
 		
 		StagePathUnits = {
 			[1] = {
@@ -103,6 +109,44 @@ RaceModule.UI = {
 			},
 		},
 	},
+}
+
+RaceModule.RewardIcons = {
+	[1] = {
+		Name = "RWealth = 1",
+		Attribute = "RWealth",
+		Wealth = 1,
+		Id = "rbxassetid://119690455649481",
+	},
+	
+	[2] = {
+		Name = "RWealth = 2",
+		Attribute = "RWealth",
+		Wealth = 2,
+		Id = "rbxassetid://108958723705716",
+	},
+	
+	[3] = {
+		Name = "RWealth = 3",
+		Attribute = "RWealth",
+		Wealth = 3,
+		Id = "rbxassetid://98155477704457",
+	},
+	
+	[4] = {
+		Name = "RWealth = 4",
+		Attribute = "RWealth",
+		Wealth = 4,
+		Id = "rbxassetid://85408735880315",
+	},
+	
+	[5] = {
+		Name = "RFWealth = 5",
+		Attribute = "RFWealth",
+		Wealth = 5,
+		IsFishing = true,
+		Id = "rbxassetid://84127122511497",
+	}
 }
 
 --// Настройки стадий
@@ -469,6 +513,40 @@ function RaceModule.GetRewardCount(stage, roadLevel)
 	roadLevel = clampRoadLevel(roadLevel)
 	
 	return stage + roadLevel
+end
+
+function RaceModule.GetRewardWealth(rewardIndex, rewardCount)
+	rewardCount = math.max(1, math.floor(tonumber(rewardCount) or 1))
+	rewardIndex = math.clamp(math.floor(tonumber(rewardIndex) or 1), 1, rewardCount)
+	
+	if rewardIndex == rewardCount then return 5 end
+	
+	local regularCount = rewardCount - 1
+	
+	local baseCount = math.floor(regularCount / 4)
+	local remainder = regularCount % 4
+	
+	local lastIndex = 0
+
+	for wealth = 1, 4 do
+		local currentTierCount = baseCount
+		
+		if wealth <= remainder then currentTierCount += 1 end
+		
+		lastIndex += currentTierCount
+
+		if rewardIndex <= lastIndex then 
+			return wealth
+		end
+	end
+	return 4
+end
+
+function RaceModule.GetRewardIconData(stage, roadLevel, rewardIndex)
+	local rewardCount = RaceModule.GetRewardCount(stage, roadLevel)
+	local wealth = RaceModule.GetRewardWealth(rewardIndex, rewardCount)
+	
+	return RaceModule.RewardIcons[wealth]
 end
 
 function RaceModule.GetRewardName(rewardIndex)
@@ -939,7 +1017,10 @@ function RaceModule.GetRewardBarPosition(stage, roadLevel, rewardIndex)
 	
 	local alpha = rewardIndex / rewardCount
 	
-	return RaceModule.UI.RewardBar.LengthScale * alpha
+	local startPosition = RaceModule.UI.RewardBar.ButtonStartPosition
+	local finishPosition = RaceModule.UI.RewardBar.FinishPosition
+	
+	return startPosition:Lerp(finishPosition, alpha)
 end
 
 --// Размеры полосок UI
