@@ -592,7 +592,7 @@ local function positionPanelObject(object, point)
 	object.Position = UDim2.new( 
 		line.Position.X.Scale + line.Size.X.Scale * point.Progress,
 		line.Position.X.Offset + line.Size.X.Offset * point.Progress,
-		line.Position.Y.Scale,
+		line.Position.Y.Scale + RaceModule.UI.RacePanel.MarkerYOffset,
 		line.Position.Y.Offset
 	)
 end
@@ -623,11 +623,15 @@ local function rebuildPanelMarkers()
 		marker.Visible = true
 		marker.Parent = racePanel
 		
-		local numberLabel = findDescendant(marker, "RewardNumber")
+		local iconData = RaceModule.GetRewardIconData(stageValue.Value, roadLevelValue.Value, rewardIndex)
 		
-		if numberLabel and numberLabel:IsA("TextLabel") then
-			numberLabel.Text = "R" .. rewardIndex
-		end
+		setImage(marker, iconData.Id)
+		
+		marker:SetAttribute(iconData.Attribute, iconData.Wealth)
+		
+		local numberLabel = findDescendant(marker, "RNumber")
+		
+		setText(numberLabel, "R" .. rewardIndex)
 		
 		positionPanelObject(marker, RaceModule.GetRewardPanelPoint( 
 			stageValue.Value, roadLevelValue.Value, rewardIndex
@@ -730,7 +734,6 @@ local function requestServerPreview()
 end
 
 local function clearRewardPreviewCache()
-	previewCache = {}
 	requestServerPreview()
 end
 
@@ -816,23 +819,54 @@ local function rebuildRewardButtons()
 		button.Visible = true
 		button.Parent = rewardButtonTemplate.Parent
 		
-		local positionScale = RaceModule.GetRewardBarPosition(stageValue.Value, roadLevelValue.Value, rewardIndex)
-		
-		button.Position = UDim2.new( 
-			rewardBar.Position.X.Scale + positionScale,
-			rewardBar.Position.X.Offset,
-			button.Position.Y.Scale,
-			button.Position.Y.Offset
+		button.Position = RaceModule.GetRewardBarPosition( 
+			stageValue.Value,
+			roadLevelValue.Value,
+			rewardIndex
 		)
+		
+		local iconData = RaceModule.GetRewardIconData(stageValue.Value, roadLevelValue.Value, rewardIndex)
+		
+		local rewardChest = findDescendant(button, "RewardChest")
+		local rewardFinish = findDescendant(button, "RewardFinish")
+		local rewardName = findDescendant(button, "RewardName")
+		
+		if iconData.IsFinish then
+			if rewardChest then rewardChest.Visible = false end
+			if rewardFinish then
+				setImage(rewardFinish, iconData.Id)
+				rewardFinish.Visible = true
+			end
+		else
+			if rewardChest then rewardFinish.Visible = false end 
+			if rewardChest then
+				setImage(rewardChest, iconData.Id)
+				rewardChest.Visible = true
+			end
+		end
+		
+		setText(rewardName, "R" .. rewardIndex)
+		
+		button:SetAttribute(iconData.Attribute, iconData.Wealth)
+		
+		local rewardFrame = button:FindFirstChild("RewardFrame")
+		if rewardFrame then rewardFrame.Visible = false end
 		
 		updateRewardButtonPrice(button)
 		
 		button.MouseButton1Click:Connect(function()
 			selectedRewardIndex = rewardIndex
+			
+			for _, otherButtons in ipairs(rewardButtons) do
+				local otherFrame = otherButtons:FindFirstChild("RewardFrame")
+				if otherFrame then otherFrame.Visible = false end
+			end
+			
+			if rewardFrame then rewardFrame.Visible = true end
+			
 			updateRewardDetail()
 		end)
 		
-		local rewardFrame = button:FindFirstChild("RewardFrame")
 		local upgradeButton = rewardFrame and rewardFrame:FindFirstChild("RewUpgrade")
 		
 		if upgradeButton and upgradeButton:IsA("GuiButton") then
@@ -945,8 +979,8 @@ local function updateStageMenu()
 		setText(stageUI.RequirementPercent, "100%")
 		setBarScale(stageUI.RequirementBar, RaceModule.UI.Bars.StageRequirementMaxScale)
 		
-		stageUpButton.Active = false
-		stageUpButton.AutoButtonColor = false
+		stageUI.UpButton.Active = false
+		stageUI.UpButton.AutoButtonColor = false
 		return
 	end
 	
@@ -965,8 +999,8 @@ local function updateStageMenu()
 	setText(stageUI.RequirementPercent, progressData.Percent .. "%")
 	setBarScale(stageUI.RequirementBar, RaceModule.GetStageRequirementBarScale(progressData.Progress))
 	
-	stageUpButton.Active = progressData.CanStageUp
-	stageUpButton.AutoButtonColor = progressData.CanStageUp
+	stageUI.UpButton.Active = progressData.CanStageUp
+	stageUI.UpButton.AutoButtonColor = progressData.CanStageUp
 end
 
 --// Balances
@@ -1219,7 +1253,6 @@ task.spawn(function()
 		task.wait(2)
 		
 		if raceHost.Visible then
-			clearRewardPreviewCache()
 			updateRewardDetail()
 		end
 	end
