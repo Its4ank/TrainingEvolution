@@ -1,50 +1,26 @@
---Services
+--// PetServer 1.3v
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
+local ServerStorage = game:GetService("ServerStorage")
 
-local PetModule = require(game.ServerScriptService.Modules.PetModule)
+--// Modules
+local PetModule = require(ReplicatedStorage.Modules.PetModule)
+local XPModule = require(ReplicatedStorage.Modules.XPModule)
 
+--// RemoteEvents
+local petEvent = ReplicatedStorage:FindFirstChild("PetEvent")
+local petEquipEvent = petEvent:FindFirstChild("PetEquipEvent")
+local petDeleteEvent = petEvent:FindFirstChild("PetDeleteEvent")
+local petUnequipAllEvent = petEvent:WaitForChild("PetUnequipAllEvent")
+local petEquipBestEvent = petEvent:WaitForChild("PetEquipBestEvent")
+local petUpgradeEvent = petEvent:WaitForChild("PetUpgradeEvent")
+local petWarningEvent = petEvent:WaitForChild("PetWarningEvent")
 
-
--- RemoteEvent
-local petEquipLimitEvent = ReplicatedStorage:FindFirstChild("PetEquipLimitEvent")
-local petEquipEvent = ReplicatedStorage:FindFirstChild("PetEquipEvent")
-local petDeleteEvent = ReplicatedStorage:FindFirstChild("PetDeleteEvent")
-local petUnequipAllEvent = ReplicatedStorage:FindFirstChild("PetUnequipAllEvent")
-local petEquipBestEvent = ReplicatedStorage:FindFirstChild("PetEquipBestEvent")
-local trainerEvent = ReplicatedStorage:FindFirstChild("TrainerEvent")
-local playerDataLoadedEvent = trainerEvent:FindFirstChild("PlayerDataLoadedEvent")
-
-if not petEquipEvent then
-	petEquipEvent = Instance.new("RemoteEvent")
-	petEquipEvent.Name = "PetEquipEvent"
-	petEquipEvent.Parent = ReplicatedStorage
-end
-
-if not petDeleteEvent then
-	petDeleteEvent = Instance.new("RemoteEvent")
-	petDeleteEvent.Name = "PetDeleteEvent"
-	petDeleteEvent.Parent = ReplicatedStorage
-end
-
-if not petUnequipAllEvent then
-	petUnequipAllEvent = Instance.new("RemoteEvent")
-	petUnequipAllEvent.Name = "PetUnequipAllEvent"
-	petUnequipAllEvent.Parent = ReplicatedStorage
-end
-
-if not petEquipBestEvent then
-	petEquipBestEvent = Instance.new("RemoteEvent")
-	petEquipBestEvent.Name = "PetEquipBestEvent"
-	petEquipBestEvent.Parent = ReplicatedStorage
-end
-
-
-
---Helpers
+--// Helpers
 local function getOrCreateFolder(parent, name)
 	local folder = parent:FindFirstChild(name)
+	
 	if not folder then
 		folder = Instance.new("Folder")
 		folder.Name = name
@@ -53,122 +29,374 @@ local function getOrCreateFolder(parent, name)
 	return folder
 end
 
-local function getOrCreateValue(parent, className, name, default)
-	local v = parent:FindFirstChild(name)
-	if not v then
-		v = Instance.new(className)
-		v.Name = name
-		v.Value = default
-		v.Parent = parent
+local function getOrCreateValue(parent, className, name, defaultValue)
+	local value = parent:FindFirstChild(name)
+	
+	if not value then
+		value = Instance.new(className)
+		value.Name = name
+		value.Value = defaultValue
+		value.Parent = parent
 	end
-	return v
+	return value
 end
 
-local function getEquippedPetsCount(player)
-	local petsFolder = player:FindFirstChild("Pets")
+local function getPetsFolder(player)
+	return player:FindFirstChild("Pets")
+end
+
+local function getPlayerData(player)
+	return player:FindFirstChild("PlayerData")
+end
+
+local function getMoneyValue(player)
+	local playerData = getPlayerData(player)
+	if not playerData then return nil end
+	
+	return playerData:FindFirstChild("Money")
+end
+
+local function getMaxEquippedPets(player)
+	local playerData = getPlayerData(player)
+	if not playerData then return PetModule.BASE_EQUIPPED_PETS end
+	
+	local value = playerData:FindFirstChild("MaxEquippedPets")
+	if not value then return PetModule.BASE_EQUIPPED_PETS end
+	
+	return value.Value
+end
+
+local function getMaxStorage(player)
+	local playerData = getPlayerData(player)
+	if not playerData then return PetModule.DEFAULT_MAX_STORAGE end
+	
+	local value = playerData:FindFirstChild("MaxPetStorage")
+	if not value then return PetModule.DEFAULT_MAX_STORAGE end
+	
+	return value.Value
+end
+
+local function getPetFolder(player, petId)
+	local petsFolder = getPetsFolder(player)
+	if not petsFolder then return nil end
+	
+	return petsFolder:FindFirstChild(petId)
+end
+
+local function getEquippedPets(player)
+	local petsFolder = getPetsFolder(player)
+	if not petsFolder then return {} end 
+	
+	local result = {}
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		local equipped = petFolder:FindFirstChild("Equipped")
+		
+		if equipped and equipped.Value then
+			table.insert(result, petFolder)
+		end
+	end
+	return result
+end
+
+local function getEquippedCount(player)
+	return #getEquippedPets(player)
+end
+
+local function getStorageCount(player)
+	local petsFolder = getPetsFolder(player)
 	if not petsFolder then return 0 end
 	
 	local count = 0
 	
 	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		local owned = petFolder:FindFirstChild("Owned")
-		local equipped = petFolder:FindFirstChild("Equipped")
-		
-		if owned and equipped and owned.Value and equipped.Value then
+		if petFolder:IsA("Folder") then
 			count += 1
 		end
 	end
-	
 	return count
 end
 
-local function getMaxEquippedPets(player)
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return 3 end
+local function isStorageFull(player)
+	return getStorageCount(player) >= getMaxStorage(player)
+end
+
+local function fireWarning(player, message)
+	petWarningEvent:FierClient(player, message)
+end
+
+--// Pet data
+local function readPetData(petFolder)
+	if not petFolder then return nil end
 	
-	local maxEquippedPets = playerData:FindFirstChild("MaxEquippedPets")
-	if not maxEquippedPets then return 3 end
+	local petName = petFolder:FindFirstChild("PetName")
+	local pattern = petFolder:FindFirstChild("Pattern")
+	local tier = petFolder:FindFirstChild("Tier")
+	local level = petFolder:FindFirstChild("Level")
 	
-	return maxEquippedPets.Value
+	if not petName or not pattern or not tier or not level then return nil end
+	
+	return {
+		PetName = petName.Value,
+		Pattern = pattern.Value,
+		Tier = tier.Value,
+		Level = level.Value,
+	}
 end
 
-local function getPetDisplayName(petFolder)
-	local petNameValue = petFolder:FindFirstChild("PetName")
-
-	if petNameValue then
-		return petNameValue.Value
-	end
-	return petFolder.Name
+local function getPetOwnStats(petFolder)
+	local data = readPetData(petFolder)
+	if not data then return nil end
+	
+	return PetModule.CalculatePetStats(data.PetName, data.Pattern, data.Tier, data.Level)
 end
 
-
-
---Pet config helpers
-local function getFuseName(tier)
-	if tier == 0 then return "Normal" end 
-	if tier == 1 then return "Big" end 
-	if tier == 2 then return "Silver" end 
-	if tier == 3 then return "Gold" end 
-	if tier == 4 then return "Rainbow" end 
-	if tier == 5 then return "Legend" end 
-	return "Unknown"
+local function getPetPowerScore(petFolder)
+	local stats = getPetOwnStats(petFolder)
+	return PetModule.GetPowerScore(stats)
 end
 
-
-
---Setup pets
-local function setupPets(player)
+--// Create pet
+local function createPet(player, petName, pattern, tier)
+	if isStorageFull(player) then return nil, "StorageFull" end
+	
+	local petConfig = PetModule.GetPetConfig(petName)
+	if not petConfig then return nil, "UncknownPet" end
+	
+	pattern = math.clamp( tonumber(pattern) or PetModule.MIN_PATTERN, PetModule.MIN_PATTERN, PetModule.MAX_PATTERN)
+	
+	tier = tonumber(tier) or 0
+	
+	if not PetModule.GetTierConfig(tier) then tier = 0 end
+	
 	local petsFolder = getOrCreateFolder(player, "Pets")
+	
+	local petId = "Pet_" .. tostring(os.time()) .. "_" .. tostring(math.random(100000, 999999))
+	
+	local petFolder = Instance.new("Folder")
+	petFolder.Name = petId
+	petFolder.Parent = petsFolder
+	
+	getOrCreateValue(petFolder, "StringValue", "PetName", petName)
+	getOrCreateValue(petFolder, "IntValue", "Pattern", pattern)
+	getOrCreateValue(petFolder, "IntValue", "Tier", tier)
+	getOrCreateValue(petFolder, "IntValue", "Level", 0)
+	getOrCreateValue(petFolder, "BoolValue", "Equipped", false)
+	
+	return petFolder
 end
 
-
-
---XP logic
-local function givePetXP(player, amount)
-	local pet = PetModule.getEquippedPet(player)
-	if not pet then return end
-
-	local owned = pet:FindFirstChild("Owned")
-	local equipped = pet:FindFirstChild("Equipped")
-	local level = pet:FindFirstChild("Level")
-	local xp = pet:FindFirstChild("XP")
-	local maxLevel = pet:FindFirstChild("MaxLevel")
-
-	if not owned or not equipped or not level or not xp or not maxLevel then
-		return
-	end
-
-	if not owned.Value or not equipped.Value then
-		return
-	end
-
-	if level.Value >= maxLevel.Value then
-		return
-	end
-
-	xp.Value += amount
-
-	while level.Value < maxLevel.Value do 
-		local needed = PetModule.getPetXPRequired(level.Value)
-		if xp.Value < needed then
-			break
+--// Equip / Unequip
+local function setPetEquipped(player, petId, shouldEquip)
+	local petFolder = getPetFolder(player, petId)
+	if not petFolder then return false, "PetNotFount" end
+	
+	local equipped = petFolder:FindFirstChild("Equipped")
+	if not equipped then return false, "InvalidPetData" end
+	
+	if shouldEquip then
+		if equipped.Value then
+			fireWarning(player, "This pet is already equipped.")
+			return false, "AlreadyEquipped"
 		end
-
-		xp.Value -= needed
-		level.Value += 1
+		
+		local maxEquipped = getMaxEquippedPets(player)
+		local equippedCount = getEquippedCount(player)
+		
+		if equippedCount >= maxEquipped then
+			fireWarning(player, "Maximum " .. tostring(maxEquipped) .. " pets equipped.")
+			return false, "EquipLimit"
+		end
+		
+		equipped.Value = true
+	else
+		if not equipped.Value then
+			fireWarning(player, "This pet is not equipped.")
+			return false, "AlreadyUnequipped"
+		end
+		equipped.Value = false
 	end
-
-	if level.Value >= maxLevel.Value then
-		level.Value = maxLevel.Value
-		xp.Value = 0
-	end
-
-	PetModule.updatePetMultipliers(pet)
+	return true
 end
 
+local function unequipAllPets(player)
+	local equippedPets = getEquippedPets(player)
+	
+	for _, petFolder in ipairs(equippedPets) do
+		local equipped = petFolder:FindFirstChild("Equipped")
+		
+		if equipped then equipped.Value = false end
+	end
+	return true
+end
 
+--// Equip best
+local function equipBestPets(player)
+	local petsFolder = getPetsFolder(player)
+	if not petsFolder then return false end
+	
+	local petList = {}
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			local powerScore = getPetPowerScore(petFolder)
+			
+			table.insert(petList, {Folder = petFolder, Power = powerScore,})
+		end
+	end
+	
+	table.sort(petList, function(a, b)
+		return a.Power > b.Power
+	end)
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		local equipped = petFolder:FindFirstChild("Equipped")
+		if equipped then equipped.Value = false end
+	end
+	
+	local maxEquipped = getMaxEquippedPets(player)
+	
+	for index = 1, math.min(maxEquipped, #petList) do
+		local equipped = petList[index].Folder:FindFirstChild("Equipped")
+		if equipped then equipped.Value = true end
+	end
+	return true
+end
 
---Pet visuals
+--// Check if current equipped set already is best
+local function isBestSetEquipped(player)
+	local petsFolder = getPetsFolder(player)
+	if not petsFolder then return false end
+	
+	local allPets = {}
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			table.insert(allPets, {Folder = petFolder, Power = getPetPowerScore(petFolder),})
+		end
+	end
+	
+	table.insert(allPets, function(a, b)
+		return a.Power > b.Power
+	end)
+	
+	local maxEquipped = getMaxEquippedPets(player)
+	local targetCount = math.min(maxEquipped, #allPets)
+	
+	local equippedPets = getEquippedPets(player)
+	
+	if #equippedPets ~= targetCount then return false end
+	
+	local bestIds = {}
+	
+	for i = 1, targetCount do
+		bestIds[allPets[i].Folder.Name] = true
+	end
+	
+	for _, petFolder in ipairs(equippedPets) do
+		if not bestIds[petFolder.Name] then return false end
+	end
+	return true
+end
+
+--// Equip Best toggle
+local function toggleEquipBest(player)
+	if isBestSetEquipped(player) then
+		return unequipAllPets(player)
+	end
+	return equipBestPets(player)
+end
+
+--// Delete one pet
+local function deletePet(player, petId)
+	local petFolder = getPetFolder(player, petId)
+	if not petFolder then return false, "PetNotFount" end
+	
+	local equipped = petFolder:FindFirstChild("Equipped")
+	if equipped and equipped.Value then
+		fireWarning(player, "Equipped pets cannot be deleted.")
+		return false, "PetEquipped"
+	end
+	
+	petFolder:Destroy()
+	
+	return true
+end
+
+--// Mass delete
+local function deletePets(player, petIds)
+	if typeof(petIds) ~= "table" then return false end
+	
+	local deletedCount = 0
+	
+	for _, petId in ipairs(petIds) do
+		if typeof(petId) == "string" then
+			local success = deletePet(player, petId)
+			
+			if success then deleteCount += 1 end
+		end
+	end
+	return true, deletedCount
+end
+
+--// Upgrade pet level
+local function upgradePet(player, petId)
+	local petFolder = getPetFolder(player, petId)
+	if not petFolder then return false, "PetNotFound" end
+	
+	local level = petFolder:FindFirstChild("Level")
+	if not level then return false, "InvalidPetData" end
+	
+	if level.Value >= PetModule.MAX_LEVEL then
+		fireWarning(player, "Pet is already max level.")
+		return false, "MaxLevel"
+	end
+	
+	local targetLevel = level.Value + 1
+	local cost = PetModule.GetLevelUpgradeCost(targetLevel)
+	
+	if not cost then return false, "NoUpgradeConfig" end
+	
+	local money = getMoneyValue(player)
+	if not money then return false, "MoneyNotFount" end
+	
+	local currentMoney = money.Value
+	local currentXP = XPModule.getXP(player)
+	
+	local missingMoney = math.max(0, cost.Money - currentMoney)
+	local missingXP = math.max(0, cost.XP - currentXP)
+	
+	if missingMoney > 0 or missingXP > 0 then
+		local parts = {}
+		
+		if missingMoney > 0 then
+			table.insert(parts, tostring(missingMoney) .. " Money")
+		end
+		
+		if missingXP > 0 then
+			table.insert(parts, tostring(missingXP) .. " XP")
+		end
+		
+		fireWarning(player, "Not enoung " .. table.contact(parts, " and ") .. ".")
+		return false, "NotEnoughResources"
+	end
+	
+	money.Value -= cost.Money
+	
+	local xpRemoved = XPModule.removeXP(player, cost.XP)
+	
+	if not xpRemoved then
+		money.Value += cost.Money
+		
+		return false, "XPRemoveFailed"
+	end
+	
+	level.Value = targetLevel
+	
+	return true
+end
+
+--// Pet visuals
 local function removePetVisuals(character)
 	for _, child in ipairs(character:GetChildren()) do
 		if child.Name:match("^PetVisual_") then
@@ -177,282 +405,215 @@ local function removePetVisuals(character)
 	end
 end
 
-local function updatePetVisual(player)
-	local character = player.Character
-	if not character then
-		warn("PetVisual: no character")
-		return
-	end
-
-	removePetVisuals(character)
-
-	local equippedPets = PetModule.getEquippedPets(player)
-	if #equippedPets == 0 then
-		warn("PetVisual: no equipped pets")
-		return
-	end
+local function getPetModule(petName)
+	local config = PetModule.GetPetConfig(petName)
+	if not config then return nil end
 	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		warn("PetVisual: no HumanoidRootPart")
-		return
-	end
+	local modelName = config.ModelName or config.Name
+	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
+	if not previewRoot then return nil end
 	
-	for index, pet in ipairs(equippedPets) do
-		local petTemplate = game.ReplicatedStorage
-		:WaitForChild("PetPreviewModels")
-		:WaitForChild("Earth")
-		:WaitForChild("Egg1")
-		:FindFirstChild(getPetDisplayName(pet))
+	local earth = previewRoot:FindFirstChild("Earth")
+	if not earth then return nil end
 	
-	if not petTemplate then
-			warn("PetVisual: no template for", getPetDisplayName(pet))
-		continue
-	end
+	local egg1 = earth:FindFirstChild("Egg1")
+	if not egg1 then return nil end
 	
-	local clone = petTemplate:Clone()
-	clone.Name = "PetVisual_" .. tostring(index)
-	clone.Parent = character
-	
-	local rootPart = clone:FindFirstChild("RootPart", true)
-	if not rootPart then
-		warn("PetVisual: no RootPart inside clone")
-		clone:Destroy()
-		continue
-	end
-	
-	for _, obj in ipairs(clone:GetDescendants()) do 
-		if obj:IsA("BasePart") then
-			obj.Anchored = true
-			obj.CanCollide = false
-			obj.Massless = true
-		end
-	end
-	
-	local startOffsets = {
-		Vector3.new(-3, -1.5, 4),
-		Vector3.new(0, -1.5, 4),
-		Vector3.new(3, -1.5, 4),
-	}
-	
-	local offset = startOffsets[index] or Vector3.new(0, -1.5, 4)
-	clone:PivotTo(CFrame.new((hrp.CFrame * CFrame.new(offset)).Position))
-	end
-	
-	print("PetVisuals created:", #equippedPets)
+	return egg1:FindFirstChild(modelName)
 end
 
-local MAX_EQUIPPED_PETS = 3
-
-local function followPet(player)
-	local character = player.Character
-	if not character then return end
-
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then
-		warn("FollowPet: no HRP")
-		return
+local function getPetOffset(count)
+	if count <= 1 then
+		return {
+			Vector3.new(0, -1.5, 4),
+		}
 	end
 	
-	task.spawn(function()
-		while character.Parent and hrp.Parent do
-			local equippedPets = PetModule.getEquippedPets(player)
-			if #equippedPets == 0 then
-				break
+	if count == 2 then
+		return {
+			Vector3.new(-2, -1.5, 4),
+			Vector3.new(2, -1.5, 3),
+		}
+	end
+	
+	if count == 3 then
+		return {
+			Vector3.new(-3, -1.5, 4),
+			Vector3.new(0, -1.5, 4),
+			Vector3.new(3, -1.5, 4),
+		}
+	end
+	
+	local offset = {}
+	
+	for index = 1, count do
+		local row = math.floor((index - 1) / 3)
+		local column = (index - 1) % 3
+		
+		local x = (column - 1) * 3
+		local z = 4 + (row * 3)
+		
+		table.insert(offset, Vector3.new(x, -1.5, z))
+	end
+	return offset
+end
+
+local function updatePetVisuals(player)
+	local character = player.Character
+	if not character then return end
+	
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	
+	removePetVisuals(character)
+	
+	local equippedPets = getEquippedPets(player)
+	local offset = getPetOffset(#equippedPets)
+	
+	for index, petFolder in ipairs(equippedPets) do
+		local petName = petFolder:FindFirstChild("PetName")
+		if petName then
+			local template = getPetModule(petName.Value)
+			
+			if template then
+				local clone = template:Clone()
+				
+				clone.Name = "PetVisual_" .. tostring(index)
+				clone.Parent = character
+				
+				for _, object in ipairs(clone:GetDescendants()) do
+					if object:IsA("BasePart") then
+						object.Anchored = true	
+						object.CanCollide = true
+						object.Massless = true
+					end
+				end
+				
+				local offset = offset[index] or Vector3.new(0, -1.5, 4)
+				
+				clone:PivotTo(hrp.CFrame * CFrame.new(offset))
 			end
+		end
+	end
+end
+
+--// Following visuals
+local followTokens = {}
+
+local function stopFollowing(player)
+	followTokens[player] = (followTokens[player] or 0) + 1
+end
+
+local function startFolloming(player)
+	stopFollowing(player)
+	
+	local token = followTokens[player]
+	
+	task.spawn(function()
+		while player.Parent do 
+			if followTokens[player] ~= token then break end
 			
-			local offset = {
-				Vector3.new(-3, -1.5, 4),
-				Vector3.new(0, -1.5, 4),
-				Vector3.new(3, -1.5, 4),
-			}
+			local character = player.Character
+			if not character then break end
 			
-			for index = 1, MAX_EQUIPPED_PETS do
-				local petVisual = character:FindFirstChild("PetVisual_" .. tostring(index))
-				if petVisual then
+			local hrp = character:FindFirstChild("HumanoidRootPart")
+			if not hrp then break end
+			
+			local equippedPets = getEquippedPets(player)
+			local offset = getPetOffset(#equippedPets)
+			
+			for index, _ in ipairs(equippedPets) do
+				local visual = character:FindFirstChild("PetVisual_" .. tostring(index))
+				
+				if visual then
 					local offset = offset[index] or Vector3.new(0, -1.5, 4)
-					local targetPos = (hrp.CFrame * CFrame.new(offset)).Position
+					local targetPosition = (hrp.CFrame * CFrame.new(offset)).Position
+					local time = os.clock()
 					
-					local t = tick()
-					targetPos += Vector3.new(0, math.sin(t * 3 + index) * 0.5, 0)
+					targetPosition += Vector3.new(0, math.sin(time * 3 + index) * 0.5, 0)
 					
-					local currentPos = petVisual:GetPivot().Position
-					local newPos = currentPos:Lerp(targetPos, 0.1)
+					local currentPosition = visual:GetPivot().Position
+					local newPosition = currentPosition:Lerp(targetPosition, 0.1)
 					
-					petVisual:PivotTo(CFrame.new(newPos, hrp.Position) * CFrame.Angles(0, math.rad(180), 0))
+					visual:PivotTo(CFrame.new(newPosition, hrp.Position) * CFrame.Angles(0, math.rad(180), 0))
 				end
 			end
-			
 			task.wait(0.03)
 		end
 	end)
 end
 
-
-
---Equip/Unequip logic
-local function setPetEquipped(player, petName, shouldEquip)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return end
-
-	local petFolder = petsFolder:FindFirstChild(petName)
-	if not petFolder then return end
-
-	local owned = petFolder:FindFirstChild("Owned")
-	local equipped = petFolder:FindFirstChild("Equipped")
-
-	if not owned or not equipped or not owned.Value then return end
+local function refreshPetVisuals(player)
+	updatePetVisuals(player)
 	
-	if shouldEquip then
-		if equipped.Value then
-			return
-		end
-		
-		local equippedCount = getEquippedPetsCount(player)
-		if equippedCount >= getMaxEquippedPets(player) then
-			if petEquipLimitEvent then
-				petEquipLimitEvent:FireClient(player, "Maximum 3 pets equipped")
-			end
-			
-			warn(player.Name .. " trieed to equip more than 3 pets")
-			return
-		end
-		
-		equipped.Value = true
+	if #getEquippedPets(player) > 0 then
+		startFolloming(player)
 	else
-		equipped.Value = false
+	    stopFollowing(player)
 	end
-
-	updatePetVisual(player)
-	followPet(player)
 end
 
-local function unequipAllPets(player)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return end
+--// Events
+petEquipEvent.OnServerEvent:Connect(function(player, petId, shouldEquip)
+	if typeof(petId) ~= "string" then return end
+	if typeof(shouldEquip) ~= "boolean" then return end
 	
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		local equipped = petFolder:FindFirstChild("Equipped")
-		
-		if equipped then
-			equipped.Value = false
-		end
+	local success = setPetEquipped(player, petId, shouldEquip)
+	
+	if success then
+		refreshPetVisuals(player)
 	end
-	
-	updatePetVisual(player)
-end
-
-local function equipBestPets(player)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return end
-	
-	local petList = {}
-	
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		local owned = petFolder:FindFirstChild("Owned")
-		local equipped = petFolder:FindFirstChild("Equipped")
-		local energyMultiplier = petFolder:FindFirstChild("EnergyMultiplier")
-		
-		if owned and equipped and energyMultiplier and owned.Value then
-			table.insert(petList, {
-				Folder = petFolder,
-				Power = energyMultiplier.Value
-			})
-			
-			equipped.Value = false
-		end
-	end
-	
-	table.sort(petList, function(a, b)
-		return a.Power > b.Power
-	end)
-	
-	local maxEquippedPets = getMaxEquippedPets(player)
-	
-	for i = 1, math.min(maxEquippedPets, #petList) do
-		petList[i].Folder.Equipped.Value = true
-	end
-	
-	updatePetVisual(player)
-	followPet(player)
-end
-
-local function deletePets(player, petIds)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return end
-	
-	if typeof(petIds) ~= "table" then return end
-	
-	for _, petId in ipairs(petIds) do
-		local petFolder = petsFolder:FindFirstChild(petId)
-		
-		if petFolder and petFolder:IsA("Folder") then
-			local equipped = petFolder:FindFirstChild("Equipped")
-			
-			if equipped and equipped.Value == true then
-				warn("Cannot delete equipped pet:, petFolder.Name")
-			else
-				petFolder:Destroy()
-			end
-		end
-	end
-	
-	updatePetVisual(player)
-	followPet(player)
-end
-
-
-
---Event connections
-petEquipEvent.OnServerEvent:Connect(function(player, petName, shouldEquip)
-	setPetEquipped(player, petName, shouldEquip)
 end)
 
 petDeleteEvent.OnServerEvent:Connect(function(player, petIds)
-	deletePets(player, petIds)
+	if typeof(petIds) == "string" then
+		deletePet(player, petIds)
+	elseif typeof(petIds) == "table" then
+		deletePets(player, petIds)
+	end
 end)
 
 petUnequipAllEvent.OnServerEvent:Connect(function(player)
 	unequipAllPets(player)
+	refreshPetVisuals(player)
 end)
 
 petEquipBestEvent.OnServerEvent:Connect(function(player)
-	equipBestPets(player)
+	toggleEquipBest(player)
+	refreshPetVisuals(player)
 end)
 
+petUpgradeEvent.OnServerEvent:Connect(function(player, petId)
+	if typeof(petId) ~= "string" then return end
+	upgradePet(player, petId)
+end)
 
---Player setup
-Players.PlayerAdded:Connect(function(player)
-	setupPets(player)
-
+--// Player setup
+local function setupPlayer(player)
+	getOrCreateFolder(player, "Pets")
+	
 	player.CharacterAdded:Connect(function()
 		task.wait(1)
-		updatePetVisual(player)
-		followPet(player)
+		
+		refreshPetVisuals(player)
 	end)
-end)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
 
 for _, player in ipairs(Players:GetPlayers()) do
-	setupPets(player)
-
-	player.CharacterAdded:Connect(function()
-		task.wait(1)
-		updatePetVisual(player)
-		followPet(player)
-	end)
-
+	setupPlayer(player)
+	
 	if player.Character then
-		task.wait(1)
-		updatePetVisual(player)
-		followPet(player)
+		task.defer(function()
+			task.wait(1)
+			refreshPetVisuals(player)
+		end)
 	end
 end
 
-playerDataLoadedEvent.Event:Connect(function(player)
-	task.wait(0.5)
-	
-	updatePetVisual(player)
-	followPet(player)
+Players.PlayerRemoving:Connect(function(player)
+	followTokens[player] = nil
 end)
 
-print("PetServer loaded")
+print("PetServer 1.3 loaded")
