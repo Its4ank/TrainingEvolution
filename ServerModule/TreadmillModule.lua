@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local TreadmillModule = {}
 
-local PetModule = require(ServerScriptService.Modules.PetModule)
+local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
