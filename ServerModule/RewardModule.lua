@@ -2,7 +2,7 @@ local RewardModule = {}
 
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local PetModule = require(game.ServerScriptService.Modules.PetModule)
+local PetModule = require(game.ReplicatedStorage.Modules.PetModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 
 local DAILY_SCHEDULE_LENGTH = 28
@@ -137,7 +137,7 @@ RewardModule.DailySchedule = {
 	[7] = {
 		[1] = {Type = "Pet", PetName = "HugeQueen",},
 		[2] = {Type = "Pet", PetName = "ErrCube",},
-		[3] = {Type = "Pet", PetName = "Thunget",},
+		[3] = {Type = "Pet", PetName = "Thunger",},
 	},
 
 	[8] = {
@@ -161,7 +161,7 @@ RewardModule.DailySchedule = {
 	[11] = {
 		[1] = {Type = "LuckPotion", Amount = 1,},
 		[2] = {Type = "PotionBundle", Amount = 2,},
-		[3] = {Type = "Money", Amount = 3,},
+		[3] = {Type = "Money", Wealth = 3,},
 
 	},
 
@@ -198,7 +198,7 @@ RewardModule.DailySchedule = {
 
 	[17] = {
 		[1] = {Type = "EnergyPotion", Amount = 1,},
-		[2] = {Type = "Gems", Amount = 2,},
+		[2] = {Type = "Gems", Wealth = 2,},
 		[3] = {Type = "MoneyPotion", Amount = 3,},
 	},
 
@@ -223,7 +223,7 @@ RewardModule.DailySchedule = {
 	[21] = {
 		[1] = {Type = "Pet", PetName = "TheCube",},
 		[2] = {Type = "TimeBoostBonus", Amount = 0.5,},
-		[3] = {Type = "Pet", PetName = "MagicalGolder",},
+		[3] = {Type = "Pet", PetName = "MagicalGolden",},
 	},
 	
 	[22] = {
