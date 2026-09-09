@@ -13,7 +13,7 @@ local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ItemModule = require(ServerScriptService.Modules.ItemModule)
-local PetModule = require(ServerScriptService.Modules.PetModule)
+local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local XPModule = require(ServerScriptService.Modules.XPModule)
 
 --// Instance helpers
