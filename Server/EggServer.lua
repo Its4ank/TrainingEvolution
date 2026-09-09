@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local PetModule = require(game.ServerScriptService.Modules.PetModule)
+local PetModule = require(game.ReplicatedStorage.Modules.PetModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
 local UpgradeModule = require(game.ReplicatedStorage.Modules.UpgradeModule)
