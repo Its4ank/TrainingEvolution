@@ -2,11 +2,12 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local ServerStorage = game:GetService("ServerStorage")
 
 --// Modules
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
-local XPModule = require(ReplicatedStorage.Modules.XPModule)
+local XPModule = require(ServerScriptService.Modules.XPModule)
 
 --// RemoteEvents
 local petEvent = ReplicatedStorage:FindFirstChild("PetEvent")
@@ -16,6 +17,9 @@ local petUnequipAllEvent = petEvent:WaitForChild("PetUnequipAllEvent")
 local petEquipBestEvent = petEvent:WaitForChild("PetEquipBestEvent")
 local petUpgradeEvent = petEvent:WaitForChild("PetUpgradeEvent")
 local petWarningEvent = petEvent:WaitForChild("PetWarningEvent")
+
+local trainerEvent = ReplicatedStorage:FindFirstChild("TrainerEvent")
+local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
 
 --// Helpers
 local function getOrCreateFolder(parent, name)
@@ -377,7 +381,7 @@ local function upgradePet(player, petId)
 			table.insert(parts, tostring(missingXP) .. " XP")
 		end
 		
-		fireWarning(player, "Not enoung " .. table.contact(parts, " and ") .. ".")
+		fireWarning(player, "Not enoung " .. table.concat(parts, " and ") .. ".")
 		return false, "NotEnoughResources"
 	end
 	
@@ -586,6 +590,11 @@ end)
 petUpgradeEvent.OnServerEvent:Connect(function(player, petId)
 	if typeof(petId) ~= "string" then return end
 	upgradePet(player, petId)
+end)
+
+playerDataLoadedEvent.Event:Connect(function(player)
+	task.wait(0.5)
+	refreshPetVisuals(player)
 end)
 
 --// Player setup
