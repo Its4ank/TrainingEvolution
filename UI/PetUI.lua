@@ -59,7 +59,7 @@ local petDeleteButton = petMenu:WaitForChild("PetDeleteButton")
 local petEquippedButton = petMenu:WaitForChild("PetEquippedButton")
 local equipLabel = petEquippedButton:WaitForChild("EquipLabel")
 local petUpgButton = petMenu:WaitForChild("PetUpgButton")
-local upgMoneyLabnel = petUpgButton:WaitForChild("UpgMoneyLabnel")
+local upgMoneyLabel = petUpgButton:WaitForChild("UpgMoneyLabel")
 local petCloseMenu = petMenu:WaitForChild("PetCloseMenu")
 
 --// Search
@@ -84,7 +84,7 @@ local petEquipContainer3 = petEquipInfoScroll:WaitForChild("PetEquipContainer3")
 --// Player data
 local petsFolder = ClientDataModule.GetPets(player)
 local moneyValue = ClientDataModule.GetMoney(player)
-local xpValue = ClientDataModule.GetXp(player)
+local xpValue = ClientDataModule.GetXP(player)
 local maxEquippedPetsValue = ClientDataModule.GetMaxEquippedPets(player)
 local playerData = ClientDataModule.GetPlayerData(player)
 local maxPetStorageValue = playerData:WaitForChild("MaxPetStorage")
@@ -208,7 +208,7 @@ local function setupViewport(viewport, petName, distanceMultiplier)
 		if object:IsA("BasePart") then
 			local clone = object:Clone()
 			
-			for _, child in ipairs(clone:GetDescnedants()) do
+			for _, child in ipairs(clone:GetDescendants()) do
 				if child:IsA("Script") or child:IsA("LocalScript") then
 					
 					child:Destroy()
@@ -330,7 +330,7 @@ local function updateEquippedSlots()
 				local data = getPetData(petFolder)
 				
 				button.Image = PetModule.GetEquipSlotImage("Filled")
-				button.SetAttribute("PetId", petFolder.Name)
+				button:SetAttribute("PetId", petFolder.Name)
 				
 				if viewport and data then
 					setupViewport(viewport, data.PetName, 2)
@@ -389,7 +389,7 @@ local function clearSelectedPet()
 	petPowerBoost.Text = ""
 	petRarityLabel.Text = ""
 	petPatternLabel.Text = ""
-	petStorageLabel.Text = ""
+	petStoraLabel.Text = ""
 	
 	petRarityIcon.Image = ""
 	
@@ -474,7 +474,7 @@ local function getSortedPets()
 	end
 	
 	table.sort(list, function(a, b)
-		if a.DataEquipped ~= b.Data.Equipped then
+		if a.Data.Equipped ~= b.Data.Equipped then
 			return a.Data.Equipped
 		end
 		
@@ -482,7 +482,7 @@ local function getSortedPets()
 			return a.Power > b.Power
 		end
 		
-		return a.Folder.name < b.Folder.Name
+		return a.Folder.Name < b.Folder.Name
 	end)
 	return list
 end
@@ -543,13 +543,13 @@ end
 --// Inventory containers
 local function clearGeneratedInventory()
 	for _, child in ipairs(petScrollContainer:GetChildren()) do
-		if child:SetAttribute("GeneratedPetContainer") then
+		if child:GetAttribute("GeneratedPetContainer") then
 			child:Destroy()
 		end
 	end
 	
 	for _, child in ipairs(petContainerTemplate:GetChildren()) do
-		if child:SetAttribute("GeneratedPetButton") then
+		if child:GetAttribute("GeneratedPetButton") then
 			child:Destroy()
 		end
 	end
@@ -565,7 +565,7 @@ local function createdInventoryContainer(index)
 	
 	container.Name = "PetContainer" .. tostring(index)
 	container.Visible = true
-	container:SetAttribute("GeneratedPetButton", true)
+	container:SetAttribute("GeneratedPetContainer", true)
 	
 	local template = container:FindFirstChild("PetSelectedButton")
 	
@@ -597,7 +597,7 @@ local function createPetButton(container, petFolder, data)
 	
 	local state = getButtonState(petFolder, data)
 	
-	button.Image = PetModule.GetInventoryBuyttonImage(state)
+	button.Image = PetModule.GetInventoryButtonImage(state)
 	button.Activated:Connect(function()
 		if deleteMode then
 			if data.Equipped then
@@ -632,7 +632,7 @@ local function refreshInventory()
 		return
 	end
 	
-	local containerCount = math.cell(#sortedPets / 4)
+	local containerCount = math.ceil(#sortedPets / 4)
 	local containers = {}
 	
 	for index = 1, containerCount do
@@ -640,7 +640,7 @@ local function refreshInventory()
 	end
 	
 	for index, entry in ipairs(sortedPets) do
-		local containerIndex = math.cell(index / 4)
+		local containerIndex = math.ceil(index / 4)
 		local container = containers[containerIndex]
 		
 		createPetButton(container, entry.Folder, entry.Data)
@@ -657,7 +657,7 @@ local function isBestSetEquipped()
 		end
 	end
 	
-	table.sort(allPets, function(a, b) return a.Power > b.Power end)
+	table.insert(allPets, function(a, b) return a.Power > b.Power end)
 	
 	local maxCount = math.min(maxEquippedPetsValue.Value, #allPets)
 	local equippedPets = getEquippedPets()
@@ -682,7 +682,7 @@ local function updateEquipAllLabel()
 	if #getEquippedPets() > 0 and isBestSetEquipped() then
 		equipAllLabel.Text = "UNEQUIP ALL"
 	else
-		equipAlllabel.Text = "EQUIP BEST"
+		equipAllLabel.Text = "EQUIP BEST"
 	end
 end
 
@@ -860,7 +860,7 @@ petsFolder.ChildRemoved:Connect(function()
 end)
 
 --// Resource changes
-moneyValue:GetPropertyChangedSignal("Value"):Connection(function()
+moneyValue:GetPropertyChangedSignal("Value"):Connect(function()
 	updateMoney()
 	updateSelectedPetUI()
 end)
@@ -879,6 +879,11 @@ end)
 
 --// Open menu
 petsButton.Activated:Connect(function()
+	petHost.Visible = true
+	refreshUI()
+end)
+
+petCloseMenu.Activated:Connect(function()
 	petHost.Visible = false
 end)
 
