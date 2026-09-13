@@ -472,7 +472,7 @@ function PetModule.GetPowerScore(stats)
 end
 
 --// Inventory button state
-function PetModule.GetInventoryBuyttonImage(state)
+function PetModule.GetInventoryButtonImage(state)
 	return PetModule.InventoryButtonImages[state] or PetModule.InventoryButtonImages.Default
 end
 
