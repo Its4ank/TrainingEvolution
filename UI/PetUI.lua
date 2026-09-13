@@ -1,465 +1,896 @@
---// PetUI LocalScript
+--// PetUI 1.3
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
-local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
-local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
+--// Modules
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local PetModule = require(ReplicatedStorage.Modules.PetModule)
+local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 
-local raceGui = script.Parent
+--// Player
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
-MenuManager.init(raceGui)
+
+ClientDataModule.WaitUntilReady(player)
+
+--// Main GUI
+local raceGui = script.Parent
 
 local guiFolder = raceGui:WaitForChild("GuiFolder")
-
 local petsFolderUI = guiFolder:WaitForChild("PetsFolder")
-local UIBalance = guiFolder:WaitForChild("UIBalance")
+local uiBalance = guiFolder:WaitForChild("UIBalance")
 
-local petEquipEvent = ReplicatedStorage:WaitForChild("PetEquipEvent")
-local petEquipLimitEvent = ReplicatedStorage:WaitForChild("PetEquipLimitEvent")
-local petDeleteEvent = ReplicatedStorage:FindFirstChild("PetDeleteEvent")
-local petUnequipAllEvent = ReplicatedStorage:WaitForChild("PetUnequipAllEvent")
-local petEquipBestEvent = ReplicatedStorage:WaitForChild("PetEquipBestEvent")
+local petHost = petsFolderUI:WaitForChild("PetHost")
+local petMenu = petHost:WaitForChild("PetMenu")
 
-local petsButton = UIBalance:WaitForChild("PetsButton")
-local petsFrame = petsFolderUI:WaitForChild("PetsFrame")
-local petDetailsFrame = petsFrame:WaitForChild("PetDetailsFrame")
-local buttonListFrame = petsFrame:WaitForChild("ButtonListFrame")
-local closePetsFrame = petsFrame:WaitForChild("ClosePetsFrame")
+local petsButton = uiBalance:WaitForChild("PetsButton")
 
-local equipBestButton = buttonListFrame:WaitForChild("EquipBestButton")
-local statusEquipLabel = equipBestButton:WaitForChild("StatusEquipLabel")
-local deleteButton = petsFrame:WaitForChild("DeleteButton")
-local infoDeleteLabel = deleteButton:WaitForChild("InfoDeleteLabel")
+--// Pet warning
+local petWarning = petHost:WaitForChild("PetWarning")
 
-local petsContainer = petsFrame:WaitForChild("PetsContainer")
-local petButtonTemplate = petsContainer:WaitForChild("PetButtonTemplate")
-local equippedCountLabel = petsFrame:WaitForChild("EquippedCountLabel")
-local storageCountLabel = petsFrame:WaitForChild("StorageCountLabel")
+--// Selected pet
+local petSelectViewport = petMenu:WaitForChild("PetSelectViewport")
+local petName = petMenu:WaitForChild("PetName")
+local petSelectLevel = petMenu:WaitForChild("PetSelectLevel")
+local petEnergyBoost = petMenu:WaitForChild("PetEnergyBoost")
+local petMoneyBoost = petMenu:WaitForChild("PetMoneyBoost")
+local petPowerBoost = petMenu:WaitForChild("PetPowerBoost")
+local petRarityIcon = petMenu:WaitForChild("PetRarityIcon")
+local petRarityLabel = petMenu:WaitForChild("PetRarityLabel")
+local petPatternLabel = petMenu:WaitForChild("PetPatternLabel")
+local petStageLabel = petMenu:WaitForChild("PetStageLabel")
 
-local petNameLabel = petDetailsFrame:WaitForChild("PetNameLabel")
-local petLevelLabel = petDetailsFrame:WaitForChild("PetLevelLabel")
-local petXPLabel = petDetailsFrame:WaitForChild("PetXPLabel")
-local petFuseLabel = petDetailsFrame:WaitForChild("PetFuseLabel")
-local petEnergyLabel = petDetailsFrame:WaitForChild("PetEnergyLabel")
-local petMoneyLabel = petDetailsFrame:WaitForChild("PetMoneyLabel")
+--// Level bar
+local petBarWindow = petMenu:WaitForChild("PetBarWindow")
+local petLvlBar = petBarWindow:WaitForChild("PetLvlBar")
+local petBarRequirXp = petBarWindow:WaitForChild("PetBarRequirXp")
 
-local equipButton = petDetailsFrame:WaitForChild("EquipPetButton")
-local petEquippedLabel = equipButton:WaitForChild("PetEquippedLabel")
-local petDetailsViewport = petDetailsFrame:WaitForChild("PetViewport")
+--// Resource / counts
+local petStorageLabel = petMenu:WaitForChild("PetStorageLabel")
+local petEquipLabel = petMenu:WaitForChild("PetEquipLabel")
+local petResMoney = petMenu:WaitForChild("PetResMoney")
 
-local petsFolder = ClientDataModule.GetPets(player)
+--// Main buttons
+local petEquippedAll = petMenu:WaitForChild("PetEquippedAll")
+local equipAllLabel = petEquippedAll:WaitForChild("EquipAllLabel")
+local petMassDelete = petMenu:WaitForChild("PetMassDelete")
+local massDelLabel = petMassDelete:WaitForChild("MassDelLabel")
+local petDeleteButton = petMenu:WaitForChild("PetDeleteButton")
+local petEquippedButton = petMenu:WaitForChild("PetEquippedButton")
+local equipLabel = petEquippedButton:WaitForChild("EquipLabel")
+local petUpgButton = petMenu:WaitForChild("PetUpgButton")
+local upgMoneyLabnel = petUpgButton:WaitForChild("UpgMoneyLabnel")
+local petCloseMenu = petMenu:WaitForChild("PetCloseMenu")
 
-local maxEquippedPetsValue = ClientDataModule.GetMaxEquippedPets(player)
+--// Search
+local petSearchButton = petMenu:WaitForChild("PetSearchButton")
 
-local petPreviewRoot = ReplicatedStorage:WaitForChild("PetPreviewModels"):WaitForChild("Earth"):WaitForChild("Egg1")
+petSearchButton.PlaceholderText = "Search..."
+petSearchButton.Text = ""
 
-local selectedPetName = nil
-local currentPetXPConnection
-local currentPetLevelConnection
-local deleteMode = false
-local equipBestMode = false
-local selectedForDelete = {}
+--// Inventory
+local petScrollContainer = petMenu:WaitForChild("PetScrollContainer")
+local petContainerTemplate = petScrollContainer:WaitForChild("PetContainer1")
+local petButtonTemplate = petContainerTemplate:WaitForChild("PetSelectedButton")
 
-MenuManager.register("Pets", petsFrame)
-
---local MAX_EQUIPPED_PETS = 3
-local MAX_PET_STORAGE = 50
-
-petsButton.Visible = true
-petDetailsFrame.Visible = false
 petButtonTemplate.Visible = false
 
-local PetRarityOrder = {
-	Dog = 1,
-	Cow = 2,
-	Cat = 3,
-	Pig = 4,
-	Chicken = 5,
-}
+--// Equipped pets
+local petEquipInfoScroll = petMenu:WaitForChild("PetEquipInfoScroll")
+local petEquipContainer1 = petEquipInfoScroll:WaitForChild("PetEquipContainer1")
+local petEquipContainer2 = petEquipInfoScroll:WaitForChild("PetEquipContainer2")
+local petEquipContainer3 = petEquipInfoScroll:WaitForChild("PetEquipContainer3")
 
-local function getFuseName(tier)
-	if tier == 0 then return "Normal" end
-	if tier == 1 then return "Big" end
-	if tier == 2 then return "Silver" end
-	if tier == 3 then return "Gold" end
-	if tier == 4 then return "Rainbow" end
-	if tier == 5 then return "Legend" end
-	return "Unknown"
+--// Player data
+local petsFolder = ClientDataModule.GetPets(player)
+local moneyValue = ClientDataModule.GetMoney(player)
+local xpValue = ClientDataModule.GetXp(player)
+local maxEquippedPetsValue = ClientDataModule.GetMaxEquippedPets(player)
+local playerData = ClientDataModule.GetPlayerData(player)
+local maxPetStorageValue = playerData:WaitForChild("MaxPetStorage")
+
+--// Remotes
+local petEvent = ReplicatedStorage:WaitForChild("PetEvent")
+local petEquipEvent = petEvent:WaitForChild("PetEquipEvent")
+local petDeleteEvent = petEvent:WaitForChild("PetDeleteEvent")
+local petEquipBestEvent = petEvent:WaitForChild("PetEquipBestEvent")
+local petUpgradeEvent = petEvent:WaitForChild("PetUpgradeEvent")
+local petWarningEvent = petEvent:WaitForChild("PetWarningEvent")
+
+--// State
+local selectedPetId = nil
+
+local deleteMode = false
+local selectedForDelete = {}
+
+local warningToken = 0
+
+--// Connections
+local petValueConnections = {}
+
+--// Helpers
+local function formatNumber(number)
+	number = tonumber(number) or 0
+	
+	if number >= 1e18 then
+		return string.format("%.1fQ", number / 1e18)
+	elseif number >= 1e12 then
+		return string.format("%.1fT", number / 1e12)
+	elseif number >= 1e9 then
+		return string.format("%.1fB", number / 1e9)
+	elseif number >= 1e6 then
+		return string.format("%.1fM", number / 1e6)
+	elseif number >= 1e3 then
+		return string.format("%.1fK", number / 1e3)
+	end
+	
+	if number % 1 == 0 then
+		return tostring(math.floor(number))
+	end
+	
+	return string.format("%.1f", number)
 end
 
-local function getPetDisplayName(petFolder)
-	local petNameValue = petFolder:FindFirstChild("PetName")
+local function showWarning(text)
+	warningToken += 1
 	
-	if petNameValue then
-		return petNameValue.Value
-	end
-	return petFolder.Name
+	local currentToken = warningToken
+	
+	petWarning.Text = text
+	petWarning.Visible = true
+	
+	task.delay(4, function()
+		if currentToken ~= warningToken then return end
+		
+		petWarning.Visible = false
+	end)
+end
+
+local function getPetData(petFolder)
+	if not petFolder then return nil end
+	
+	local petNameValue = petFolder:FindFirstChild("PetName")
+	local patternValue = petFolder:FindFirstChild("Pattern")
+	local tierValue = petFolder:FindFirstChild("Tier")
+	local levelValue = petFolder:FindFirstChild("Level")
+	local equippedValue = petFolder:FindFirstChild("Equipped")
+	
+	if not petNameValue or not patternValue or not tierValue or not levelValue or not equippedValue then return nil end
+	
+	return {
+		PetName = petNameValue.Value,
+		Pattern = patternValue.Value,
+		Tier = tierValue.Value,
+		Level = levelValue.Value,
+		Equipped = equippedValue.Value
+	}
+end
+
+local function getSelectedPetFolder()
+	if not selectedPetId then return nil end
+	
+	return petsFolder:FindFirstChild(selectedPetId)
+end
+
+--// Viewport
+local function findPetModule(petName)
+	local config = PetModule.GetPetConfig(petName)
+	if not config then return nil end
+	
+	local modelName = config.ModelName or config.Name
+	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
+	if not previewRoot then return nil end
+	
+	return previewRoot:FindFirstChild(modelName, true)
 end
 
 local function setupViewport(viewport, petName, distanceMultiplier)
 	viewport:ClearAllChildren()
-
-	local modelTemplate = petPreviewRoot:FindFirstChild(petName)
-	if not modelTemplate then
-		warn("Pet preview not found:", petName)
+	
+	local template = findPetModule(petName)
+	if not template then
+		warn("Pet preview model not found:", petName)
 		return
 	end
-
+	
 	local worldModel = Instance.new("WorldModel")
+	
 	worldModel.Parent = viewport
-
+	
 	local previewModel = Instance.new("Model")
+	
 	previewModel.Name = petName .. "_Preview"
 	previewModel.Parent = worldModel
-
+	
 	local copiedParts = {}
-
-	for _, obj in ipairs(modelTemplate:GetDescendants()) do
-		if obj:IsA("MeshPart") or obj:IsA("Part") or obj:IsA("UnionOperation") then
-			local clone = obj:Clone()
-
-			for _, child in ipairs(clone:GetDescendants()) do
+	
+	for _, object in ipairs(template:GetDescendants()) do
+		if object:IsA("BasePart") then
+			local clone = object:Clone()
+			
+			for _, child in ipairs(clone:GetDescnedants()) do
 				if child:IsA("Script") or child:IsA("LocalScript") then
-					child:Destroy()
-				elseif child:IsA("Weld") or child:IsA("WeldConstraint") or child:IsA("Motor6D") then
+					
 					child:Destroy()
 				end
 			end
-
+			
 			clone.Anchored = true
 			clone.CanCollide = false
+			clone.Massless = true
+			
 			clone.Parent = previewModel
+			
 			table.insert(copiedParts, clone)
 		end
 	end
-
+	
 	if #copiedParts == 0 then return end
-
+	
 	local cf = previewModel:GetBoundingBox()
 	local offset = cf.Position
-
+	
 	for _, part in ipairs(copiedParts) do
 		part.CFrame = part.CFrame - offset
 	end
-
-	local _, newSize = previewModel:GetBoundingBox()
-	local biggest = math.max(newSize.X, newSize.Y, newSize.Z)
-	local distance = math.max(biggest * distanceMultiplier, 3)
-
+	
+	local _, size = previewModel:GetBoundingBox()
+	local biggest = math.max(size.X, size.Y, size.Z)
+	local distace = math.max(biggest * (distanceMultiplier or 2.2), 3)
 	local camera = Instance.new("Camera")
+	
 	camera.Parent = viewport
 	viewport.CurrentCamera = camera
-
+	
 	viewport.Ambient = Color3.fromRGB(255, 255, 255)
 	viewport.LightColor = Color3.fromRGB(255, 255, 255)
-	viewport.LightDirection = Vector3.new(-1, -1, -1)
-
-	camera.CFrame = CFrame.new(
-		Vector3.new(0, newSize.Y * 0.25, distance),
-		Vector3.new(0, newSize.Y * 0.1, 0)
-	)
-end
-
-local function updateEquippedCountLabel()
-	local equippedCount = 0
-
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		local owned = petFolder:FindFirstChild("Owned")
-		local equipped = petFolder:FindFirstChild("Equipped")
-
-		if owned and equipped and owned.Value and equipped.Value then
-			equippedCount += 1
-		end
-	end
-
-	equippedCountLabel.Text = tostring(equippedCount) .. "/" .. tostring(maxEquippedPetsValue.Value)
-end
-
-local function hasEquippedPets()
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do 
-		local owned = petFolder:FindFirstChild("Owned") 
-		local equipped = petFolder:FindFirstChild("Equipped") 
-		
-		if owned and equipped and owned.Value and equipped.Value then
-			return true
-		end
-	end
-	return false
-end
-
-local function updateEquipBestButtonText()
-	equipBestMode = hasEquippedPets()
 	
-	if equipBestMode then 
-		statusEquipLabel.Text = "UnequipAll"
-	else 
-		statusEquipLabel.Text = "EquipBest"
-	end
+	camera.CFrame = CFrame.new(Vector3.new(0, size.Y * 0.25, distace), Vector3.new(0, size.Y * 0.1, 0))
 end
 
-local function updateStorageCountLabel()
+--// Counts
+local function getStorageCount()
 	local count = 0
 	
 	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		if petFolder:IsA("Folder") then
-			count += 1
+		if petFolder:IsA("Folder") then count += 1 end
+	end
+	return count
+end
+
+local function getEquippedPets()
+	local equippedPets = {}
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		local data = getPetData(petFolder)
+		if data and data.Equipped then
+			table.insert(equippedPets, petFolder)
 		end
 	end
-	storageCountLabel.Text = "Pets: " .. tostring(count) .. "/" .. tostring(MAX_PET_STORAGE)
+	return equippedPets
 end
 
-local function updateDeleteButtonText()
-	if deleteMode then 
-		infoDeleteLabel.Text = "Confirm Delete"
-	else 
-		infoDeleteLabel.Text = "Delete"
+local function updateCountLabels()
+	local storageCount = getStorageCount()
+	
+	local equippedCount = #getEquippedPets()
+	
+	petStorageLabel.Text = tostring(storageCount) .. "/" .. tostring(maxPetStorageValue.Value)
+	petEquipLabel.Text = tostring(equippedCount) .. "/" .. tostring(maxEquippedPetsValue.Value)
+end 
+
+--//Money
+local function updateMoney()
+	petResMoney.Text = formatNumber(moneyValue.Value)
+end
+
+--// Equipped slot UI
+local function getEquipSlotButtons()
+	local result = {}
+	
+	local containers = {
+		petEquipContainer1,
+		petEquipContainer2,
+		petEquipContainer3,
+	}
+	
+	for _, container in ipairs(containers) do
+		for index = 1, 3 do
+			local button = container:FindFirstChild("PetEquipButton" .. tostring(index))
+			
+			if button then
+				table.insert(result, {Button = button, Container = container,})
+			end
+		end
 	end
+	return result
 end
 
+local equipSlotButtons = getEquipSlotButtons()
+
+local function updateEquippedSlots()
+	local equippedPets = getEquippedPets()
+	local maxEquipped = maxEquippedPetsValue.Value
+	
+	for index, slotInfo in ipairs(equipSlotButtons) do
+		local button = slotInfo.Button
+		local viewport = button:FindFirstChild("PetViewport")
+		local shouldExist = index <= maxEquipped
+		
+		button.Visible = shouldExist
+		
+		if viewport then
+			viewport.Visible = shouldExist
+		end
+		
+		if shouldExist then
+			local petFolder = equippedPets[index]
+			
+			if petFolder then
+				local data = getPetData(petFolder)
+				
+				button.Image = PetModule.GetEquipSlotImage("Filled")
+				button.SetAttribute("PetId", petFolder.Name)
+				
+				if viewport and data then
+					setupViewport(viewport, data.PetName, 2)
+				end
+			else
+				button.Image = PetModule.GetEquipSlotImage("Default")
+				button:SetAttribute("PetId", nil)
+				
+				if viewport then
+					viewport:ClearAllChildren()
+				end
+			end
+		end
+	end
+	
+	petEquipContainer1.Visible = maxEquipped >= 1
+	petEquipContainer2.Visible = maxEquipped >= 4
+	petEquipContainer3.Visible = maxEquipped >= 7
+end
+
+--// Level progress
+local function updateLevelProgress(level)
+	local targetLevel = level + 1
+	
+	if level >= PetModule.MAX_LEVEL then
+		petBarRequirXp.Text = "MAX"
+		petLvlBar.Position = UDim2.new(0, 0, 0.207, 0)
+		return
+	end
+	
+	local cost = PetModule.GetLevelUpgradeCost(targetLevel)
+	if not cost then return end
+	
+	local requiredXP = cost.XP
+	local currentXP = xpValue.Value
+	local progress = 1
+	
+	if requiredXP > 0 then
+		progress = math.clamp(currentXP / requiredXP, 0, 1)
+	end
+	
+	petBarRequirXp.Text = formatNumber(currentXP) .. "/" .. formatNumber(requiredXP)
+	petLvlBar.Position = UDim2.new(-1 + progress, 0, 0.207, 0)
+end
+
+--// Selected pet UI
+local function clearSelectedPet()
+	selectedPetId = nil
+	
+	petSelectViewport:ClearAllChildren()
+	
+	petName.Text = ""
+	petSelectLevel.Text = ""
+	petEnergyBoost.Text = ""
+	petMoneyBoost.Text = ""
+	petPowerBoost.Text = ""
+	petRarityLabel.Text = ""
+	petPatternLabel.Text = ""
+	petStorageLabel.Text = ""
+	
+	petRarityIcon.Image = ""
+	
+	equipLabel.Text = "EQUIP"
+	
+	upgMoneyLabel.Text = ""
+	petBarRequirXp.Text = ""
+	
+	petLvlBar.Position = UDim2.new(-1, 0, 0.207, 0)
+end
+
+local function updateSelectedPetUI()
+	local petFolder = getSelectedPetFolder()
+	if not petFolder then
+		clearSelectedPet()
+		return
+	end
+	
+	local data = getPetData(petFolder)
+	if not data then return end
+	
+	local displayData = PetModule.GetPetDisplayData(data.PetName, data.Pattern, data.Tier, data.Level)
+	if not displayData then return end
+	
+	petName.Text = displayData.Name
+	petSelectLevel.Text = tostring(data.Level)
+	petEnergyBoost.Text = "+" .. formatNumber(displayData.Energy)
+	petMoneyBoost.Text = "+" .. formatNumber(displayData.Money)
+	petPowerBoost.Text = "+" .. formatNumber(displayData.RacePower)
+	petRarityLabel.Text = string.upper(displayData.Rarity)
+	petRarityIcon.Image = displayData.RarityIcon or ""
+	petPatternLabel.Text = "PATTERN " .. tostring(data.Pattern)
+	petStageLabel.Text = "STAGE: " .. string.upper(displayData.TierName)
+	setupViewport(petSelectViewport, data.PetName, 2.4)
+	
+	if data.Equipped then
+		equipLabel.Text = "UNEQUIP"
+	else
+		equipLabel.Text = "EQUIP"
+	end
+	
+	if data.Level >= PetModule.MAX_LEVEL then
+		upgMoneyLabel.Text = "MAX"
+	else
+		local cost = PetModule.GetLevelUpgradeCost(data.Level + 1)
+		
+		if cost then
+			upgMoneyLabel.Text = " " .. formatNumber(cost.Money)
+		end
+	end
+	updateLevelProgress(data.Level)
+end
+
+--// Inventory sorting
+local function getPetPower(petFolder)
+	local data = getPetData(petFolder)
+	if not data then return 0 end
+	
+	local stats = PetModule.CalculatePetStats(data.PetName, data.Pattern, data.Tier, data.Level)
+	
+	return PetModule.GetPowerScore(stats)
+end
+
+local function getSortedPets()
+	local list = {}
+	
+	local searchText = string.lower(petSearchButton.Text)
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			local data = getPetData(petFolder)
+			if data then
+				local config = PetModule.GetPetConfig(data.PetName)
+				local displayData = config and (config.DisplayName or config.Name) or data.PetName
+				local matchesSearch = searchText == "" or string.find(string.lower(displayData), searchText, 1, true)
+				
+				if matchesSearch then
+					table.insert(list, {Folder = petFolder, Data = data, Power = getPetPower(petFolder),})
+				end
+			end
+		end
+	end
+	
+	table.sort(list, function(a, b)
+		if a.DataEquipped ~= b.Data.Equipped then
+			return a.Data.Equipped
+		end
+		
+		if a.Power ~= b.Power then
+			return a.Power > b.Power
+		end
+		
+		return a.Folder.name < b.Folder.Name
+	end)
+	return list
+end
+
+--// Delete selection
 local function isSelectedForDelete(petId)
 	return selectedForDelete[petId] == true
-end
-
-local function toggleDeleteSelection(petId)
-	selectedForDelete[petId] = not selectedForDelete[petId]
 end
 
 local function clearDeleteSelection()
 	selectedForDelete = {}
 end
 
-local function getSelectedDeleteList()
-	local list = {}
+local function getDeleteCount()
+	local count = 0
 	
-	for petId, seleted in pairs(selectedForDelete) do
-		if seleted then
-			table.insert(list, petId)
+	for _, selected in pairs(selectedForDelete) do
+		if selected then
+			count += 1
 		end
 	end
-	return list
+	return count
 end
 
-local function updateSelectedPetUI()
-	if not selectedPetName then return end
+local function getSelectedDeleteList()
+	local result = {}
+	
+	for petId, selected in pairs(selectedForDelete) do
+		if selected then
+			table.insert(result, petId)
+		end
+	end
+	return result
+end
 
-	local petFolder = petsFolder:FindFirstChild(selectedPetName)
-	if not petFolder then return end
-
-	local level = petFolder:FindFirstChild("Level")
-	local xp = petFolder:FindFirstChild("XP")
-	local maxLevel = petFolder:FindFirstChild("MaxLevel")
-	local fuseTier = petFolder:FindFirstChild("FuseTier")
-	local energyMultiplier = petFolder:FindFirstChild("EnergyMultiplier")
-	local moneyMultiplier = petFolder:FindFirstChild("MoneyMultiplier")
-	local equipped = petFolder:FindFirstChild("Equipped")
-
-	if not level or not xp or not maxLevel or not fuseTier or not energyMultiplier or not moneyMultiplier or not equipped then
+local function updateMassDeleteLabel()
+	if not deleteMode then
+		massDelLabel.Text = "DELETE MASS"
 		return
 	end
-
-	petNameLabel.Text = getPetDisplayName(petFolder)
-	petLevelLabel.Text = "Level: " .. level.Value .. "/" .. maxLevel.Value
-	petXPLabel.Text = "XP: " .. xp.Value .. "/" .. tostring(10 + (level.Value * 5))
-	petFuseLabel.Text = "Fuse: " .. getFuseName(fuseTier.Value)
-	petEnergyLabel.Text = "Energy: x" .. string.format("%.2f", energyMultiplier.Value)
-	petMoneyLabel.Text = "Money: x" .. string.format("%.2f", moneyMultiplier.Value)
-
-	setupViewport(petDetailsViewport, getPetDisplayName(petFolder), 2.4)
-
-	if equipped.Value then
-		petEquippedLabel.Text = "Equipped"
+	
+	if getDeleteCount() == 0 then
+		massDelLabel.Text = "EXIT MASS DELETE"
 	else
-		petEquippedLabel.Text = "Equip"
+		massDelLabel.Text = "DELETE"
 	end
-
-	if currentPetXPConnection then currentPetXPConnection:Disconnect() end
-	if currentPetLevelConnection then currentPetLevelConnection:Disconnect() end
-
-	currentPetXPConnection = xp:GetPropertyChangedSignal("Value"):Connect(function()
-		petXPLabel.Text = "XP: " .. xp.Value .. "/" .. tostring(10 + (level.Value * 5))
-	end)
-
-	currentPetLevelConnection = level:GetPropertyChangedSignal("Value"):Connect(function()
-		petLevelLabel.Text = "Level: " .. level.Value .. "/" .. maxLevel.Value
-		petXPLabel.Text = "XP: " .. xp.Value .. "/" .. tostring(10 + (level.Value * 5))
-	end)
 end
 
-local function refreshPetList()
-	for _, child in ipairs(petsContainer:GetChildren()) do
-		if child:IsA("ImageButton") and child.Name ~= "PetButtonTemplate" then
+--// Inventory button state
+local function getButtonState(petFolder, data)
+	if deleteMode and isSelectedForDelete(petFolder.Name) then return "Delete" end
+	if selectedPetId == petFolder.Name then return "Selected" end
+	if data.Equipped then return "Equipped" end
+	
+	return "Default"
+end
+
+--// Inventory containers
+local function clearGeneratedInventory()
+	for _, child in ipairs(petScrollContainer:GetChildren()) do
+		if child:SetAttribute("GeneratedPetContainer") then
 			child:Destroy()
 		end
 	end
-
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		local owned = petFolder:FindFirstChild("Owned")
-
-		if owned and owned.Value then
-			local button = petButtonTemplate:Clone()
-			button.Name = petFolder.Name .. "Button"
-			button.Visible = true
-			button.Parent = petsContainer
-			
-		
-			local petViewport = button:WaitForChild("PetViewport")
-			local multiplierLabel = button:WaitForChild("MultiplierLabel")
-			local equippedIcon = button:WaitForChild("EquippedIcon")
-			local deleteSelectedFrame = button:WaitForChild("DeleteSelectedFrame")
-			
-			deleteSelectedFrame.Visible = isSelectedForDelete(petFolder.Name)
-			
-			local energyMultiplier = petFolder:FindFirstChild("EnergyMultiplier")
-			local equipped = petFolder:FindFirstChild("Equipped")
-
-			setupViewport(petViewport, getPetDisplayName(petFolder), 2.2)
-
-			if energyMultiplier then
-				multiplierLabel.Text = "x" .. string.format("%.1f", energyMultiplier.Value)
-				
-				local petDisplayName = getPetDisplayName(petFolder)
-				
-				local rarityOrder = PetRarityOrder[petDisplayName] or 999
-				local powerOrder = math.floor((energyMultiplier and energyMultiplier.Value or 0) * 100)
-				
-				if equipped and equipped.Value then
-					button.LayoutOrder = 
-						-100000
-						- (rarityOrder * 1000)
-						- powerOrder
-				else
-					button.LayoutOrder = 
-						-(rarityOrder * 1000)
-					    - powerOrder
-				end
-			else
-				multiplierLabel.Text = "x1.0"
-				
-				if equipped and equipped.Value then
-					button.LayoutOrder = -100000
-				else	
-					button.LayoutOrder = 0
-				end
-			end
-
-			equippedIcon.Visible = equipped and equipped.Value or false
-
-			button.MouseButton1Click:Connect(function()
-				if deleteMode then
-					toggleDeleteSelection(petFolder.Name)
-					
-					deleteSelectedFrame.Visible = isSelectedForDelete(petFolder.Name)
-					return
-				end
-				selectedPetName = petFolder.Name
-				petDetailsFrame.Visible = true
-				updateSelectedPetUI()
-			end)
+	
+	for _, child in ipairs(petContainerTemplate:GetChildren()) do
+		if child:SetAttribute("GeneratedPetButton") then
+			child:Destroy()
 		end
 	end
-
-	updateEquippedCountLabel()
-	updateStorageCountLabel()
-	updateEquipBestButtonText()
 end
 
-petsButton.MouseButton1Click:Connect(function()
-	if petsFrame.Visible then
-		refreshPetList()
+local function createdInventoryContainer(index)
+	if index == 1 then
+		petContainerTemplate.Visible = true
+		return petContainerTemplate
 	end
 	
-	MenuManager.toggleFull("Pets")
-end)
-
-closePetsFrame.MouseButton1Click:Connect(function()
-	if petsFrame.Visible then
-		refreshPetList()
+	local container = petContainerTemplate:Clone()
+	
+	container.Name = "PetContainer" .. tostring(index)
+	container.Visible = true
+	container:SetAttribute("GeneratedPetButton", true)
+	
+	local template = container:FindFirstChild("PetSelectedButton")
+	
+	if template then
+		template.Visible = false
 	end
 	
-	MenuManager.close("Pets")
-end)
+	container.Parent = petScrollContainer
+	return container
+end
 
-equipButton.Activated:Connect(function()
-	if selectedPetName then
-		petEquipEvent:FireServer(selectedPetName, true)
+--// Froward declaration
+local refreshUI
 
-		task.wait(0.1)
+--//Create inventory button
+local function createPetButton(container, petFolder, data)
+	local button = petButtonTemplate:Clone()
+	
+	button.Name = petFolder.Name .. "_Button"
+	button.Visible = true
+	button:SetAttribute("GeneratedPetButton", true)
+	button.Parent = container
+	
+	local viewport = button:WaitForChild("PetPreview")
+	local equippedIcon = button:WaitForChild("PetSelInfoEquip")
+	
+	setupViewport(viewport, data.PetName, 2.2)
+	equippedIcon.Visible = data.Equipped
+	
+	local state = getButtonState(petFolder, data)
+	
+	button.Image = PetModule.GetInventoryBuyttonImage(state)
+	button.Activated:Connect(function()
+		if deleteMode then
+			if data.Equipped then
+				showWarning("Equipped pets cannot be deleted.") 
+				return
+			end
+			
+			if selectedForDelete[petFolder.Name] then
+				selectedForDelete[petFolder.Name] = nil
+			else
+				selectedForDelete[petFolder.Name] = true
+			end
+			
+			updateMassDeleteLabel()
+			refreshUI()
+			return
+		end
+		
+		selectedPetId = petFolder.Name
+		refreshUI()
+	end)
+end
 
-		refreshPetList()
-		updateSelectedPetUI()
-	end
-end)
-
-petsFolder.ChildAdded:Connect(function()
-	task.wait(0.1)
-	refreshPetList()
-end)
-
-maxEquippedPetsValue.Changed:Connect(function()
-	updateEquippedCountLabel()
-	updateEquipBestButtonText()
-end)
-
-deleteButton.MouseButton1Click:Connect(function()
-	if not deleteMode then 
-		deleteMode = true 
-		clearDeleteSelection()
-		updateDeleteButtonText()
-		petDetailsFrame.Visible = false
-		refreshPetList()
+--// Inventory refresh
+local function refreshInventory()
+	clearGeneratedInventory()
+	
+	local sortedPets = getSortedPets()
+	
+	if #sortedPets == 0 then
+		petContainerTemplate.Visible = false
 		return
 	end
 	
-	local petsToDelete = getSelectedDeleteList()
+	local containerCount = math.cell(#sortedPets / 4)
+	local containers = {}
 	
-	if #petsToDelete > 0 then 
+	for index = 1, containerCount do
+		containers[index] = createdInventoryContainer(index)
+	end
+	
+	for index, entry in ipairs(sortedPets) do
+		local containerIndex = math.cell(index / 4)
+		local container = containers[containerIndex]
 		
-		petDeleteEvent:FireServer(petsToDelete)
-	end
-	
-	deleteMode = false 
-	clearDeleteSelection()
-	updateDeleteButtonText()
-	
-	task.delay(0.1, function()
-		refreshPetList()
-	end)
-end)
-
-equipBestButton.Activated:Connect(function()
-	updateEquipBestButtonText()
-
-	if equipBestMode then 
-		print("SEND UNEQUIP ALL")
-		petUnequipAllEvent:FireServer()
-	else 
-		print("SEND EQUIP BEST")
-		petEquipBestEvent:FireServer()
-	end
-
-	task.wait(0.2)
-
-	refreshPetList()
-	updateSelectedPetUI()
-end)
-
-for _, petFolder in ipairs(petsFolder:GetChildren()) do
-	local equipped = petFolder:FindFirstChild("Equipped")
-	if equipped then
-		equipped.Changed:Connect(function()
-			refreshPetList()
-			updateSelectedPetUI()
-		end)
+		createPetButton(container, entry.Folder, entry.Data)
 	end
 end
 
-petEquipLimitEvent.OnClientEvent:Connect(function(message)
-	warn(message)
+--// Equip Best label
+local function isBestSetEquipped()
+	local allPets = {}
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			table.insert(allPets, {Folder = petFolder, Power = getPetPower(petFolder),})
+		end
+	end
+	
+	table.sort(allPets, function(a, b) return a.Power > b.Power end)
+	
+	local maxCount = math.min(maxEquippedPetsValue.Value, #allPets)
+	local equippedPets = getEquippedPets()
+	
+	if #equippedPets ~= maxCount then return false end
+	
+	local bestIds = {}
+	
+	for index = 1, maxCount do
+		bestIds[allPets[index].Folder.Name] = true
+	end
+	
+	for _, petFolder in ipairs(equippedPets) do
+		if not bestIds[petFolder.Name] then
+			return false
+		end
+	end
+	return true
+end
+
+local function updateEquipAllLabel()
+	if #getEquippedPets() > 0 and isBestSetEquipped() then
+		equipAllLabel.Text = "UNEQUIP ALL"
+	else
+		equipAlllabel.Text = "EQUIP BEST"
+	end
+end
+
+--// Full refresh
+refreshUI = function()
+	updateCountLabels()
+	updateMoney()
+	
+	updateSelectedPetUI()
+	updateEquippedSlots()
+	
+	updateEquipAllLabel()
+	updateMassDeleteLabel()
+	
+	refreshInventory()
+end
+
+--// Equipped slot clicks
+for _, slotInfo in ipairs(equipSlotButtons) do
+	slotInfo.Button.Archivable:Connect(function()
+		local petId = slotInfo.Button:GetAttribute("PetId")
+		if not petId then return end
+		
+		petEquipEvent:FireServer(petId, false)
+	end)
+end
+
+--// Selected pet equip / unequip
+petEquippedButton.Activated:Connect(function()
+	local petFolder = getSelectedPetFolder()
+	if not petFolder then return end
+	
+	local data = getPetData(petFolder)
+	if not data then return end
+	
+	petEquipEvent:FireServer(petFolder.Name, not data.Equipped)
 end)
 
-refreshPetList()
-updateDeleteButtonText()
+--// Delete selected pet
+petDeleteButton.Activated:Connect(function()
+	local petFolder = getSelectedPetFolder()
+	if not petFolder then return end
+	
+	local data = getPetData(petFolder)
+	if not data then return end
+	
+	if data.Equipped then
+		showWarning("Equipped pets cannot be delete.")
+		return
+	end
+	
+	petDeleteEvent:FireServer(petFolder.Name)
+	selectedPetId = nil
+end)
 
-print("PetUI loaded")
+--// Mass delete
+petMassDelete.Activated:Connect(function()
+	if not deleteMode then
+		deleteMode = true
+		
+		clearDeleteSelection()
+		updateMassDeleteLabel()
+		refreshUI()
+		return
+	end
+	
+	local deleteList = getSelectedDeleteList()
+	
+	if #deleteList == 0 then
+		deleteMode = false
+		
+		clearDeleteSelection()
+		updateMassDeleteLabel()
+		refreshUI()
+		return
+	end
+	
+	petDeleteEvent:FireServer(deleteList)
+	
+	deleteMode = false
+	clearDeleteSelection()
+	
+	if selectedPetId then
+		for _, petId in ipairs(deleteList) do
+			if petId == selectedPetId then
+				selectedPetId = nil
+				break
+			end
+		end
+	end
+	refreshUI()
+end)
+
+--// Equip best / Unequip all
+petEquippedAll.Activated:Connect(function()
+	petEquipBestEvent:FireServer()
+end)
+
+--// Upgrade level
+petUpgButton.Activated:Connect(function()
+	local petFolder = getSelectedPetFolder()
+	if not petFolder then return end
+	
+	local data = getPetData(petFolder)
+	if not data then return end
+	
+	if data.Level >= PetModule.MAX_LEVEL then
+		showWarning("Pet is already max level.")
+		return
+	end
+	
+	petUpgradeEvent:FireServer(petFolder.Name)
+end)
+
+--// Search
+petSearchButton:GetPropertyChangedSignal("Text"):Connect(function()
+	refreshInventory()
+end)
+
+--// Warning from server
+petWarningEvent.OnClientEvent:Connect(function(message)
+	showWarning(message)
+end)
+
+--// Pet folder monitoring
+local function disconnectPetConnections()
+	for _, connection in ipairs(petValueConnections) do
+		connection:Disconnect()
+	end
+	petValueConnections = {}
+end
+
+local function rebuildPetConnections()
+	disconnectPetConnections()
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			for _, valueName in ipairs({
+				"PetName",
+				"Pattern",
+				"Tier",
+				"Level",
+				"Equipped",
+				}) do
+				
+				local value = petFolder:FindFirstChild(valueName)
+				if value then
+					table.insert(petValueConnections,
+						value:GetPropertyChangedSignal("Value"):Connect(function()
+							refreshUI()
+						end)
+					)
+				end
+			end
+		end
+	end
+end
+
+petsFolder.ChildAdded:Connect(function()
+	task.defer(function()
+		rebuildPetConnections()
+		refreshUI()
+	end)
+end)
+
+petsFolder.ChildRemoved:Connect(function()
+	task.defer(function()
+		if selectedPetId and not petsFolder:FindFirstChild(selectedPetId) then
+			selectedPetId = nil
+		end
+		
+		rebuildPetConnections()
+		refreshUI()
+	end)
+end)
+
+--// Resource changes
+moneyValue:GetPropertyChangedSignal("Value"):Connection(function()
+	updateMoney()
+	updateSelectedPetUI()
+end)
+
+xpValue:GetPropertyChangedSignal("Value"):Connect(function()
+	updateSelectedPetUI()
+end)
+
+maxEquippedPetsValue:GetPropertyChangedSignal("Value"):Connect(function()
+	refreshUI()
+end)
+
+maxPetStorageValue:GetPropertyChangedSignal("Value"):Connect(function()
+	updateCountLabels()
+end)
+
+--// Open menu
+petsButton.Activated:Connect(function()
+	petHost.Visible = false
+end)
+
+--// Start
+petHost.Visible = false
+petWarning.Visible = false
+
+petEquipContainer2.Visible = false
+petEquipContainer3.Visible = false
+
+clearSelectedPet()
+rebuildPetConnections()
+refreshUI()
+
+print("PetUI 1.3 loaded")
