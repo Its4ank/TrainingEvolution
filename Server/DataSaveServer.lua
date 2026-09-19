@@ -12,6 +12,8 @@ local XPModule = require(game.ServerScriptService.Modules.XPModule)
 local PlayerDataSetupModule = require(game.ServerScriptService.Modules.PlayerDataSetupModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 
+local player = Players.LocalPlayer
+
 local trainerEvent = ReplicatedStorage:WaitForChild("TrainerEvent")
 local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
 
@@ -25,7 +27,7 @@ end
 local sessionLockMap = MemoryStoreService:GetSortedMap("TrainingEvolution_SessionLocks_v1")
 local SERVER_ID = game.JobId
 
-local DATA_STORE_NAME = "TrainingEvolution_Data_v2"
+local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
 local AUTOSAVE_TIME = 60
@@ -47,6 +49,7 @@ local foldersToSave = {
 	"PotionTimers",
 	"BoostData",
 	"PurchaseReceipts",
+	"EggData",
 }
 
 local function isSavableValue(obj)
@@ -528,6 +531,23 @@ Players.PlayerAdded:Connect(function(player)
 		releaseSessionLock(player)
 		player:Kick("Не удалось загрузить ваши данные. " .. "Пожалуйста, зайдите в игру еще раз.")
 		return
+	end
+	
+	local petsFolder = player:FindFirstChild("Pets")
+
+	if petsFolder then
+		for _, petFolder in ipairs(petsFolder:GetChildren()) do
+			if petFolder:IsA("Folder") then
+				local isOldPet = petFolder:FindFirstChild("FuseTier") 
+					or petFolder:FindFirstChild("EnergyMultiplier") 
+					or petFolder:FindFirstChild("MoneyMultiplier") 
+					or petFolder:FindFirstChild("XPMultiplier") 
+					or petFolder:FindFirstChild("Owned")
+				if isOldPet then
+					petFolder:Destroy()
+				end
+			end
+		end
 	end
 	
 	PlayerDataSetupModule.setup(player)

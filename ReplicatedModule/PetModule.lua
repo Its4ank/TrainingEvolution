@@ -225,22 +225,6 @@ PetModule.Pets = {
 	},
 }
 
---// Eggs
-PetModule.Eggs = {
-	Egg1 = {
-		Name = "Egg1",
-		Price = 100,
-		
-		Pets = {
-			{PetName = "Dog", Chance = 35,},
-			{PetName = "Cow", Chance = 25,},
-			{PetName = "Cat", Chance = 20,},
-			{PetName = "Pig", Chance = 15,},
-			{PetName = "Chicken", Chance = 5,},
-		},
-	},
-}
-
 --// Pattern
 PetModule.PatternRanges = {
 	{MinPattern = 1, MaxPattern = 20, Chance = 60,},
@@ -294,10 +278,6 @@ end
 --// Config getters
 function PetModule.GetPetConfig(petName)
 	return PetModule.Pets[petName]
-end
-
-function PetModule.GetEggConfig(eggName)
-	return PetModule.Eggs[eggName]
 end
 
 function PetModule.GetRarityConfig(rarityName)

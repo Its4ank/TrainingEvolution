@@ -8,6 +8,7 @@ local ServerStorage = game:GetService("ServerStorage")
 --// Modules
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local XPModule = require(ServerScriptService.Modules.XPModule)
+local PetServiceModule = require(ServerScriptService.Modules.PetServiceModule)
 
 --// RemoteEvents
 local petEvent = ReplicatedStorage:FindFirstChild("PetEvent")
@@ -158,36 +159,6 @@ end
 local function getPetPowerScore(petFolder)
 	local stats = getPetOwnStats(petFolder)
 	return PetModule.GetPowerScore(stats)
-end
-
---// Create pet
-local function createPet(player, petName, pattern, tier)
-	if isStorageFull(player) then return nil, "StorageFull" end
-	
-	local petConfig = PetModule.GetPetConfig(petName)
-	if not petConfig then return nil, "UncknownPet" end
-	
-	pattern = math.clamp( tonumber(pattern) or PetModule.MIN_PATTERN, PetModule.MIN_PATTERN, PetModule.MAX_PATTERN)
-	
-	tier = tonumber(tier) or 0
-	
-	if not PetModule.GetTierConfig(tier) then tier = 0 end
-	
-	local petsFolder = getOrCreateFolder(player, "Pets")
-	
-	local petId = "Pet_" .. tostring(os.time()) .. "_" .. tostring(math.random(100000, 999999))
-	
-	local petFolder = Instance.new("Folder")
-	petFolder.Name = petId
-	petFolder.Parent = petsFolder
-	
-	getOrCreateValue(petFolder, "StringValue", "PetName", petName)
-	getOrCreateValue(petFolder, "IntValue", "Pattern", pattern)
-	getOrCreateValue(petFolder, "IntValue", "Tier", tier)
-	getOrCreateValue(petFolder, "IntValue", "Level", 0)
-	getOrCreateValue(petFolder, "BoolValue", "Equipped", false)
-	
-	return petFolder
 end
 
 --// Equip / Unequip

@@ -2,6 +2,10 @@
 
 local PlayerDataSetupModule = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local EggModule = require(ReplicatedStorage.Modules.EggModule)
+
 local function getOrCreateFolder(parent, name)
 	local folder = parent:FindFirstChild(name)
 	if not folder then
@@ -50,6 +54,46 @@ function PlayerDataSetupModule.setup(player)
 	--// Gamepasses
 	local gamepasses = getOrCreateFolder(playerData, "Gamepasses")
 	
+	--// EggData
+	local eggData = getOrCreateFolder(player, "EggData")
+	
+	getOrCreateValue(eggData, "IntValue", "LuckOpenings", 0)
+	getOrCreateValue(eggData, "NumberValue", "LastLeaveTime", 0)
+	
+	--// Egg opened counts
+	local eggOpened = getOrCreateFolder(eggData, "EggOpened")
+	
+	for eggName in pairs(EggModule.Eggs) do
+		getOrCreateValue(eggOpened, "IntValue", eggName, 0)
+	end
+	
+	--// Global Auto Delete
+	local globalAutoDelete = getOrCreateFolder(eggData, "GlobalAutoDelete")
+	
+	local rarities = {
+		"Common",
+		"Uncommon",
+		"Rare",
+		"Epic",
+		"Legendary",
+	}
+	
+	for _, rarityName in ipairs(rarities) do
+		getOrCreateValue(globalAutoDelete, "BoolValue", rarityName, false)
+	end
+	
+	--// Individual Egg Auto Delete
+	local eggAutoDelete = getOrCreateFolder(eggData, "EggAutoDelete")
+	
+	for eggName, eggConfig in pairs(EggModule.Eggs) do
+		local eggFolder = getOrCreateFolder(eggAutoDelete, eggName)
+		
+		for _, petConfig in ipairs(eggConfig.Pets) do
+			getOrCreateValue(eggFolder, "BoolValue", petConfig.PetName, false)
+		end
+	end
+	
+	--// Gamepass
 	getOrCreateValue(gamepasses, "BoolValue", "EnergyPass", false)
 	getOrCreateValue(gamepasses, "BoolValue", "MaxRebirthPass", false)
 	getOrCreateValue(gamepasses, "BoolValue", "AutoRebirthPass", false)
