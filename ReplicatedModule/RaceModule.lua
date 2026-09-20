@@ -1,5 +1,8 @@
 local RaceModule = {}
 
+local FormatModule = require(script.Parent.FormatModule)
+local FormatModule = require(script.Parent.FormatModule)
+
 --// Основные настройки гонки
 RaceModule.Settings = {
 	WaitTime = 30,
@@ -1121,61 +1124,8 @@ function RaceModule.GetSpeedometerArrowRotation(currentSpeed, targetSpeed)
 end
 
 --// Формфтирование чисел
-local suffixes = {
-	{Value = 1e33, Suffix = "Dc"},
-	{Value = 1e30, Suffix = "N"},
-	{Value = 1e27, Suffix = "O"},
-	{Value = 1e24, Suffix = "Sp"},
-	{Value = 1e21, Suffix = "Sx"},
-	{Value = 1e18, Suffix = "Qi"},
-	{Value = 1e15, Suffix = "Q"},
-	{Value = 1e12, Suffix = "T"},
-	{Value = 1e9, Suffix = "B"},
-	{Value = 1e6, Suffix = "M"},
-	{Value = 1e3, Suffix = "K"},
-}
-
-function RaceModule.FormatNumber(number)
-	number = tonumber(number) or 0
-	
-	local absoluteNumber = math.abs(number)
-	
-	if absoluteNumber < 1000 then
-		if number % 1 == 0 then
-			return tostring(math.floor(number))
-		end
-		
-		return trimZeros(string.format("%.2f", number))
-	end
-	
-	for _, suffixData in ipairs(suffixes) do
-		if absoluteNumber >= suffixData.Value then
-			local scaleNumber = number / suffixData.Value
-			local absoluteScaled = math.abs(scaleNumber)
-			local decimalPlaces 
-			
-			if absoluteScaled < 10 then
-				decimalPlaces = 2
-			elseif absoluteScaled < 100 then
-				decimalPlaces = 1
-			else
-				decimalPlaces = 0
-			end
-			
-			local formatted = trimZeros(string.format("%." .. decimalPlaces .. "f", scaleNumber))
-			
-			if absoluteScaled < 10 and not formatted:find("%.") then
-				formatted ..= ".0"
-			end
-			
-			return formatted .. suffixData.Suffix
-		end
-	end
-	return tostring(math.floor(number))
-end
-
 function RaceModule.FormatDistance(distance)
-	return RaceModule.FormatNumber(distance) .. "M"
+	return FormatModule.FormatNumber(distance) .. "M"
 end
 
 function RaceModule.FormatMultiplier(multiplier)
