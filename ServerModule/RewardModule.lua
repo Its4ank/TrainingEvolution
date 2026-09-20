@@ -1,9 +1,14 @@
 local RewardModule = {}
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PetModule = require(game.ReplicatedStorage.Modules.PetModule)
-local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+local PetModule = require(ReplicatedStorage.Modules.PetModule)
+
+local BoostModule = require(ServerScriptService.Modules.BoostModule)
+
+
 
 local DAILY_SCHEDULE_LENGTH = 28
 
@@ -432,33 +437,6 @@ local function markRewardClaimed(player, rewardData)
 	end
 end
 
--- FORMATING
-function RewardModule.FormatNumber(number)
-	number = math.floor(tonumber(number) or 0)
-	
-	local suffixes = {
-		{Value = 1e30, Suffix = "No"}, -- Нонилион
-		{Value = 1e27, Suffix = "Oc"}, --Октиллион
-		{Value = 1e24, Suffix = "Sp"}, --Септиллион
-		{Value = 1e21, Suffix = "Sx"}, --Секстиллион
-		{Value = 1e18, Suffix = "Qi"}, --Квинтиллион
-		{Value = 1e15, Suffix = "Qa"}, --Квадриллион
-		{Value = 1e12, Suffix = "T"}, --Триллион
-		{Value = 1e9, Suffix = "B"}, --Миллиард
-		{Value = 1e6, Suffix = "M"}, --Миллион
-		{Value = 1e3, Suffix = "K"}, --Тысяча
-	}
-	
-	for _, suffixData in ipairs(suffixes) do
-		if number >= suffixData.Value then
-			local formatted = string.format("%.1f", number / suffixData.Value)
-			formatted = formatted:gsub("%.0$", "")
-			return formatted .. suffixData.Suffix
-		end
-	end
-	return tostring(number)
-end
-
 -- DAILY CYCLE CALCULATION
 function RewardModule.GetDailyCycleInfo(absoluteDay)
 	absoluteDay = math.max(1, math.floor(tonumber(absoluteDay) or 1))
@@ -528,20 +506,21 @@ function RewardModule.BuildRewardData(player, config, previousMaxValue)
 	local amount = RewardModule.CalculateAmount(player, config, previousMaxValue)
 	local displayName = typeData.Name
 	local displayText
+	local formattedAmount = FormatModule.FormatNumber(amount)
 	
 	if config.Type == "Pet" then
 		displayName = config.PetName or "Pet"
 		displayText = displayName
 	elseif config.Type == "PotionBundle" then
-		displayText = "+" .. RewardModule.FormatNumber(amount) .. " All Potions"
+		displayText = "+" .. formattedAmount(amount) .. " All Potions"
 	elseif config.Type == "PetStorage" then
-		displayText = "+" .. RewardModule.FormatNumber(amount) .. " Pet Storage"
+		displayText = "+" .. formattedAmount(amount) .. " Pet Storage"
 	elseif config.Type == "EquippedPetSlot" then
-		displayText = "+" .. RewardModule.FormatNumber(amount) .. " Equipped Pet Slot"
+		displayText = "+" .. formattedAmount(amount) .. " Equipped Pet Slot"
 	elseif config.Type == "TimeBoostBonus" then
 		displayText = "+" .. tostring(amount) .. "% Time Boost Speed"
 	else
-		displayText = "+" .. RewardModule.FormatNumber(amount) .. " " .. displayName
+		displayText = "+" .. formattedAmount(amount) .. " " .. displayName
 	end
 	
 	return {
