@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
+local FormatModule = require(game.ReplicatedStorage.Modules.FormatModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
@@ -29,6 +30,7 @@ local purchaseFrame = shopHost:WaitForChild("PurchaseFrame")
 local purchaseBlurFrame = shopHost:WaitForChild("PurchaseBlurFrame")
 local backButton = shopHost:WaitForChild("BackShopButton")
 local leaderShopUI = shopHost:WaitForChild("LeaderstatsShopUI")
+local shopWarningLabel = shopHost:WaitForChild("ShopWarningLabel")
 
 local srRobuxLabel = leaderShopUI:WaitForChild("SRRobuxLabel")
 
@@ -87,6 +89,7 @@ local buyStatusLabel = buyPassButton:WaitForChild("BuyStatusLabel")
 local buyRobuxPassButton = purchaseFrame:WaitForChild("BuyRobuxPassButton")
 local buyRobuxStatusLabel = buyRobuxPassButton:WaitForChild("BuyRobuxStatusLabel")
 local purchaseIconPass = purchaseFrame:WaitForChild("PurchaseIconPass")
+local closePurcFrame = purchaseFrame:WaitForChild("ClosePurcFrame")
 
 local selectedPass = nil 
 
@@ -175,21 +178,6 @@ local function setMusicVolume(volume)
 	tween:Play()
 end
 
-local function formatNumber(n)
-	if n >= 1e18 then
-		return string.format("%.1fQ", n / 1e18)
-	elseif n >= 1e12 then
-		return string.format("%.1fT", n / 1e12)
-	elseif n >= 1e9 then
-		return string.format("%.1fB", n / 1e9)
-	elseif n >= 1e6 then
-		return string.format("%.1fM", n / 1e6)
-	elseif n >= 1e3 then
-		return string.format("%.1fK", n / 1e3)
-	else
-		return tostring(n)
-	end
-end
 
 local function showSRRobuxInfo(text)
 	srRobuxInfoLabel.Visible = true
@@ -205,6 +193,20 @@ local function showSRRobuxInfo(text)
 	end)
 end
 
+local function showShopWarning(text)
+	shopWarningLabel.Text = text
+	shopWarningLabel.Visible = true
+	
+	task.spawn(function()
+		task.wait(3)
+		
+		if shopWarningLabel.Text == text then
+			shopWarningLabel.Visible = false
+			shopWarningLabel.Text = ""
+		end
+	end)
+end
+
 local function getPotionValue(potionId)
 	return ClientDataModule.GetPotion(player, potionId)
 end
@@ -216,7 +218,7 @@ local function updatePotionAmount(potionId)
 	local numberLabel = frame:WaitForChild("NumberPotionLabel")
 	local potionValue = getPotionValue(potionId)
 	
-	numberLabel.Text = "x" .. formatNumber(potionValue.Value)
+	numberLabel.Text = "x" .. FormatModule.FormatNumber(potionValue.Value)
 end
 
 local function updatePotionPrices()
@@ -226,7 +228,7 @@ local function updatePotionPrices()
 			if button then 
 				local valueLabel = button:FindFirstChild("ValuePotions")
 				if valueLabel then 
-					valueLabel.Text = formatNumber(priceData[priceMode]) .. " " .. priceMode
+					valueLabel.Text = FormatModule.FormatNumber(priceData[priceMode]) .. " " .. priceMode
 				end
 			end
 		end
@@ -288,12 +290,12 @@ local function setupPotionFrame(potionId)
 	
 	frame:WaitForChild("Buy1PotionButton").MouseButton1Click:Connect(function()
 		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. formatNumber(srRobux.Value)
+			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
 			local price = potionPrices[1].SRRobux
 			local missing = price - srRobux.Value
 			
 			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. formatNumber(missing) .. " more.")
+				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
 				return
 			end
 		end
@@ -302,12 +304,12 @@ local function setupPotionFrame(potionId)
 	
 	frame:WaitForChild("Buy5PotionButton").MouseButton1Click:Connect(function()
 		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. formatNumber(srRobux.Value)
+			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
 			local price = potionPrices[5].SRRobux
 			local missing = price - srRobux.Value
 
 			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. formatNumber(missing) .. " more.")
+				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
 				return
 			end
 		end
@@ -316,12 +318,12 @@ local function setupPotionFrame(potionId)
 	
 	frame:WaitForChild("Buy10PotionButton").MouseButton1Click:Connect(function()
 		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. formatNumber(srRobux.Value)
+			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
 			local price = potionPrices[10].SRRobux
 			local missing = price - srRobux.Value
 
 			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. formatNumber(missing) .. " more.")
+				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
 				return
 			end
 		end
@@ -389,12 +391,14 @@ local function openPassDetails(passId)
 	passIconDetails.Image = passData.Icon
 	detailsPassBoostLabel.Text = passData.Boost
 	detailsPassInfoLabel.Text = passData.Info
-	purchaseInfoLabel.Text = formatNumber(passData.RobuxPrice) .. " Robux OR                   " .. formatNumber(passData.SRobuxPrice) .. " SRRobux"
+	purchaseInfoLabel.Text = FormatModule.FormatNumber(passData.RobuxPrice) .. " Robux OR                   " .. FormatModule.FormatNumber(passData.SRobuxPrice) .. " SRRobux"
 	
 	if passData.Owned then
 		buyStatusLabel.Text = "Owned"
+		buyRobuxStatusLabel.Text = "Owned"
 	else
 		buyStatusLabel.Text = "Buy"
+		buyRobuxStatusLabel.Text = "Buy"
 	end
 	
 	detailsFrame.Visible = true
@@ -412,7 +416,7 @@ local function togglePassDetails(passId)
 end
 
 local function updateSRRobuxLabel()
-	srRobuxLabel.Text = "SRRobux: " .. formatNumber(srRobux.Value)
+	srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
 end
 
 local blur = Lighting:FindFirstChild("ShopBlur")
@@ -471,7 +475,10 @@ local function updateOwnedPass(passId)
 	updatePassCard(passId)
 	
 	if selectedPass == passId then
-		buyStatusLabel.Text = passData.Owned and "Owned" or "Buy"
+		local status = passData.Owned and "Owned" or "Buy"
+		
+		buyStatusLabel.Text = status
+		buyRobuxStatusLabel.Text = status
 	end
 end
 
@@ -511,13 +518,16 @@ local function buySelectedPass()
 
 	if passData.Owned then
 		buyStatusLabel.Text = "Owned"
+		buyRobuxStatusLabel.Text = "Owned"
+		
+	    showShopWarning("This pass is already owned.")
 		return
 	end
 	
 	local missing = passData.SRobuxPrice - srRobux.Value
 	
 	if missing > 0 then
-		showSRRobuxInfo("Not enoung SRRobux, Need " .. formatNumber(missing) .. " more.")
+		showSRRobuxInfo("Not enoung SRRobux, Need " .. FormatModule.FormatNumber(missing) .. " more.")
 		return
 	end
 
@@ -532,15 +542,34 @@ local function buySelectedPassRobux()
 
 	if passData.Owned then
 		buyStatusLabel.Text = "Owned"
+		buyRobuxStatusLabel.Text = "Owned"
+		
+		showShopWarning("This pass is already owned.")
 		return
 	end
 	buyPassEvent:FireServer(selectedPass, "Robux")
 end
 
+purchaseButton.MouseButton1Click:Connect(function()
+	purchaseFrame.Visible = true
+	purchaseBlurFrame.Visible = true
+end)
+
+closePurcFrame.MouseButton1Click:Connect(function()
+	purchaseFrame.Visible = false
+	purchaseBlurFrame.Visible = false
+end)
+
 shopOpenButton.MouseButton1Click:Connect(openShop)
 backButton.MouseButton1Click:Connect(closeShop)
-buyPassButton.MouseButton1Click:Connect(buySelectedPass)
-buyRobuxPassButton.MouseButton1Click:Connect(buySelectedPassRobux)
+buyPassButton.Activated:Connect(function()
+	print("SR")
+	buySelectedPass()
+end)
+buyRobuxPassButton.Activated:Connect(function()
+	print("Robux")
+	buySelectedPassRobux()
+end)
 
 energyTapPassButton.MouseButton1Click:Connect(function()
 	togglePassDetails("EnergyPass")
@@ -559,7 +588,7 @@ detailsFrame.Visible = false
 
 closeShop()
 
-srRobuxLabel.Text = formatNumber(srRobux.Value)
+srRobuxLabel.Text = FormatModule.FormatNumber(srRobux.Value)
 
 srRobux.Changed:Connect(updateSRRobuxLabel)
 updateSRRobuxLabel()
@@ -570,7 +599,10 @@ shopUpdateEvent.OnClientEvent:Connect(function(passId, success, message)
 	
 	if success then
 		passData.Owned = true
+		
 		buyStatusLabel.Text = "Owned"
+		buyRobuxStatusLabel.Text = "Owned"
+		
 		updatePassCard(passId)
 		updateSRRobuxLabel()
 	else
