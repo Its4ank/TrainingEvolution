@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 --// Player
 local player = Players.LocalPlayer
@@ -43,7 +44,7 @@ local petStageLabel = petMenu:WaitForChild("PetStageLabel")
 --// Level bar
 local petBarWindow = petMenu:WaitForChild("PetBarWindow")
 local petLvlBar = petBarWindow:WaitForChild("PetLvlBar")
-local petBarRequirXp = petBarWindow:WaitForChild("PetBarRequirXp")
+local petBarRequirXp = petMenu:WaitForChild("PetBarRequirXp")
 
 --// Resource / counts
 local petStorageLabel = petMenu:WaitForChild("PetStorageLabel")
@@ -109,28 +110,6 @@ local warningToken = 0
 local petValueConnections = {}
 
 --// Helpers
-local function formatNumber(number)
-	number = tonumber(number) or 0
-	
-	if number >= 1e18 then
-		return string.format("%.1fQ", number / 1e18)
-	elseif number >= 1e12 then
-		return string.format("%.1fT", number / 1e12)
-	elseif number >= 1e9 then
-		return string.format("%.1fB", number / 1e9)
-	elseif number >= 1e6 then
-		return string.format("%.1fM", number / 1e6)
-	elseif number >= 1e3 then
-		return string.format("%.1fK", number / 1e3)
-	end
-	
-	if number % 1 == 0 then
-		return tostring(math.floor(number))
-	end
-	
-	return string.format("%.1f", number)
-end
-
 local function showWarning(text)
 	warningToken += 1
 	
@@ -281,7 +260,7 @@ end
 
 --//Money
 local function updateMoney()
-	petResMoney.Text = formatNumber(moneyValue.Value)
+	petResMoney.Text = FormatModule.FormatNumber(moneyValue.Value)
 end
 
 --// Equipped slot UI
@@ -372,7 +351,7 @@ local function updateLevelProgress(level)
 		progress = math.clamp(currentXP / requiredXP, 0, 1)
 	end
 	
-	petBarRequirXp.Text = formatNumber(currentXP) .. "/" .. formatNumber(requiredXP)
+	petBarRequirXp.Text = FormatModule.FormatNumber(currentXP) .. "/" .. FormatModule.FormatNumber(requiredXP)
 	petLvlBar.Position = UDim2.new(-1 + progress, 0, 0.207, 0)
 end
 
@@ -389,7 +368,7 @@ local function clearSelectedPet()
 	petPowerBoost.Text = ""
 	petRarityLabel.Text = ""
 	petPatternLabel.Text = ""
-	petStoraLabel.Text = ""
+	petStageLabel.Text = ""
 	
 	petRarityIcon.Image = ""
 	
@@ -416,9 +395,9 @@ local function updateSelectedPetUI()
 	
 	petName.Text = displayData.Name
 	petSelectLevel.Text = tostring(data.Level)
-	petEnergyBoost.Text = "+" .. formatNumber(displayData.Energy)
-	petMoneyBoost.Text = "+" .. formatNumber(displayData.Money)
-	petPowerBoost.Text = "+" .. formatNumber(displayData.RacePower)
+	petEnergyBoost.Text = "+" .. FormatModule.FormatNumber(displayData.Energy)
+	petMoneyBoost.Text = "+" .. FormatModule.FormatNumber(displayData.Money)
+	petPowerBoost.Text = "+" .. FormatModule.FormatNumber(displayData.RacePower)
 	petRarityLabel.Text = string.upper(displayData.Rarity)
 	petRarityIcon.Image = displayData.RarityIcon or ""
 	petPatternLabel.Text = "PATTERN " .. tostring(data.Pattern)
@@ -437,7 +416,7 @@ local function updateSelectedPetUI()
 		local cost = PetModule.GetLevelUpgradeCost(data.Level + 1)
 		
 		if cost then
-			upgMoneyLabel.Text = " " .. formatNumber(cost.Money)
+			upgMoneyLabel.Text = " " .. FormatModule.FormatNumber(cost.Money)
 		end
 	end
 	updateLevelProgress(data.Level)
