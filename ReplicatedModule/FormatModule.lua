@@ -68,7 +68,7 @@ local function getSuffix(index)
 	local hundreds = math.floor(illionIndex / 100) % 10
 
 	local suffix = ONES_PREFIXES[ones] .. TENS_SUFFIXES[tens] .. HUNDREDS_SUFFIXES[hundreds]
-	suffixeCache[index] = suffix
+	suffixCache[index] = suffix
 
 	return suffix
 end
@@ -123,7 +123,8 @@ function FormatModule.FormatNumber(value)
 	local scaledNumber = absoluteNumber 
 
 	while scaledNumber >= 1000 and suffixIndex < MAX_SUFFIX_INDEX do
-		scaledNumber /= 1000 suffixIndex += 1
+		scaledNumber /= 1000 
+		suffixIndex += 1
 	end
 
 	local decimalPlaces = getDecimalPlaces(scaledNumber)
@@ -137,7 +138,7 @@ function FormatModule.FormatNumber(value)
 		roundedText = string.format("%." .. decimalPlaces .. "f", scaledNumber)
 	end
 
-	return sign .. trimTrailingZeros(roundedText)
+	return sign .. trimTrailingZeros(roundedText) .. getSuffix(suffixIndex)
 end
 
 FormatModule.FormatShort = FormatModule.FormatNumber
