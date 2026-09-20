@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
 local TrainerModule = require(game.ReplicatedStorage.Modules.TrainerModule)
+local FormatModule = require(game.ReplicatedStorage.Modules.FormatModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
@@ -447,24 +448,6 @@ local connectedValues = {}
 local trainerStructureConnections = {}
 local connectedValueObjects = {}
 
-local function formatNumber(value)
-	value = tonumber(value) or 0
-
-	if value >= 1e15 then
-		return string.format("%.2fQ", value / 1e15)
-	elseif value >= 1e12 then
-		return string.format("%.2fT", value / 1e12)
-	elseif value >= 1e9 then
-		return string.format("%.2fB", value / 1e9)
-	elseif value >= 1e6 then
-		return string.format("%.2fM", value / 1e6)
-	elseif value >= 1e3 then
-		return string.format("%.2fK", value / 1e3)
-	else
-		return tostring(math.floor(value))
-	end
-end
-
 local function getTrainerPriceText(trainerName)
 	local trainerData = TrainerModule.getTrainerData(trainerName)
 	if not trainerName then
@@ -475,13 +458,13 @@ local function getTrainerPriceText(trainerName)
 		local price = tonumber(trainerData.Price) or 0
 		local currencyName = tostring(trainerData.Currency or "")
 		
-		return formatNumber(price) .. " " .. string.upper(currencyName)
+		return FormatModule.FormatNumber(price) .. " " .. string.upper(currencyName)
 	end
 	
 	if trainerData.UnlockType == "EggHatched" then
 		local requiredPets = tonumber(trainerData.RequiredPets) or 0
 		
-		return formatNumber(requiredPets) .. " EGGS HATCHED"
+		return FormatModule.FormatNumber(requiredPets) .. " EGGS HATCHED"
 	end
 	return ""
 end
@@ -592,7 +575,7 @@ local function formatRequirementValue(requirementType, value)
 	if requirementType == "TrainerTreadmillTime" then
 		return formatTime(value)
 	end
-	return formatNumber(value)
+	return FormatModule.FormatNumber(value)
 end
 
 local function showWarning(text, duration)
@@ -946,11 +929,11 @@ end
 --// LeaderstatsUI
 local function updateLeaderstats()
 	if srRobuxLabel then 
-		srRobuxLabel.Text = formatNumber(srRobux and srRobux.Value or 0)
+		srRobuxLabel.Text = FormatModule.FormatNumber(srRobux and srRobux.Value or 0)
 	end
 	
 	if moneyLabel then
-		moneyLabel.Text = formatNumber(money and money.Value or 0)
+		moneyLabel.Text = FormatModule.FormatNumber(money and money.Value or 0)
 	end
 	
 	local info = TRAINER_INFO[selectedTrainerName]
@@ -978,7 +961,7 @@ local function updateLeaderstats()
 	end
 	
 	if trainerLeaderLabel then 
-		trainerLeaderLabel.Text = formatNumber(leaderValue)
+		trainerLeaderLabel.Text = FormatModule.FormatNumber(leaderValue)
 	end
 end
 
@@ -1054,14 +1037,14 @@ local function updateMainTrainerUI()
 			trainerLvlPrice.Text = "MAX"
 		end
 	else
-		trainerXpLabel.Text = formatNumber(currentXP) .. " / " .. formatNumber(requiredXP)
+		trainerXpLabel.Text = FormatModule.FormatNumber(currentXP) .. " / " .. FormatModule.FormatNumber(requiredXP)
 		
 		local xpProgress = math.clamp(currentXP / math.max(1, requiredXP), 0, 1)
 		
 		trainerXpBar.Size = UDim2.new(0.19 * xpProgress, 0, 0.032, 0)
 		
 		if trainerLvlPrice then
-			trainerLvlPrice.Text = formatNumber(requiredMoney)
+			trainerLvlPrice.Text = FormatModule.FormatNumber(requiredMoney)
 		end
 	end
 	
@@ -1397,7 +1380,7 @@ trainerEquipResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 		local requiredPets = monikaData and tonumber(monikaData.RequiredPets) or 0
 		local currentPets = eggHatched and eggHatched.Value or 0
 		local missingPets = math.max(0, requiredPets - currentPets)
-		showWarning("NEED " .. formatNumber(missingPets) .. " MORE EGG HATCHED!", 4)
+		showWarning("NEED " .. FormatModule.FormatNumber(missingPets) .. " MORE EGG HATCHED!", 4)
 	elseif resultType == "CurrencyMissing" then
 		showWarning("CURRENCY NOT FOUND!", 3)
 	else
@@ -1449,11 +1432,11 @@ trainerLevelResultEvent.OnClientEvent:Connect(function(success, trainerName, res
 		local missingParts = {}
 		
 		if missingMoney > 0 then
-			table.insert(missingParts, formatNumber(missingMoney) .. " MONEY")
+			table.insert(missingParts, FormatModule.FormatNumber(missingMoney) .. " MONEY")
 		end
 		
 		if missingXP > 0 then
-			table.insert(missingParts, formatNumber(missingXP) .. " XP")
+			table.insert(missingParts, FormatModule.FormatNumber(missingXP) .. " XP")
 		end
 		showWarning("NEED " .. table.concat(missingParts, " AND "), 4)
 	elseif resultType == "ResourceMissing" then
@@ -1570,7 +1553,7 @@ trainerStageResultEvent.OnClientEvent:Connect(function(
 		if srRobuxReward > 0 then
 			showWarning(
 				"MYTHIC RANK COMPLETE! +"
-					.. formatNumber(
+					.. FormatModule.FormatNumber(
 						srRobuxReward
 					)
 					.. " SrPoint",
