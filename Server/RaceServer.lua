@@ -10,6 +10,7 @@ local RebirthModule = require(ReplicatedStorage.Modules.RebirthModule)
 local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ItemModule = require(ServerScriptService.Modules.ItemModule)
@@ -771,13 +772,6 @@ local warningPriority = {
 	"Energy",
 }
 
-local function formatNumber(number)
-	local success, result = pcall(RaceModule.FormatNumber, number)
-	
-	if success then return result end
-	return tostring(number)
-end
-
 local function fireWarning(player, message)
 	raceWarningEvent:FireClient(player, message)
 end
@@ -788,7 +782,7 @@ local function fireMissingWarning(player, missing)
 		
 		if amount and amount > 0 then
 			fireWarning(player, "You are missing " 
-				.. formatNumber(amount)
+				.. FormatModule.FormatNumber(amount)
 				.. " "
 				.. resourceDisplayNames[resourceName]
 			)
