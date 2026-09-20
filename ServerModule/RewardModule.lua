@@ -498,50 +498,56 @@ function RewardModule.CalculateAmount(player, config, previousMaxValue)
 end
 
 function RewardModule.BuildRewardData(player, config, previousMaxValue)
-	if not config then return nil, "ConfigMissing" end
-	
+	if not config then
+		return nil, "ConfigMissing"
+	end
+
 	local typeData = RewardModule.RewardTypes[config.Type]
-	if not typeData then return nil, "UnknownRewardType" end 
-	
+
+	if not typeData then
+		return nil, "UnknownRewardType"
+	end
+
 	local amount = RewardModule.CalculateAmount(player, config, previousMaxValue)
+
 	local displayName = typeData.Name
-	local displayText
 	local formattedAmount = FormatModule.FormatNumber(amount)
-	
+	local displayText
+
 	if config.Type == "Pet" then
 		displayName = config.PetName or "Pet"
 		displayText = displayName
 	elseif config.Type == "PotionBundle" then
-		displayText = "+" .. formattedAmount(amount) .. " All Potions"
+		displayText = "+" .. formattedAmount .. " All Potions"
 	elseif config.Type == "PetStorage" then
-		displayText = "+" .. formattedAmount(amount) .. " Pet Storage"
+		displayText = "+" .. formattedAmount .. " Pet Storage"
 	elseif config.Type == "EquippedPetSlot" then
-		displayText = "+" .. formattedAmount(amount) .. " Equipped Pet Slot"
+		displayText = "+" .. formattedAmount .. " Equipped Pet Slot"
 	elseif config.Type == "TimeBoostBonus" then
-		displayText = "+" .. tostring(amount) .. "% Time Boost Speed"
+		displayText = "+" .. formattedAmount .. "% Time Boost Speed"
 	else
-		displayText = "+" .. formattedAmount(amount) .. " " .. displayName
+		displayText = "+" .. formattedAmount .. " " .. displayName
 	end
-	
+
 	return {
 		Type = config.Type,
 		Name = displayName,
 		Icon = config.Icon or typeData.Icon,
 		Category = typeData.Category,
-		
+
 		Amount = amount,
 		Wealth = config.Wealth,
 		DisplayText = displayText,
-		
+
 		PetName = config.PetName,
 		OnceKey = config.OnceKey,
-		
+
 		AbsoluteDay = config.AbsoluteDay,
 		ScheduleDay = config.ScheduleDay,
 		Cycle = config.Cycle,
-		
+
 		UnlockTime = config.UnlockTime,
-		
+
 		Source = config.Source,
 		ClaimKey = config.ClaimKey,
 	}
