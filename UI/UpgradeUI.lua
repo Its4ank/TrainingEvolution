@@ -10,6 +10,7 @@ local raceGui = script.Parent
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 ClientDataModule.WaitUntilReady(player)
 MenuManager.init(raceGui)
@@ -70,30 +71,6 @@ local upgradeSelectionButtons = {}
 local warningVersion = 0
 
 --// Helpers
-local function formatNumber(value)
-	value = math.floor(tonumber(value) or 0)
-	
-	local sign = ""
-	
-	if value < 0 then 
-		sign = "-"
-		value = math.abs(value)
-	end
-	
-	local text = tostring(value)
-	local formatted = text
-	
-	while true do
-		local newText, replacements = formatted:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
-		formatted = newText
-		
-		if replacements == 0 then
-			break
-		end
-	end
-	return sign .. formatted
-end
-
 local function clearWarning()
 	warningVersion += 1
 	upgWarningLabel.Visible = false
@@ -116,7 +93,7 @@ local function showWarning(message)
 end
 
 local function updateGemsLabel()
-	gemsLabel.Text = formatNumber(gemsValue.Value)
+	gemsLabel.Text = FormatModule.FormatNumber(gemsValue.Value)
 end
 
 --// Получаем 10 готовых UpgLvlFrame
@@ -263,7 +240,7 @@ local function updateLevelFrame(levelFrame, upgradeName, displayedLevel, current
 		
 		local price = UpgradeModule.GetLevelPrice(upgradeName, displayedLevel)
 		if type(price) == "number" then
-			controls.PriceLabel.Text = formatNumber(price)
+			controls.PriceLabel.Text = FormatModule.FormatNumber(price)
 		else
 			controls.PriceLabel.Text = "?"
 		end
@@ -465,7 +442,7 @@ local function getFailureMessage(result)
 	if code == "NotEnoughGems" then
 		local missingGems = tonumber(result.MissingGems) or 0
 		
-		return "Для улучшения вам не хватает " .. formatNumber(missingGems) .. " гемов"
+		return "Для улучшения вам не хватает " .. FormatModule.FormatNumber(missingGems) .. " гемов"
 	end
 	
 	if code == "MaxLevel" then
