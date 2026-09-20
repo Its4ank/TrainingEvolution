@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 --// Player
 local raceGui = script.Parent
@@ -161,24 +162,6 @@ local function setText(object, text)
 	end
 end
 
-local function formatShort(n)
-	n = tonumber(n) or 0
-	
-	if n >= 1e15 then 
-		return string.format("%.2fQ", n / 1e15)
-	elseif n >= 1e12 then 
-		return string.format("%.2fT", n / 1e12)
-	elseif n >= 1e9 then
-		return string.format("%.2fB", n / 1e9)
-	elseif n >= 1e6 then 
-		return string.format("%.2fM", n / 1e6)
-	elseif n >= 1e3 then
-		return string.format("%.2fK", n / 1e3)
-	else
-		return tostring(math.floor(n))
-	end
-end
-
 local function formatTime(seconds)
 	seconds = math.max(0, math.floor(seconds or 0))
 	
@@ -239,11 +222,11 @@ local function updateLeaderstatsUI()
 	local rebirth = ClientDataModule.GetRebirth(player)
 
 	if energy then 
-		energyLabel.Text = formatShort(energy.Value)
+		energyLabel.Text = FormatModule.FormatShort(energy.Value)
 	end
 
 	if rebirth then 
-		rebirthLabel.Text = formatShort(rebirth.Value)
+		rebirthLabel.Text = FormatModule.FormatShort(rebirth.Value)
 	end
 end
 
@@ -334,11 +317,11 @@ local function buildMissingText(info)
 	end
 	
 	if missing.Energy and missing.Energy > 0 then
-		table.insert(parts, formatShort(missing.Energy) .. " Energy")
+		table.insert(parts, FormatModule.FormatShort(missing.Energy) .. " Energy")
 	end
 	
 	if missing.Rebirth and missing.Rebirth > 0 then
-		table.insert(parts, formatShort(missing.Rebirth) .. " Rebirth")
+		table.insert(parts, FormatModule.FormatShort(missing.Rebirth) .. " Rebirth")
 	end
 	
 	if missing.Time and missing.Time > 0 then
@@ -391,8 +374,8 @@ local function updateTierFrame(info)
 	local req = tierInfo.Requirement
 	local cur = tierInfo.Current
 	
-	energyRequirStatus.Text = formatShort(cur.Energy) .. " / " .. formatShort(req.Energy) .. " Energy"
-	rebirthRequirStatus.Text = formatShort(cur.Rebirth) .. " / " .. formatShort(req.Rebirth) .. " Rebirth"
+	energyRequirStatus.Text = FormatModule.FormatShort(cur.Energy) .. " / " .. FormatModule.FormatShort(req.Energy) .. " Energy"
+	rebirthRequirStatus.Text = FormatModule.FormatShort(cur.Rebirth) .. " / " .. FormatModule.FormatShort(req.Rebirth) .. " Rebirth"
 	timeRequirStatus.Text = formatTime(cur.Time) .. " / " .. formatTime(req.Time)
 	
 	tweenRequirementBar(energyBar, getProgress(cur.Energy, req.Energy))
@@ -432,7 +415,7 @@ local function updateDetails(info)
 	if not info then return end 
 	
 	currentInfo = info
-	boostTreadmillLabel.Text = "+" .. formatShort(info.CurrentEnergy)
+	boostTreadmillLabel.Text = "+" .. FormatModule.FormatShort(info.CurrentEnergy)
 	treadStatusLabel.Text = info.Name or ("Treadmill " .. selectedTreadmillId)
 	updateChoiceIcons()
 	
@@ -449,8 +432,8 @@ local function updateDetails(info)
 	treadStageNumber.Text = "Stage " .. tostring(info.Stage)
 	treadLvlNumber.Text = "Lvl: " .. tostring(info.Level) .. " / " .. tostring(info.StageMaxLevel)
 	
-	treadQuanCurrent.Text = "+" .. formatShort(info.CurrentEnergy) .. " Energy/sec"
-	treadQuanNext.Text = "+" .. formatShort(info.NextEnergy) .. " Next"
+	treadQuanCurrent.Text = "+" .. FormatModule.FormatShort(info.CurrentEnergy) .. " Energy/sec"
+	treadQuanNext.Text = "+" .. FormatModule.FormatShort(info.NextEnergy) .. " Next"
 	
 	setImage(treadStageIcon, info.StageIcon)
 	
@@ -459,7 +442,7 @@ local function updateDetails(info)
 	elseif info.Level >= info.StageMaxLevel then
 		upgValue.Text = "Tier Up Required"
 	else 
-		upgValue.Text = formatShort(info.LevelPrice) .. " Energy"
+		upgValue.Text = FormatModule.FormatShort(info.LevelPrice) .. " Energy"
 	end
 	
 	updateTierFrame(info)
@@ -480,7 +463,7 @@ local function updateBoostTreadmillLabel()
 	local info = getInfo(treadmillId)
 	if not info then return end
 	
-	boostTreadmillLabel.Text = "+" .. formatShort(info.CurrentEnergy)
+	boostTreadmillLabel.Text = "+" .. FormatModule.FormatShort(info.CurrentEnergy)
 end
 
 local function refreshAllTreadmillUI()
@@ -587,7 +570,7 @@ treadmillResponseEvent.OnClientEvent:Connect(function(action, success, reason, i
 	if action == "UpgradeLevel" then 
 		if not success then 
 			if reason == "NOT_ENOUGH_ENERGY" and info and info.Need then
-				showWarning("Need " .. formatShort(info.Need) .. " more Energy")
+				showWarning("Need " .. FormatModule.FormatShort(info.Need) .. " more Energy")
 			elseif reason == "NEED_STAGE_UP" then
 				showWarning("Upgrade your Tier first")
 			elseif reason == "MAX_LEVEL" then 
