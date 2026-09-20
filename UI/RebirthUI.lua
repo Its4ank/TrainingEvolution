@@ -9,6 +9,7 @@ local RebirthModule = require(ReplicatedStorage.Modules.RebirthModule)
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 local player = Players.LocalPlayer
 local gui = script.Parent
@@ -230,25 +231,6 @@ local rebirthMaxStatusLabel =
 	rebirthMaxButton:WaitForChild("StatusRebirthLabel")
 
 --// Helpers
-
-local function formatNumber(number)
-	number = tonumber(number) or 0
-
-	if number >= 1e18 then
-		return string.format("%.1fQ", number / 1e18)
-	elseif number >= 1e12 then
-		return string.format("%.1fT", number / 1e12)
-	elseif number >= 1e9 then
-		return string.format("%.1fB", number / 1e9)
-	elseif number >= 1e6 then
-		return string.format("%.1fM", number / 1e6)
-	elseif number >= 1e3 then
-		return string.format("%.1fK", number / 1e3)
-	end
-
-	return tostring(number)
-end
-
 local function promptPass(passName)
 	local passData = ShopModule.Passes[passName]
 
@@ -339,17 +321,17 @@ local function setEnergyText(label, price)
 		'<img src="'
 		.. ENERGY_ICON
 		.. '"/> '
-		.. formatNumber(price)
+		.. FormatModule.FormatNumber(price)
 end
 
 --// UI updating
 
 local function updateLeaderstatsUI()
 	energyLabel.Text =
-		formatNumber(energyValue.Value)
+		FormatModule.FormatNumber(energyValue.Value)
 
 	rebirthLabel.Text =
-		formatNumber(rebirthValue.Value)
+		FormatModule.FormatNumber(rebirthValue.Value)
 end
 
 local function updateRebirthButtonUnlocks()
@@ -471,7 +453,7 @@ local function updateDetails()
 		)
 
 	totalRebirthLabel.Text =
-		formatNumber(currentRebirths)
+		FormatModule.FormatNumber(currentRebirths)
 
 	energyBoostLabel.Text =
 		"x"
@@ -602,9 +584,9 @@ local function updateInfoFrame()
 			)
 
 		requirEnergyLabel.Text =
-			formatNumber(currentEnergy)
+			FormatModule.FormatNumber(currentEnergy)
 			.. "/"
-			.. formatNumber(nextMaxThreshold)
+			.. FormatModule.FormatNumber(nextMaxThreshold)
 
 		if maxAmount > 0 then
 			infoTotalRebirthImage.Image =
@@ -615,9 +597,9 @@ local function updateInfoFrame()
 		end
 	else
 		requirEnergyLabel.Text =
-			formatNumber(currentEnergy)
+			FormatModule.FormatNumber(currentEnergy)
 			.. "/"
-			.. formatNumber(selectedPrice)
+			.. FormatModule.FormatNumber(selectedPrice)
 
 		if amount > 0
 			and currentEnergy >= selectedPrice then
