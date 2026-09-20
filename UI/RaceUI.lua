@@ -10,6 +10,7 @@ local RaceModule = require(ReplicatedStorage.Modules.RaceModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 local player = Players.LocalPlayer
 local raceGui = script.Parent
@@ -38,16 +39,10 @@ local function setBarScale(bar, scale)
 	bar.Size = UDim2.new(math.max(0, tonumber(scale) or 0), 0, bar.Size.Y.Scale, bar.Size.Y.Offset)
 end
 
-local function formatNumber(number)
-	local success, result = pcall(RaceModule.FormatNumber, number)
-	if success then return result end
-	return tostring(math.floor(tonumber(number) or 0))
-end
-
 local function formatDistance(distance)
 	local success, result = pcall(RaceModule.FormatDistance, distance)
 	if success then return result end 
-	return formatNumber(distance) .. "M"
+	return FormatModule.FormatNumber(distance) .. "M"
 end
 
 local function formatMultiplier(multiplier)
@@ -317,10 +312,10 @@ local function updateSpeedometer()
 	local ticks = RaceModule.GetSpeedometerTicks(getEffectiveEnergy())
 	
 	for index, label in ipairs(speedTicks) do
-		setText(label, formatNumber(ticks[index] or 0))
+		setText(label, FormatModule.FormatNumber(ticks[index] or 0))
 	end
 	
-	setText(tickCurrentSpeed, formatNumber(raceSpeedValue.Value))
+	setText(tickCurrentSpeed, FormatModule.FormatNumber(raceSpeedValue.Value))
 	
 	arrow.Rotation = RaceModule.GetSpeedometerArrowRotation(raceSpeedValue.Value, raceTargetSpeedValue.Value)
 end
@@ -751,14 +746,14 @@ updateRewardDetail = function()
 	
 	setBarScale(rewLvlBar, RaceModule.GetRewardLevelBarScale(stageValue.Value, rewardLevelValue.Value))
 	
-	setText(rewCurUpgMoney, "+" .. formatNumber(current.Money or 0))
-	setText(rewCurUpgGems, formatNumber((current.GemChance or 0) * 100) .. "% / +" .. formatNumber(current.Gems or 0))
-	setText(rewCurUpgXP, "+" .. formatNumber(current.XP or 0))
+	setText(rewCurUpgMoney, "+" .. FormatModule.FormatNumber(current.Money or 0))
+	setText(rewCurUpgGems, FormatModule.FormatNumber((current.GemChance or 0) * 100) .. "% / +" .. FormatModule.FormatNumber(current.Gems or 0))
+	setText(rewCurUpgXP, "+" .. FormatModule.FormatNumber(current.XP or 0))
 	
 	if rewardLevelValue.Value < stageCap then
-		setText(rewNextUpgMoney, "+" .. formatNumber(nextReward.Money or 0))
-		setText(rewNextUpgGems, formatNumber((nextReward.GemChance or 0) * 100) .. "% / +" .. formatNumber(nextReward.Gems or 0))
-		setText(rewNextUpgXP, "+" .. formatNumber(nextReward.XP or 0))
+		setText(rewNextUpgMoney, "+" .. FormatModule.FormatNumber(nextReward.Money or 0))
+		setText(rewNextUpgGems, FormatModule.FormatNumber((nextReward.GemChance or 0) * 100) .. "% / +" .. FormatModule.FormatNumber(nextReward.Gems or 0))
+		setText(rewNextUpgXP, "+" .. FormatModule.FormatNumber(nextReward.XP or 0))
 	else 
 		setText(rewNextUpgMoney, "MAX")
 		setText(rewNextUpgGems, "MAX")
@@ -798,9 +793,9 @@ local function updateRewardButtonPrice(button)
 		setText(requiredRaceTouch, "MAX")
 		setText(requiredXP, "MAX")
 	else 
-		setText(requiredMoney, formatNumber(price.Money))
-		setText(requiredRaceTouch, formatNumber(price.RaceTouch))
-		setText(requiredXP, formatNumber(price.XP))
+		setText(requiredMoney, FormatModule.FormatNumber(price.Money))
+		setText(requiredRaceTouch, FormatModule.FormatNumber(price.RaceTouch))
+		setText(requiredXP, FormatModule.FormatNumber(price.XP))
 	end
 end
 
@@ -909,7 +904,7 @@ local function updateRoadUpgradeDetail()
 	end
 	
 	if price then
-		setText(roadUpgradePrice, formatNumber(price))
+		setText(roadUpgradePrice, FormatModule.FormatNumber(price))
 		roadUpgradeButton.Active = true
 		roadUpgradeButton.AutoButtonColor = true
 	else 
@@ -956,7 +951,7 @@ local function getStageCurrentValues()
 end
 
 local function setRequirementText(label, current, required)
-	setText(label, formatNumber(current) .. "/" .. formatNumber(required))
+	setText(label, FormatModule.FormatNumber(current) .. "/" .. FormatModule.FormatNumber(required))
 end
 
 local function updateStageMenu()
@@ -1005,15 +1000,15 @@ end
 
 --// Balances
 local function updateBalances()
-	setText(moneyLead, formatNumber(moneyValue.Value))
-	setText(raceTouchLead, formatNumber(raceTouchValue.Value))
-	setText(xpLead, formatNumber(xpValue.Value))
+	setText(moneyLead, FormatModule.FormatNumber(moneyValue.Value))
+	setText(raceTouchLead, FormatModule.FormatNumber(raceTouchValue.Value))
+	setText(xpLead, FormatModule.FormatNumber(xpValue.Value))
 	setText(raceRecordLabel, formatDistance(raceRecordValue.Value))
 	
-	setText(stageEnergyLead, formatNumber(energyValue.Value))
-	setText(stageMoneyLead, formatNumber(moneyValue.Value))
-	setText(stageRaceTouchLead, formatNumber(raceTouchValue.Value))
-	setText(stageRebirthLead, formatNumber(rebirthValue.Value))
+	setText(stageEnergyLead, FormatModule.FormatNumber(energyValue.Value))
+	setText(stageMoneyLead, FormatModule.FormatNumber(moneyValue.Value))
+	setText(stageRaceTouchLead, FormatModule.FormatNumber(raceTouchValue.Value))
+	setText(stageRebirthLead, FormatModule.FormatNumber(rebirthValue.Value))
 end
 
 --// Detail section switching
