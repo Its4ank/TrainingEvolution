@@ -10,6 +10,7 @@ local raceGui = script.Parent
 --// MONULES
 local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 --// REMOTES
 local trailEventFolder = ReplicatedStorage:WaitForChild("TrailEvent")
@@ -346,25 +347,6 @@ local function setButtonEnabled(button, enabled)
 	button.Selectable = enabled
 end
 
-local function formatNumber(number)
-	number = tonumber(number) or 0
-	
-	local absolute = math.abs(number)
-	
-	if absolute >= 1e18 then
-		return string.format("%.2fQ", number / 1e18)
-	elseif absolute >= 1e12 then
-		return string.format("%.2fT", number / 1e12)
-	elseif absolute >= 1e9 then
-		return string.format("%.2fB", number / 1e9)
-	elseif absolute >= 1e6 then
-		return string.format("%.2fM", number / 1e6)
-	elseif absolute >= 1e3 then
-		return string.format("%.2fK", number / 1e3)
-	end
-	return tostring(math.floor(number))
-end
-
 local function showWarning(message, duration)
 	warningToken += 1
 	
@@ -418,7 +400,7 @@ local function updateLeaderstatsGui()
 		local rebirth = leaderstats:FindFirstChild("Rebirth")
 		
 		if rebirth then
-			setText(rebirthLead, formatNumber(rebirth.Value))
+			setText(rebirthLead, FormatModule.FormatNumber(rebirth.Value))
 		end
 	end
 	
@@ -427,11 +409,11 @@ local function updateLeaderstatsGui()
 		local srRobux = playerData:FindFirstChild("SrRobux")
 		
 		if money then
-			setText(moneyLead, formatNumber(money.Value))
+			setText(moneyLead, FormatModule.FormatNumber(money.Value))
 		end
 		
 		if srRobux then
-			setText(srRobuxLead, formatNumber(srRobux.Value))
+			setText(srRobuxLead, FormatModule.FormatNumber(srRobux.Value))
 		end
 	end
 end
@@ -486,7 +468,7 @@ local function updateXPBar(trailData)
 		return
 	end
 	
-	setText(xpLabel, formatNumber(currentXP) .. " / " .. formatNumber(requiredXP) .. " XP")
+	setText(xpLabel, FormatModule.FormatNumber(currentXP) .. " / " .. FormatModule.FormatNumber(requiredXP) .. " XP")
 	
 	local progress = 0
 	
@@ -551,15 +533,15 @@ local function renderStageMenu()
 	end
 	
 	-- 1: Level
-	setText(stageRequirement1, formatNumber(progress.Level.Current) .. " / " .. formatNumber(progress.Level.Required))
+	setText(stageRequirement1, FormatModule.FormatNumber(progress.Level.Current) .. " / " .. FormatModule.FormatNumber(progress.Level.Required))
 	updateProgressBar(stageBar1, progress.Level.Progress or 0, STAGE_BAR_1_FULL_SIZE)
 	
 	-- 2: Money
-	setText(stageRequirement2, formatNumber(progress.Money.Current) .. " / " .. formatNumber(progress.Money.Required))
+	setText(stageRequirement2, FormatModule.FormatNumber(progress.Money.Current) .. " / " .. FormatModule.FormatNumber(progress.Money.Required))
 	updateProgressBar(stageBar2, progress.Money.Progress or 0, STAGE_BAR_2_FULL_SIZE)
 	
 	-- 3: Rebirth
-	setText(stageRequirement3, formatNumber(progress.Rebirth.Current) .. " / " .. formatNumber(progress.Rebirth.Required))
+	setText(stageRequirement3, FormatModule.FormatNumber(progress.Rebirth.Current) .. " / " .. FormatModule.FormatNumber(progress.Rebirth.Required))
 	updateProgressBar(stageBar3, progress.Rebirth.Progress or 0, STAGE_BAR_3_FULL_SIZE)
 	setButtonEnabled(stageUpButton, progress.CanStageUp == true)
 end
@@ -1188,7 +1170,7 @@ local function renderSelectedTrail()
 	
 	if not trailData.Owned then
 		setText(buyUpgradeLabel, "BUY")
-		setText(upgradePriceLabel, formatNumber(trailData.Purchase.Price))
+		setText(upgradePriceLabel, FormatModule.FormatNumber(trailData.Purchase.Price))
 		setText(equipButton, "EQUIP")
 		
 		if equipButton:IsA("ImageButton") then
@@ -1215,7 +1197,7 @@ local function renderSelectedTrail()
 		local upgradeCost = trailData.UpgradeCost
 		
 		if upgradeCost then
-			setText(upgradePriceLabel, formatNumber(upgradeCost.Money))
+			setText(upgradePriceLabel, FormatModule.FormatNumber(upgradeCost.Money))
 		else
 			setText(upgradePriceLabel, "-")
 		end
@@ -1561,13 +1543,30 @@ end)
 
 
 --// OPEN REFRESH
+local function refreshTrailMenuOpen()
+	if not trailHost.Visible then
+		return
+	end
+	
+	loadAllTrailData()
+end
+
+trailHost:GetPropertyChangedSignal("Visible"):Connect(function()
+	if not trailHost.Visible then
+		clearTrailPreview()
+		return
+	end
+	
+	refreshTrailMenuOpen()
+end)
+
 trailMenu:GetPropertyChangedSignal("Visible"):Connect(function()
 	if not trailMenu.Visible then
 		clearTrailPreview()
 		return
 	end
 	
-	loadAllTrailData()
+	refreshTrailMenuOpen()
 end)
 
 --// INITIALIZED
