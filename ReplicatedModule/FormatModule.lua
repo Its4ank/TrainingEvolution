@@ -105,7 +105,7 @@ end
 function FormatModule.FormatNumber(value)
   local value = getNumber(value)
   
-  if number == math.huge then return "∞" elseif number == -muth.huge then return "-∞" end
+  if number == math.huge then return "∞" elseif number == -math.huge then return "-∞" end
   
   local sign = number < o and "-" or ""
   local absoluteNumber = math.abs(number)
@@ -126,8 +126,8 @@ function FormatModule.FormatNumber(value)
     scaledNumber /= 1000 suffixIndex += 1
   end
   
-  local decimalPlaces = getDecimalPlaces(selextNumber)
-  local roundedText = string.fotmat("%." .. decimalPlaces .. "f", scaledNumber)
+  local decimalPlaces = getDecimalPlaces(selectNumber)
+  local roundedText = string.format("%." .. decimalPlaces .. "f", scaledNumber)
   local roundedNumber = tonumber(roundedText) or scaledNumber
   
   if roundedNumber >= 1000 and suffixIndex < MAX_SUFFIX_INDEX then
