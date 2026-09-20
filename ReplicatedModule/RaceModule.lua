@@ -1,7 +1,6 @@
 local RaceModule = {}
 
 local FormatModule = require(script.Parent.FormatModule)
-local FormatModule = require(script.Parent.FormatModule)
 
 --// Основные настройки гонки
 RaceModule.Settings = {
