@@ -1,6 +1,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+
 local raceFolder = ReplicatedStorage:WaitForChild("RaceFolder")
 local racePopupEvent = raceFolder:WaitForChild("RacePopupEvent")
 
@@ -24,38 +26,6 @@ local popupStyles = {
 		Color = Color3.fromRGB(255, 210, 65),
 	},
 }
-
-local function formatNumber(number)
-	number = tonumber(number) or 0
-
-	local suffixes = {
-		{Value = 1e30, Suffix = "N"}, -- Нонилион
-		{Value = 1e27, Suffix = "O"}, --Октиллион
-		{Value = 1e24, Suffix = "S"}, --Септиллион
-		{Value = 1e21, Suffix = "Sp"}, --Секстиллион
-		{Value = 1e18, Suffix = "Qd"}, --Квинтиллион
-		{Value = 1e15, Suffix = "Q"}, --Квадриллион
-		{Value = 1e12, Suffix = "T"}, --Триллион
-		{Value = 1e9, Suffix = "B"}, --Миллиард
-		{Value = 1e6, Suffix = "M"}, --Миллион
-		{Value = 1e3, Suffix = "K"}, --Тысяча
-	}
-
-	for _, data in ipairs(suffixes) do
-		if number >= data.Value then
-			local short = number / data.Value
-
-			if short >= 100 then
-				return string.format("%.0f%s", short, data.Suffix)
-			elseif short >= 10 then
-				return string.format("%.1f%s", short, data.Suffix)
-			else
-				return string.format("%.2f%s", short, data.Suffix)
-			end
-		end
-	end
-	return tostring(math.floor(number))
-end
 
 local popupSlots = {
 	UDim2.fromScale(0.20, 0.25),
@@ -118,7 +88,7 @@ local function showPopup(rewardType, amount)
 	rewardIcon.ImageTransparency = 0
 	rewardIcon.Visible = true
 
-	amountLabel.Text = "+" .. formatNumber(amount)
+	amountLabel.Text = "+" .. FormatModule.FormatNumber(amount)
 	amountLabel.TextColor3 = style.Color
 	amountLabel.TextTransparency = 0
 	amountLabel.Visible = true
