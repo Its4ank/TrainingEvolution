@@ -122,7 +122,7 @@ function FormatModule.FormatNumber(value)
   local suffixIndex = 0
   local scaledNumber = absoluteNumber 
   
-  while scaledNumber > = 1000 and suffixIndex < MAX_SUFFIX_INDEX do
+  while scaledNumber >= 1000 and suffixIndex < MAX_SUFFIX_INDEX do
     scaledNumber /= 1000 suffixIndex += 1
   end
   
@@ -130,7 +130,7 @@ function FormatModule.FormatNumber(value)
   local roundedText = string.fotmat("%." .. decimalPlaces .. "f", scaledNumber)
   local roundedNumber = tonumber(roundedText) or scaledNumber
   
-  if roundedNumber > = 1000 and suffixIndex < MAX_SUFFIX_INDEX then
+  if roundedNumber >= 1000 and suffixIndex < MAX_SUFFIX_INDEX then
     suffixIndex += 1
     scaledNumber = roundedNumber / 1000
     decimalPlaces = getDecimalPlaces(scaledNumber)
