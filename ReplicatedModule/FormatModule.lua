@@ -70,7 +70,7 @@ local function getSuffix(index)
   local suffix = ONES_PREFIXES[ones] .. TENS_SUFFIXES[tens] .. HUNDREDS_SUFFIXES[hundreds]
   suffixeCache[index] = suffix
   
-  return suffic
+  return suffix
 end
 
 local function getNumber(value)
