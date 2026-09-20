@@ -4,10 +4,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
+local FormatModule = require(game.ReplicatedStorage.Modules.FormatModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReade(player)
+ClientDataModule.WaitUntilReady(player)
 MenuManager.init(raceGui)
 
 local guiFolder = raceGui:WaitForChild("GuiFolder")
@@ -246,22 +247,6 @@ local ITEM_DETAILS_BY_TIER = {
 
 
 --// Utils
-local function formatShort(n)
-	if n >= 1e15 then
-		return string.format("%.2fQ", n / 1e15)
-	elseif n >= 1e12 then
-		return string.format("%.2fT", n / 1e12)
-	elseif n >= 1e9 then
-		return string.format("%.2fB", n / 1e9)
-	elseif n >= 1e6 then
-		return string.format("%.2fM", n / 1e6)
-	elseif n >= 1e3 then
-		return string.format("%.2fK", n / 1e3)
-	else
-		return tostring(math.floor(n))
-	end
-end
-
 local function getItemTierName(tier)
 	if tier == 1 then return "Novice" end 
 	if tier == 2 then return "Advanced" end 
@@ -504,11 +489,11 @@ local function updateSRShoesRequirements()
 end
 
 local function updateItemBalanceUI()
-	itemsEnergyLabel.Text = "" .. formatShort(energy.Value)
-	itemsMoneyLabel.Text = "" .. formatShort(money.Value)
+	itemsEnergyLabel.Text = "" .. FormatModule.FormatShort(energy.Value)
+	itemsMoneyLabel.Text = "" .. FormatModule.FormatShort(money.Value)
 	
 	if srRobux then
-		srRobuxLabel.Text = "" .. formatShort(srRobux.Value)
+		srRobuxLabel.Text = "" .. FormatModule.FormatShort(srRobux.Value)
 	else
 		srRobuxLabel.Text = "0"
 	end
@@ -642,7 +627,7 @@ local function updateShoes()
 		local tierMultiplier = TIER_PRICE_MULTIPLIER[shoesTier.Value] or 1
 		local price = math.floor(basePrice * tierMultiplier)
 
-		upgradeLabel.Text = "Upgrade: " .. formatShort(price)
+		upgradeLabel.Text = "Upgrade: " .. FormatModule.FormatShort(price)
 	end
 end
 
