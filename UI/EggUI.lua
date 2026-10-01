@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
@@ -11,6 +12,7 @@ local player = Players.LocalPlayer
 local EggModule = require(ReplicatedStorage.Modules.EggModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 
 --// Root
 local raceGui = script.Parent
@@ -19,6 +21,17 @@ local guiFolder = raceGui:WaitForChild("GuiFolder")
 local eggFolder = guiFolder:WaitForChild("EggFolder")
 local eggHost = eggFolder:WaitForChild("EggHost")
 local eggAutoDelMenu = eggFolder:WaitForChild("EggAutoDelMenu")
+
+local raceGui = eggFolder.Parent.Parent
+MenuManager.init(raceGui)
+MenuManager.register("Egg", eggHost)
+
+--// Egg zone
+local cityEggFolder = workspace:WaitForChild("CityEggFolder")
+local egg1World = cityEggFolder:WaitForChild("Egg1")
+local egg1Zone = egg1World:WaitForChild("Egg1Zone")
+
+local insideEggZone = false
 
 local hatchHostSingle = eggFolder:WaitForChild("EggHatchHost")
 local hatchHostDuo = eggFolder:WaitForChild("EggHatchHostDuo")
@@ -110,6 +123,17 @@ local function setImage(object, image)
 	if object:IsA("ImageLabel") or object:IsA("ImageButton") then
 		object.Image = image
 	end
+end
+
+local function isInsideZone(rootPart, zoneModel)
+	if not rootPart or not zoneModel then return false end 
+	
+	local zoneCFrame, zoneSize = zoneModel:GetBoundingBox()
+	
+	local localPosition = zoneCFrame:PointToObjectSpace(rootPart.Position)
+	local halfSize = zoneSize * 0.5
+	
+	return math.abs(localPosition.X) <= halfSize.X and math.abs(localPosition.Y) <= halfSize.Y and math.abs(localPosition.Z) <= halfSize.Z
 end
 
 --// Viewport helpers
@@ -713,9 +737,12 @@ local function closeHatch()
 	hatchState = "Idle"
 	uiBusy = false 
 
-	eggHost.Visible = true 
-
-	refreshEggUI()
+	if insideEggZone then
+		MenuManager.openFree("Egg")
+		refreshEggUI()
+	else 
+		MenuManager.close("Egg")
+	end
 end
 
 --// Manual hatch
@@ -1044,6 +1071,62 @@ end
 eggHost:GetPropertyChangedSignal("Visible"):Connect(function()
 	if eggHost.Visible and hatchState == "Idle" then
 		task.defer(refreshEggUI)
+	end
+end)
+
+--// Egg zone detection
+RunService.RenderStepped:Connect(function()
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then
+		if insideEggZone then
+			insideEggZone = false 
+			
+			if autoHatching then
+				autoStopRequested = true
+				autoHatching = false 
+			end
+			
+			if hatchState == "Idle" then
+				MenuManager.close("Egg")
+			end
+		end
+		return
+	end
+	
+	local isInside = isInsideZone(rootPart, egg1Zone)
+	if isInside then 
+		if not insideEggZone then 
+			insideEggZone = true 
+			
+			currentEggName = "Egg1"
+			
+			if hatchState == "Idle" then 
+				MenuManager.openFree("Egg")
+			end
+		end
+	else 
+		if insideEggZone then
+			insideEggZone = false 
+			
+			-- Stop Auto hatch after the current paid batch
+			if autoHatching then 
+				autoStopRequested = true
+				autoHatching = false
+				
+				if currentHatchHost then
+					local stopButton = currentHatchHost:FindFirstChild("AutoOpenButton")
+					
+					if stopButton then
+						setImage(stopButton, EggModule.GetAutoStopImage("Default"))
+					end
+				end
+			end
+			
+			if hatchState == "Idle" then 
+				MenuManager.close("Egg")
+			end
+		end
 	end
 end)
 
