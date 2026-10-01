@@ -169,6 +169,28 @@ function MenuManager.openBlur(name)
 	setRobloxUI(false)
 end
 
+function MenuManager.openFree(name)
+	local frame = menus[name]
+	if not frame then return end
+	
+	for menuName, menuFrame in pairs(menus) do
+		menuFrame.Visible = (menuName == name)
+	end
+	
+	currentMenu = name
+	
+	if screenBlocker then
+		screenBlocker.Visible = false
+	end
+	
+	if blur then
+		blur.Size = 0
+	end
+	
+	controls:Enable()
+	setRobloxUI(true)
+end
+
 function MenuManager.close(name)
 	local frame = menus[name]
 	if not frame then return end
