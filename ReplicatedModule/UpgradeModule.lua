@@ -1,3 +1,7 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+
 local UpgradeModule = {}
 
 local DEFAULT_MAX_LEVEL = 10
@@ -483,10 +487,6 @@ local function formatCompactNumber(value, decimalPlaces)
 	
 	return text
 end
-local function formatPercent(value)
-	return formatCompactNumber(value * 100, 2) .. "%"
-end
-
 
 local function getLevelRatio(level, maxLevel)
 	level = clampLevel(level, maxLevel)
@@ -733,7 +733,7 @@ function UpgradeModule.GetBonusText(upgradeName, level)
 	end
 	
 	if config.EffectType == "PercentBonus" then 
-		return "+" .. formatPercent(effectValue)
+		return "+" .. FormatModule.FormatPercent(effectValue)
 	end
 	
 	if config.EffectType == "IntegerBonus" then
@@ -741,7 +741,7 @@ function UpgradeModule.GetBonusText(upgradeName, level)
 	end
 	
 	if config.EffectType == "TickReduction" then
-		return "-" .. formatPercent(effectValue)
+		return "-" .. FormatModule.FormatPercent(effectValue)
 	end
 	
 	if config.EffectType == "Unlock" then 
