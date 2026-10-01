@@ -1160,8 +1160,8 @@ local function renderSelectedTrail()
 	
 	local boosts = trailData.Boosts or {}
 	
-	setText(powerBoostLabel, TrailModule.FormatPercent(boosts.PowerPercent or 0))
-	setText(accelerationBoostLabel, TrailModule.FormatPercent(boosts.AccelerationPercent or 0))
+	setText(powerBoostLabel, FormatModule.FormatPercent(boosts.PowerPercent or 0))
+	setText(accelerationBoostLabel, FormatModule.FormatPercent(boosts.AccelerationPercent or 0))
 	setText(infoLabel, trailData.Description or "")
 	
 	updateXPBar(trailData)
