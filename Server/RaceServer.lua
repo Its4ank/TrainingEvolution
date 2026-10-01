@@ -330,7 +330,7 @@ end
 
 local function getPetMoneyMultiplier(player)
 	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return 1 end 
+	if not petsFolder then return 1 end
 	
 	local multiplier = 1
 	
