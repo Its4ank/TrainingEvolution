@@ -13,8 +13,10 @@ local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
 --// Root
-local eggFolder = script.Parent
+local raceGui = script.Parent
+local guiFolder = raceGui:WaitForChild("GuiFolder")
 
+local eggFolder = guiFolder:WaitForChild("EggFolder")
 local eggHost = eggFolder:WaitForChild("EggHost")
 local eggAutoDelMenu = eggFolder:WaitForChild("EggAutoDelMenu")
 
@@ -67,17 +69,17 @@ local AUTO_RESULT_TIME = (EggModule.AutoHatch and EggModule.AutoHatch.ResultDisp
 --// Helpers
 local function showWarning(message, duration)
 	if not message or message == "" then return end 
-	
+
 	warningToken += 1
-	
+
 	local token = warningToken
-	
+
 	eggWarning.Text = tostring(message)
 	eggWarning.Visible = true
-	
+
 	task.delay(duration or 2.5, function()
 		if warningToken ~= token then return end 
-		
+
 		eggWarning.Visible = false
 	end)
 end
@@ -97,14 +99,14 @@ local function getErrorMessage(errorCode)
 		PetCreateFailed = "Could not create pet.",
 		ServerError = "Egg server error.",
 	}
-	
+
 	return messages[errorCode] or tostring(errorCode or "Unknown error.")
 end
 
 local function setImage(object, image)
 	if not object then return end 
 	if not image or image == "" then return end 
-	
+
 	if object:IsA("ImageLabel") or object:IsA("ImageButton") then
 		object.Image = image
 	end
@@ -113,7 +115,7 @@ end
 --// Viewport helpers
 local function clearViewport(viewport)
 	if not viewport then return end 
-	
+
 	for _, child in ipairs(viewport:GetChildren()) do
 		if child:IsA("Camera") or child:IsA("WorldModel") or child:IsA("Model") or child:IsA("BasePart") then
 			child:Destroy()
@@ -124,69 +126,69 @@ end
 local function findPetModel(petName)
 	local petConfig = PetModule.GetPetConfig(petName)
 	if not petConfig then return nil end
-	
+
 	local modelName = petConfig.ModelName or petName
 	local previewModels = ReplicatedStorage:FindFirstChild("PetPreviewModels")
 	if not previewModels then return nil end
-	
+
 	--// First try Earth/Egg1
 	local earth = previewModels:FindFirstChild("Earth")
 	if earth then
 		local egg1 = earth:FindFirstChild("Egg1")
-		
+
 		if egg1 then
 			local model = egg1:FindFirstChild(modelName)
-			
+
 			if model then return model end
 		end
 	end
-	
+
 	-- Fallback search
 	return previewModels:FindFirstChild(modelName, true)
 end
 
 local function setupViewport(viewport, petName)
 	if not viewport or not viewport:IsA("ViewportFrame") then return end 
-	
+
 	clearViewport(viewport)
-	
+
 	local template = findPetModel(petName)
 	if not template then return end 
-	
+
 	local worldModel = Instance.new("WorldModel")
 	worldModel.Name = "PetWorld"
 	worldModel.Parent = viewport
-	
+
 	local clone = template:Clone()
 	clone.Parent = worldModel
-	
+
 	for _, object in ipairs(clone:GetDescendants()) do
 		if object:IsA("BasePart") then
 			object.Anchored = true
 			object.CanCollide = false
 		end
 	end
-	
+
 	local camera = Instance.new("Camera")
 	camera.Name = "PetCamera"
 	camera.Parent = viewport 
-	
+
 	viewport.CurrentCamera = camera
-	
+
 	local success, boundingCFrame, boundingSize = pcall(function()
 		return clone:GetBoundingBox()
 	end)
-	
+
 	if not success then return end 
-	
+
 	clone:PivotTo(CFrame.new(-boundingCFrame.Position) * boundingCFrame.Rotation)
-	
+
 	local maxSize = math.max(boundingSize.X, boundingSize.Y, boundingSize.Z)
-	
+
 	if maxSize <= 0 then maxSize = 5 end 
-	
+
 	local distance = maxSize * 2.1
-	
+
 	camera.CFrame = CFrame.new(Vector3.new(0, boundingSize.Y * 0.05, distance), Vector3.new(0, 0, 0))
 end
 
@@ -216,43 +218,43 @@ local function clearPetButtonConnections()
 	for _, connection in ipairs(petButtonConnections) do
 		connection:Disconnect()
 	end
-	
+
 	table.clear(petButtonConnections)
 end
 
 local function updateEggPetButtons(state)
 	clearPetButtonConnections()
-	
+
 	for _, petData in ipairs(state.Pets or {}) do
 		local button = eggHost:FindFirstChild(petData.ButtonName)
-		
+
 		if button then
 			local viewport = button:FindFirstChild("EggPetViewModel")
 			local nameLabel = button:FindFirstChild("EggPetName")
 			local percentLabel = button:FindFirstChild("EggPetPercent")
-			
+
 			if nameLabel then
 				nameLabel.Text = petData.DisplayName or petData.PetName 
 			end
-			
+
 			if percentLabel then
 				percentLabel.Text = FormatModule.FormatPercent(petData.Chance)
 			end
-			
+
 			setupViewport(viewport, petData.PetName)
-			
+
 			local imageState = petData.SpecificAutoDelete and "Selected" or "Default"
 			local image = EggModule.GetAutoDeleteImage(imageState)
-			
+
 			setImage(button, image)
-			
+
 			if button:IsA("GuiButton") then
 				local connection = button.Activated:Connect(function()
 					if uiBusy then return end 
-					
+
 					specificAutoDeleteEvent:FireServer(currentEggName, petData.PetName)
 				end)
-				
+
 				table.insert(petButtonConnections, connection)
 			end
 		end
@@ -272,17 +274,17 @@ local function updateGlobalAutoDelete(state)
 	for rarityName, button in pairs(rarityButtons) do
 		local enabled = state.GlobalAutoDelete and state.GlobalAutoDelete[rarityName] == true
 		local icon = button:FindFirstChild("AutoDelIcon")
-		
+
 		setImage(icon, EggModule.GetAutoDeleteImage(enabled and "Selected" or "Default"))
 	end
 end
 
 for rarityName, button in pairs(rarityButtons) do
-	
+
 	if button:IsA("GuiButton") then
 		button.Activated:Connect(function()
 			if uiBusy then return end 
-			
+
 			globalAutoDeleteEvent:FireServer(rarityName)
 		end)
 	end
@@ -291,18 +293,18 @@ end
 --// State refresh
 local function refreshEggUI()
 	if not eggHost.Visible then return end 
-	
+
 	local success, state = pcall(function()
 		return eggStateFunction:InvokeServer(currentEggName)
 	end)
-	
+
 	if not success or not state then return end 
-	
+
 	currentState = state 
-	
+
 	-- Current x1 price
 	buy1Price.Text = FormatModule.FormatNumber(state.CurrentPrice or 0)
-	
+
 	-- Current possible batch
 	local availableAmount = state.AvailableAmount or 0
 
@@ -523,8 +525,8 @@ local function playStage(eggObjects, stage)
 
 	for _, objects in ipairs(eggObjects) do
 		task.spawn(function()
-		shakeEgg(objects.Egg, rotation)
-		finished += 1
+			shakeEgg(objects.Egg, rotation)
+			finished += 1
 		end)
 	end
 
@@ -590,7 +592,7 @@ local function revealPet(objects, result)
 
 	if result.AutoDeleted then
 		if objects.AutoDeleteIcon then
-		   objects.AutoDeleteIcon.Visible = true 
+			objects.AutoDeleteIcon.Visible = true 
 		end 
 
 		if objects.AutoDeleteLabel then
@@ -599,11 +601,11 @@ local function revealPet(objects, result)
 		end
 	else 
 		if objects.AutoDeleteIcon then 
-		   objects.AutoDeleteIcon.Visible = false 
+			objects.AutoDeleteIcon.Visible = false 
 		end 
 
 		if objects.AutoDeleteLabel then 
-		   objects.AutoDeleteLabel.Visible = false 
+			objects.AutoDeleteLabel.Visible = false 
 		end 
 	end 
 end 
@@ -668,7 +670,7 @@ local function breakOneEgg(host, objects, result)
 		revealPet(objects, result)
 		task.spawn(function()
 			flashEggFrame(host)
-	    end)
+		end)
 
 		task.wait(FRAGMENT2_GROW_TIME * 0.30)
 	end 
@@ -685,9 +687,9 @@ local function playFinalBreak(host, eggObjects, results)
 
 	for index, objects in ipairs(eggObjects) do
 		task.spawn(function()
-		    breakOneEgg(host, objects, results[index])
-		    completed += 1
-	    end)
+			breakOneEgg(host, objects, results[index])
+			completed += 1
+		end)
 	end
 
 	while completed < #eggObjects do
@@ -759,7 +761,7 @@ local function handleManualTap()
 
 	task.spawn(function()
 		playStage(eggObjects, stage)
-		
+
 		if currentTapStage >= 4 then
 			playFinalBreak(currentHatchHost, eggObjects, currentResults)
 		else 
@@ -788,7 +790,7 @@ local function playAutoBatch(response)
 	hatchHostTrio.Visible = false 
 
 	resetHatchHost(host, amount)
-	
+
 	host.Visible = true 
 
 	local eggObjects = getHostEggs(host, amount)
