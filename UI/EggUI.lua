@@ -806,50 +806,52 @@ local function playAutoBatch(response)
 end
 
 local function runAutoHatch()
-	if autoHatching then return end 
+	if autoHatching then return end
 
-	autoHatching = true 
-	autoStopRequested = false 
-	uiBusy = true 
+	autoHatching = true
+	autoStopRequested = false
+	uiBusy = true
 
-    eggHost.Visible = false 
+	eggHost.Visible = false
 
-    task.spawn(function()
-	    while autoHatching and not autoStopRequested do 
-		    local success, response = pcall(function()
-			    return hatchRequestFunction:InvokeServer(currentEggName, EggModule.MAX_MULTI_HATCH)
-		    end)
+	task.spawn(function()
+		while autoHatching and not autoStopRequested do
+			local success, response = pcall(function()
+				return hatchRequestFunction:InvokeServer(currentEggName, EggModule.MAX_MULTI_HATCH)
+			end)
+
+			if not success then
+				showWarning("Egg server error.")
+				break
+			end
+
+			if not response or response.Success ~= true then
+				local errorCode = response and response.Error or "ServerError"
+				showWarning(getErrorMessage(errorCode))
+				break
+			end
+
+			-- Current paid batch always finishes
+			playAutoBatch(response)
+
+			-- Stop was clicked during animation
+			if autoStopRequested then
+				break
+			end
 		end
 
-		if not success then
-			showWarning("Egg server error.")
-			break
+		autoHatching = false
+		autoStopRequested = false
+
+		if currentHatchHost then
+			local stopButton = currentHatchHost:FindFirstChild("AutoOpenButton")
+
+			if stopButton then
+				setImage(stopButton, EggModule.GetAutoStopImage("Default"))
+			end
 		end
-
-		if not response or response.Success ~= true then
-			local errorCode = response and response.Error or "ServerError"
-			showWarning(getErrorMessage(errorCode))
-			break 
-		end
-
-		-- Current paid batch always finished
-		playAutoBatch(response)
-
-		-- Stop was clicked during animation
-		if autoStopRequested then break end 
-
-	    autoHatching = false 
-	    autoStopRequested = false 
-
-	    if currentHatchHost then
-		   local stopButton = currentHatchHost:FindFirstChild("AutoOpenButton")
-
-		    if stopButton then
-			   setImage(stopButton, EggModule.GetAutoStopImage("Default"))
-	        end
-		end
-	    closeHatch()
-    end)
+		closeHatch()
+	end)
 end
 
 --// Request hatch
