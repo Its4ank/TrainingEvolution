@@ -329,13 +329,27 @@ local function getPlayerResources(player)
 end
 
 local function getPetMoneyMultiplier(player)
+	local petsFolder = player:FindFirstChild("Pets")
+	if not petsFolder then return 1 end 
+	
 	local multiplier = 1
 	
-	for _, pet in ipairs(PetModule.getEquippedPets(player)) do
-		local petMoney = pet:FindFirstChild("MoneyMultiplier")
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if not petFolder:IsA("Folder") then continue end 
 		
-		if petMoney then
-			multiplier *= petMoney.Value
+		local equipped = petFolder:FindFirstChild("Equipped")
+		local petName = petFolder:FindFirstChild("PetName")
+		local pattern = petFolder:FindFirstChild("Pattern")
+		local tier = petFolder:FindFirstChild("Tier")
+		local level = petFolder:FindFirstChild("Level")
+		
+		if equipped and equipped.Value and petName and pattern and tier and level then
+			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
+			
+			if stats then 
+				local petMultiplier = tonumber(stats.Money) or 1
+				multiplier *= math.max(1, petMultiplier)
+			end
 		end
 	end
 	return multiplier
