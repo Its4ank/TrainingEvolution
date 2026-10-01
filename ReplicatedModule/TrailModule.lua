@@ -567,17 +567,6 @@ function TrailModule.GetAccelerationMultiplier(trailId, level, stageId)
 end
 
 --// DISPLAY HELPERS
-function TrailModule.FormatPercent(value)
-	value = tonumber(value) or 0
-	
-	local rounded = math.floor((value * 10) + 0.5) / 10
-	
-	if rounded % 1 == 0 then 
-		return string.format("+%d%%", rounded)
-	end
-	return string.format("+%.1f%%", rounded)
-end
-
 function TrailModule.FormatMultiplier(value)
 	value = tonumber(value) or 1
 	
