@@ -182,7 +182,7 @@ end
 
 --// Luck
 function EggModule.GetLuckMultiplier(luckOpenings)
-	luckOpenings = math.clamp(math.floor(luckOpenings or 0), 0, EggModule.Luck.MaxOpening)
+	luckOpenings = math.clamp(math.floor(luckOpenings or 0), 0, EggModule.Luck.MaxOpenings)
 	
 	local multiplier = 1 + (luckOpenings * EggModule.Luck.LuckPerOpening)
 	
