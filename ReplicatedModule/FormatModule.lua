@@ -141,6 +141,31 @@ function FormatModule.FormatNumber(value)
 	return sign .. trimTrailingZeros(roundedText) .. getSuffix(suffixIndex)
 end
 
+function FormatModule.FormatPercent(value)
+	local number = getNumber(value)
+
+	if number == math.huge then 
+		return "∞%"
+	elseif number == -math.huge then 
+		return "∞%"
+	end 
+
+	local absoluteNumber = math.abs(number)
+	local decimalPlaces
+
+	if absoluteNumber >= 10 then 
+		decimalPlaces = 1
+	elseif absoluteNumber >= 1 then 
+		decimalPlaces = 2 
+	else
+		decimalPlaces = 3
+	end 
+
+	local text = string.format("%." .. decimalPlaces .. "f", number)
+
+	return trimTrailingZeros(text) .. "%"
+end
+
 FormatModule.FormatShort = FormatModule.FormatNumber
 
 FormatModule.MaxSuffix = getSuffix(MAX_SUFFIX_INDEX)
