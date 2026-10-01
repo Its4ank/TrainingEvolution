@@ -257,27 +257,34 @@ function TreadmillModule.ResetTrainingTime(player, treadmillId)
 	data.TrainingTime.Value = 0
 end
 
-function TreadmillModule.GetPlayerEnergyMultiplier(player)
+local function getPetEnergyMultiplier(player)
+	local petsFolder = player:FindFirstChild("Pets")
+	if not petsFolder then return 1 end 
 	
-	local multiplier = 1 
+	local multiplier = 1
 	
-	local petEnergyMultiplier = 1
-	
-	local successPets, equippedPets = pcall(function()
-		return PetModule.getEquippedPets(player)
-	end)
-	
-	if successPets and equippedPets then 
-		for _, pet in ipairs(equippedPets) do 
-			local petEnergy = pet:FindFirstChild("EnergyMultiplier")
-			
-			if petEnergy then
-				petEnergyMultiplier *= petEnergy.Value
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if not petFolder:IsA("Folder") then continue end
+		
+		local equipped = petFolder:FindFirstChild("Equipped")
+		local petName = petFolder:FindFirstChild("PetName")
+		local pattern = petFolder:FindFirstChild("Pattern")
+		local tier = petFolder:FindFirstChild("Tier")
+		local level = petFolder:FindFirstChild("Level")
+		
+		if equipped and equipped.Value and petName and pattern and tier and level then
+			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
+			if stats then
+				local petMultiplier = tonumber(stats.Energy) or 1
+				multiplier *= math.max(1, petMultiplier)
 			end
 		end
 	end
-	
-	multiplier *= petEnergyMultiplier
+	return multiplier
+end
+
+function TreadmillModule.GetPlayerEnergyMultiplier(player)
+	local multiplier = getPetEnergyMultiplier(player)
 	
 	--// Буст к беговой дорожке
 	local rebirthEnergyMultiplier = RebirthModule.GetEnergyMultiplier(player)
