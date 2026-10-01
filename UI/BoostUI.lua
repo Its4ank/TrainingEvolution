@@ -9,6 +9,8 @@ local boostUIEvent = ReplicatedStorage:WaitForChild("BoostEvent"):WaitForChild("
 
 local boostFolder = guiFolder:WaitForChild("BoostFolder")
 
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+
 
 local potionServerImage = boostFolder:WaitForChild("PotionServerImage")
 local potionMoneyImage = boostFolder:WaitForChild("PotionMoneyImage")
@@ -44,16 +46,6 @@ local function formatTime(seconds)
 	return string.format("%02d:%02d", minutes, secs)
 end
 
-local function formatPercent(value)
-	value = tonumber(value) or 0
-	value = math.round(value * 10) / 10
-	
-	if value % 1 == 0 then
-		return tostring(math.floor(value))
-	end
-	return string.format("%.1f", value)
-end
-
 for _, image in ipairs(allImages) do
 	image.Visible = false
 	
@@ -83,7 +75,7 @@ boostUIEvent.OnClientEvent:Connect(function(data)
 		timePercent = data.TimeBoost.Percent or 0
 	end
 
-	setImage(timeBoostImage, true, "+" .. formatPercent(timePercent) .. "%")
+	setImage(timeBoostImage, true, "+" .. FormatModule.FormatPercent(timePercent) .. "%")
 	
 	local premium = data.PremiumBoost or {
 		Energy = 1,
