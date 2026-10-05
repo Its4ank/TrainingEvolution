@@ -43,7 +43,7 @@ function PetServiceModule.GetMaxStorage(player)
 	local playerData = player:FindFirstChild("PlayerData")
 	if not playerData then return PetModule.DEFAULT_MAX_STORAGE end
 	
-	local maxStorage = playerData:FindFirstChild("MaxStorage")
+	local maxStorage = playerData:FindFirstChild("MaxPetStorage")
 	if not maxStorage then return PetModule.DEFAULT_MAX_STORAGE end
 	
 	return maxStorage.Value
@@ -51,7 +51,7 @@ end
 
 function PetServiceModule.GetFreeStorage(player)
 	local maxStorage = PetServiceModule.GetMaxStorage(player)
-	local currentStorage = PetServiceModule.GetMaxStorage(player)
+	local currentStorage = PetServiceModule.GetStorageCount(player)
 	
 	return math.max(0, maxStorage - currentStorage)
 end
