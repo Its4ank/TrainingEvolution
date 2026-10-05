@@ -191,7 +191,7 @@ end
 
 --// Auto Delete
 local function getSpecificAutoDeleteValue(player, eggName, petName)
-	local eggData = EggModule.GetEggData(player)
+	local eggData = getEggData(player)
 	if not eggData then return nil end
 	
 	local autoDelete = eggData:FindFirstChild("EggAutoDelete")
@@ -508,7 +508,7 @@ specificAutoDeleteEvent.OnServerEvent:Connect(function(player, eggName, petName)
 	if player:GetAttribute("DataReady") ~= true then return end 
 	if typeof(eggName) ~= "string" or typeof(petName) ~= "string" then return end 
 	
-	local eggPetConfig = EggModule.GetEggConfig(eggName, petName)
+	local eggPetConfig = EggModule.GetEggPetConfig(eggName, petName)
 	if not eggPetConfig then return end 
 	
 	local value = getSpecificAutoDeleteValue(player, eggName, petName)
