@@ -152,21 +152,32 @@ local function getSelectedPetFolder()
 end
 
 --// Viewport
-local function findPetModule(petName)
+local function findPetModel(petName)
 	local config = PetModule.GetPetConfig(petName)
 	if not config then return nil end
 	
 	local modelName = config.ModelName or config.Name
-	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
-	if not previewRoot then return nil end
 	
-	return previewRoot:FindFirstChild(modelName, true)
+	local cityEggFolder = workspace:FindFirstChild("CityEggFolder")
+	if not cityEggFolder then 
+		warn("CityEggFolder not found")
+		return nil
+	end
+	
+	for _, eggFolder in ipairs(cityEggFolder:GetChildren()) do 
+		local model = eggFolder:FindFirstChild(modelName)
+		
+		if model then return model end
+	end
+	
+	warn("Pet model not found:", modelName)
+	return nil
 end
 
 local function setupViewport(viewport, petName, distanceMultiplier)
 	viewport:ClearAllChildren()
 	
-	local template = findPetModule(petName)
+	local template = findPetModel(petName)
 	if not template then
 		warn("Pet preview model not found:", petName)
 		return
@@ -275,7 +286,7 @@ local function getEquipSlotButtons()
 	
 	for _, container in ipairs(containers) do
 		for index = 1, 3 do
-			local button = container:FindFirstChild("PetEquipButton" .. tostring(index))
+			local button = container:FindFirstChild("PetEquipInfoButton" .. tostring(index))
 			
 			if button then
 				table.insert(result, {Button = button, Container = container,})
