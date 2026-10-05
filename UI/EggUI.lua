@@ -75,7 +75,7 @@ local FRAGMENT2_GROW_TIME = 0.50
 local FLASH_IN_TIME = 0.12
 local FLASH_OUT_TIME = 0.35
 
-local AUTO_STAGE_PAUSE = 0.10
+local AUTO_STAGE_PAUSE = 0.45
 
 local AUTO_RESULT_TIME = (EggModule.AutoHatch and EggModule.AutoHatch.ResultDisplayTime) or 2
 
@@ -152,23 +152,13 @@ local function findPetModel(petName)
 	if not petConfig then return nil end
 
 	local modelName = petConfig.ModelName or petName
-	local previewModels = ReplicatedStorage:FindFirstChild("PetPreviewModels")
-	if not previewModels then return nil end
+	local cityEggFolder = workspace:FindFirstChild("CityEggFolder")
+	if not cityEggFolder then return nil end
 
-	--// First try Earth/Egg1
-	local earth = previewModels:FindFirstChild("Earth")
-	if earth then
-		local egg1 = earth:FindFirstChild("Egg1")
-
-		if egg1 then
-			local model = egg1:FindFirstChild(modelName)
-
-			if model then return model end
-		end
-	end
-
-	-- Fallback search
-	return previewModels:FindFirstChild(modelName, true)
+	local eggWorld = cityEggFolder:FindFirstChild(currentEggName)
+	if not eggWorld then return nil end 
+	
+	return eggWorld:FindFirstChild(modelName)
 end
 
 local function setupViewport(viewport, petName)
@@ -177,7 +167,10 @@ local function setupViewport(viewport, petName)
 	clearViewport(viewport)
 
 	local template = findPetModel(petName)
-	if not template then return end 
+	if not template then 
+		warn("EGG VIEWPORT: Pet model not found:", currentEggName, petName)
+		return
+	end
 
 	local worldModel = Instance.new("WorldModel")
 	worldModel.Name = "PetWorld"
@@ -190,6 +183,8 @@ local function setupViewport(viewport, petName)
 		if object:IsA("BasePart") then
 			object.Anchored = true
 			object.CanCollide = false
+			object.CanTouch = false
+			object.CanQuery = false
 		end
 	end
 
@@ -198,22 +193,43 @@ local function setupViewport(viewport, petName)
 	camera.Parent = viewport 
 
 	viewport.CurrentCamera = camera
-
-	local success, boundingCFrame, boundingSize = pcall(function()
-		return clone:GetBoundingBox()
-	end)
-
-	if not success then return end 
-
-	clone:PivotTo(CFrame.new(-boundingCFrame.Position) * boundingCFrame.Rotation)
+	
+	local boundingCFrame
+	local boundingSize
+	
+	if clone:IsA("Model") then 
+		boundingCFrame, boundingSize = clone:GetBoundingBox()
+		
+		local pivot = clone:GetPivot()
+		local relativePivot = boundingCFrame:ToObjectSpace(pivot)
+		
+		clone:PivotTo(CFrame.new(0, 0, 0) * relativePivot)
+	elseif clone:IsA("BasePart") then
+		boundingCFrame = clone.CFrame
+		boundingSize = clone.Size
+		
+		clone.CFrame = CFrame.new(0, 0, 0)
+	else 
+		warn("EGG VARNING: Unsupported pet object:", clone.ClassName, petName)
+		
+		worldModel:Destroy()
+		camera:Destroy()
+		return
+	end
+	
+	-- Recalculate after centering
+	if clone:IsA("Model") then 
+		boundingCFrame, boundingSize = clone:GetBoundingBox()
+	end
 
 	local maxSize = math.max(boundingSize.X, boundingSize.Y, boundingSize.Z)
 
 	if maxSize <= 0 then maxSize = 5 end 
-
+	
+	local center = boundingCFrame.Position
 	local distance = maxSize * 2.1
 
-	camera.CFrame = CFrame.new(Vector3.new(0, boundingSize.Y * 0.05, distance), Vector3.new(0, 0, 0))
+	camera.CFrame = CFrame.lookAt(center + Vector3.new(0, boundingSize.Y * 0.05, distance), center)
 end
 
 --// EggHost object
@@ -420,7 +436,6 @@ local function saveFragmentOriginals(objects)
 				Position = fragment.Position,
 				Size = fragment.Size,
 				Rotation = fragment.Rotation,
-				Visible = fragment.Visible,
 			}
 		end
 	end
@@ -467,6 +482,11 @@ local function resetHatchHost(host, amount)
 		objects.Dub.Visible = false
 
 		objects.Egg.Rotation = 0
+		
+		if objects.Egg:IsA("ImageLabel") or objects.Egg:IsA("ImageButton") then
+			objects.Egg.ImageTransparency = 0
+		end
+		
 
 		setImage(objects.Egg, EggModule.GetAnimationImage(currentEggName, "Stage1"))
 
@@ -662,8 +682,13 @@ local function flashEggFrame(host)
 end 
 
 local function breakOneEgg(host, objects, result)
-	objects.Egg.Visible = false 
-	objects.Dub.Visible = true 
+	objects.Egg.Visible = true
+	
+	if objects.Egg:IsA("ImageLabel") or objects.Egg:IsA("ImageButton") then
+		objects.Egg.ImageTransparency = 1
+	end
+	
+	objects.Dub.Visible = true
 
 	resetFragments(objects)
 
@@ -826,7 +851,9 @@ local function playAutoBatch(response)
 	for stage = 1, 4 do
 		playStage(eggObjects, stage)
 
-		task.wait(AUTO_STAGE_PAUSE)
+		if stage < 4 then 
+			task.wait(AUTO_STAGE_PAUSE)
+		end
 	end
 
 	playFinalBreak(host, eggObjects, response.Results)
