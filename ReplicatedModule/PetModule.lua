@@ -9,15 +9,15 @@ PetModule.MAX_PATTERN = 100
 
 --// UI images
 PetModule.InventoryButtonImages = {
-	Default = "",
-	Selected = "",
-	Equipped = "",
-	Delete = "",
+	Default = "rbxassetid://110068474531651",
+	Selected = "rbxassetid://138685071877398",
+	Equipped = "rbxassetid://119861133374536",
+	Delete = "rbxassetid://101924363440589",
 }
 
 PetModule.EquipSlotImages = {
 	Default = "",
-	Filled = "",
+	Filled = "rbxassetid://138125269418895",
 }
 
 --// Rarities
@@ -25,31 +25,31 @@ PetModule.Rarities = {
 	Common = {
 		Name = "Common",
 		Order = 1,
-		Icon = "",
+		Icon = "rbxassetid://102697177794915",
 	},
 	
 	Uncommon = {
 		Name = "Uncommon",
 		Order = 2,
-		Icon = "",
+		Icon = "rbxassetid://134126753275306",
 	},
 	
 	Rare = {
 		Name = "Rare",
 		Order = 3,
-		Icon = "",
+		Icon = "rbxassetid://74861826058535",
 	},
 	
 	Epic = {
 		Name = "Epic",
 		Order = 4,
-		Icon = "",
+		Icon = "rbxassetid://133072498300441",
 	},
 	
 	Legendary = {
 		Name = "Legendary",
 		Order = 5,
-		Icon = "",
+		Icon = "rbxassetid://106629708963597",
 	},
 }
 
