@@ -308,7 +308,7 @@ local function deletePets(player, petIds)
 		if typeof(petId) == "string" then
 			local success = deletePet(player, petId)
 			
-			if success then deleteCount += 1 end
+			if success then deletedCount += 1 end
 		end
 	end
 	return true, deletedCount
