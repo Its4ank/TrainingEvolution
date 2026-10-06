@@ -20,7 +20,7 @@ local guiFolder = raceGui:WaitForChild("GuiFolder")
 
 local eggFolder = guiFolder:WaitForChild("EggFolder")
 local eggHost = eggFolder:WaitForChild("EggHost")
-local eggAutoDelMenu = eggFolder:WaitForChild("EggAutoDelMenu")
+local eggAutoDelMenu = eggHost:WaitForChild("EggAutoDelMenu")
 
 local raceGui = eggFolder.Parent.Parent
 MenuManager.init(raceGui)
@@ -272,6 +272,8 @@ local function updateEggPetButtons(state)
 			local viewport = button:FindFirstChild("EggPetViewModel")
 			local nameLabel = button:FindFirstChild("EggPetName")
 			local percentLabel = button:FindFirstChild("EggPetPercent")
+			
+			local autoDeleteIcon = button:FindFirstChild("EggAutoDelIcon")
 
 			if nameLabel then
 				nameLabel.Text = petData.DisplayName or petData.PetName 
@@ -282,11 +284,10 @@ local function updateEggPetButtons(state)
 			end
 
 			setupViewport(viewport, petData.PetName)
-
-			local imageState = petData.SpecificAutoDelete and "Selected" or "Default"
-			local image = EggModule.GetAutoDeleteImage(imageState)
-
-			setImage(button, image)
+			
+			if autoDeleteIcon then 
+				autoDeleteIcon.Visible = petData.SpecificAutoDelete == true
+			end
 
 			if button:IsA("GuiButton") then
 				local connection = button.Activated:Connect(function()
@@ -303,11 +304,11 @@ end
 
 --// Global Auto Delete
 local rarityButtons = {
-	Common = eggAutoDelMenu:WaitForChild("EggAutoDelCommon"),
-	Uncommon = eggAutoDelMenu:WaitForChild("EggAutoDelUncommon"),
-	Rare = eggAutoDelMenu:WaitForChild("EggAutoDelRare"),
-	Epic = eggAutoDelMenu:WaitForChild("EggAutoDelEpic"),
-	Legendary = eggAutoDelMenu:WaitForChild("EggAutoDelLegendary"),
+	Common = eggAutoDelMenu:WaitForChild("EggAutoDelCommonOP"),
+	Uncommon = eggAutoDelMenu:WaitForChild("EggAutoDelUncommonOP"),
+	Rare = eggAutoDelMenu:WaitForChild("EggAutoDelRareOP"),
+	Epic = eggAutoDelMenu:WaitForChild("EggAutoDelEpicOP"),
+	Legendary = eggAutoDelMenu:WaitForChild("EggAutoDelLegendaryOP"),
 }
 
 local function updateGlobalAutoDelete(state)
@@ -315,20 +316,35 @@ local function updateGlobalAutoDelete(state)
 		local enabled = state.GlobalAutoDelete and state.GlobalAutoDelete[rarityName] == true
 		local icon = button:FindFirstChild("AutoDelIcon")
 
-		setImage(icon, EggModule.GetAutoDeleteImage(enabled and "Selected" or "Default"))
+		if icon then icon.Visible = enabled end
 	end
 end
 
-for rarityName, button in pairs(rarityButtons) do
+local function toggleGlobalAutoDelete(rarityName)
+	if uiBusy then return end 
 
-	if button:IsA("GuiButton") then
-		button.Activated:Connect(function()
-			if uiBusy then return end 
-
-			globalAutoDeleteEvent:FireServer(rarityName)
-		end)
-	end
+	globalAutoDeleteEvent:FireServer(rarityName)
 end
+
+rarityButtons.Common.MouseButton1Click:Connect(function()
+	toggleGlobalAutoDelete("Common")
+end)
+
+rarityButtons.Uncommon.Activated:Connect(function()
+	toggleGlobalAutoDelete("Uncommon")
+end)
+
+rarityButtons.Rare.Activated:Connect(function()
+	toggleGlobalAutoDelete("Rare")
+end)
+
+rarityButtons.Epic.Activated:Connect(function()
+	toggleGlobalAutoDelete("Epic")
+end)
+
+rarityButtons.Legendary.Activated:Connect(function()
+	toggleGlobalAutoDelete("Legendary")
+end)
 
 --// State refresh
 local function refreshEggUI()
