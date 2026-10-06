@@ -16,8 +16,8 @@ PetModule.InventoryButtonImages = {
 }
 
 PetModule.EquipSlotImages = {
-	Default = "",
-	Filled = "rbxassetid://138125269418895",
+	Default = "rbxassetid://135224810906388",
+	Filled = "rbxassetid://75167886958630",
 }
 
 --// Rarities
