@@ -21,6 +21,7 @@ local guiFolder = raceGui:WaitForChild("GuiFolder")
 local eggFolder = guiFolder:WaitForChild("EggFolder")
 local eggHost = eggFolder:WaitForChild("EggHost")
 local eggAutoDelMenu = eggHost:WaitForChild("EggAutoDelMenu")
+local tapTutorial = eggFolder:WaitForChild("TapTutorial")
 
 local raceGui = eggFolder.Parent.Parent
 MenuManager.init(raceGui)
@@ -355,6 +356,12 @@ local function refreshEggUI()
 	end)
 
 	if not success or not state then return end 
+	
+	print(
+		"[EGG UI STATE]",
+		"LuckOpenings:", state.LuckOpenings,
+		"LuckMultiplier:", state.LuckMultiplier
+	)
 
 	currentState = state 
 
@@ -381,6 +388,13 @@ local function refreshEggUI()
 	-- Luck
 	luckBar.Position = EggModule.GetLuckBarPosition(state.LuckOpenings or 0)
 	luckLabel.Text = EggModule.GetLuckLabel(state.LuckOpenings or 0)
+	
+	print(
+		"[EGG UI LUCK]",
+		"Position:", luckBar.Position,
+		"Label:", luckLabel.Text,
+		"Visible:", luckBar.Visible
+	)
 
 	updateEggPetButtons(state)
 	updateGlobalAutoDelete(state)
@@ -766,6 +780,8 @@ end
 
 --// Close hatch
 local function closeHatch()
+	tapTutorial:SetAttribute("TapTutorialActive", false)
+	
 	if currentHatchHost then
 		currentHatchHost.Visible = false 
 	end 
@@ -796,6 +812,7 @@ local function beginManualHatch(response)
 
 	currentTapStage = 0
 	hatchState = "WaitingForTap"
+	tapTutorial:SetAttribute("TapTutorialActive", true)
 
 	autoHatching = false 
 	autoStopRequested = false 
@@ -820,8 +837,9 @@ local function handleManualTap()
 	end 
 
 	if hatchState ~= "WaitingForTap" then return end 
+	
+	tapTutorial:SetAttribute("TapTutorialActive", false)
 	hatchState = "AnimatingStages"
-
 	currentTapStage += 1
 
 	local stage = math.clamp(currentTapStage, 1, 4)
@@ -842,6 +860,7 @@ local function handleManualTap()
 			end
 
 			hatchState = "WaitingForTap"
+			tapTutorial:SetAttribute("TapTutorialActive", true)
 		end
 	end)
 end
