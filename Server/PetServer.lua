@@ -251,7 +251,7 @@ local function isBestSetEquipped(player)
 		end
 	end
 	
-	table.insert(allPets, function(a, b)
+	table.sort(allPets, function(a, b)
 		return a.Power > b.Power
 	end)
 	
