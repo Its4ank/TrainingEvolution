@@ -530,6 +530,32 @@ local function getButtonState(petFolder, data)
 	return "Default"
 end
 
+local function updateInventoryButtonStates()
+	for _, container in ipairs(petScrollContainer:GetChildren()) do
+		if container:IsA("GuiObject") then
+			for _, button in ipairs(container:GetChildren()) do
+				if button:getAttribute("GeneratedPetButton") then 
+					local petId = button:GetAttribute("PetId")
+					local petFolder = petId and petsFolder:FindFirstChild(petId)
+					
+					if petFolder then
+						local data = getPetData(petFolder)
+						
+						if data then
+							button.Image = PetModule.GetInventoryButtonImage(getButtonState(petFolder, data))
+							local equippedIcon = button:FindFirstChild("PetSelInfoEquip")
+							
+							if equippedIcon then
+								equippedIcon.Visible = data.Equipped
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
 --// Inventory containers
 local function clearGeneratedInventory()
 	for _, child in ipairs(petScrollContainer:GetChildren()) do
@@ -577,6 +603,7 @@ local function createPetButton(container, petFolder, data)
 	button.Name = petFolder.Name .. "_Button"
 	button.Visible = true
 	button:SetAttribute("GeneratedPetButton", true)
+	button:SetAttribute("PetId", petFolder.Name)
 	button.Parent = container
 	
 	local viewport = button:WaitForChild("PetPreview")
@@ -602,12 +629,15 @@ local function createPetButton(container, petFolder, data)
 			end
 			
 			updateMassDeleteLabel()
-			refreshUI()
+			updateInventoryButtonStates()
 			return
 		end
 		
 		selectedPetId = petFolder.Name
-		refreshUI()
+		
+		updateSelectedPetUI()
+		updateEquippedSlots()
+		updateInventoryButtonStates()
 	end)
 end
 
@@ -735,7 +765,7 @@ petMassDelete.Activated:Connect(function()
 		
 		clearDeleteSelection()
 		updateMassDeleteLabel()
-		refreshUI()
+		updateInventoryButtonStates()
 		return
 	end
 	
@@ -746,7 +776,7 @@ petMassDelete.Activated:Connect(function()
 		
 		clearDeleteSelection()
 		updateMassDeleteLabel()
-		refreshUI()
+		updateInventoryButtonStates()
 		return
 	end
 	
