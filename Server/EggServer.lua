@@ -496,7 +496,7 @@ local function getEggState(player, eggName)
 		HasTripleHatch = hasTriple,
 		HasAutoHatch = hasAuto,
 		FreeStorage = PetServiceModule.GetFreeStorage(player),
-		luckOpenings = luckOpenings.Value,
+		LuckOpenings = luckOpenings.Value,
 		LuckMultiplier = luckMultiplier,
 		Pets = pets,
 		GlobalAutoDelete = globalAutoDelete,
