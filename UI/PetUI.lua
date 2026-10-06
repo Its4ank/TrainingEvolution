@@ -647,7 +647,7 @@ local function isBestSetEquipped()
 		end
 	end
 	
-	table.insert(allPets, function(a, b) return a.Power > b.Power end)
+	table.sort(allPets, function(a, b) return a.Power > b.Power end)
 	
 	local maxCount = math.min(maxEquippedPetsValue.Value, #allPets)
 	local equippedPets = getEquippedPets()
@@ -692,7 +692,7 @@ end
 
 --// Equipped slot clicks
 for _, slotInfo in ipairs(equipSlotButtons) do
-	slotInfo.Button.Archivable:Connect(function()
+	slotInfo.Button.Activated:Connect(function()
 		local petId = slotInfo.Button:GetAttribute("PetId")
 		if not petId then return end
 		
