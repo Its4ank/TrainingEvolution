@@ -567,6 +567,14 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	if player:GetAttribute("DataReady") == true then
 		BoostModule.RemovePlayer(player)
+		
+		local eggData = player:FindFirstChild("EggData")
+		local lastLeaveTime = eggData and eggData:FindFirstChild("LastLeaveTime")
+		
+		if lastLeaveTime then
+			lastLeaveTime.Value = os.time()
+		end
+		
 		savePlayer(player)
 	end
 	
@@ -604,6 +612,14 @@ game:BindToClose(function()
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player:GetAttribute("DataReady") == true then
 			BoostModule.RemovePlayer(player)
+			
+			local eggData = player:FindFirstChild("EggData")
+			local lastLeaveTime = eggData and eggData:FindFirstChild("LastLeaveTime")
+
+			if lastLeaveTime then
+				lastLeaveTime.Value = os.time()
+			end
+			
 			savePlayer(player)
 		end
 		releaseSessionLock(player)
