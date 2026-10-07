@@ -108,7 +108,7 @@ function PlayerDataSetupModule.setup(player)
 	getOrCreateFolder(player, "Trainer")
 	
 	local resources = getOrCreateFolder(player, "Resources")
-	getOrCreateFolder(resources, "NumberValue", "Distance", 0)
+	getOrCreateValue(resources, "NumberValue", "Distance", 0)
 	
 	getOrCreateFolder(player, "Rewards")
 	getOrCreateFolder(player, "Potions")
