@@ -106,7 +106,10 @@ function PlayerDataSetupModule.setup(player)
 	getOrCreateFolder(player, "Pets")
 	getOrCreateFolder(player, "Trails")
 	getOrCreateFolder(player, "Trainer")
-	getOrCreateFolder(player, "Resources")
+	
+	local resources = getOrCreateFolder(player, "Resources")
+	getOrCreateFolder(resources, "NumberValue", "Distance", 0)
+	
 	getOrCreateFolder(player, "Rewards")
 	getOrCreateFolder(player, "Potions")
 	getOrCreateFolder(player, "PotionTimers")
