@@ -320,6 +320,7 @@ local function getPlayerResources(player)
 		Energy = leaderstats:FindFirstChild("Energy"),
 		Rebirth = leaderstats:FindFirstChild("Rebirth"),
 		XP = resources:FindFirstChild("XPModule"),
+		Distance = resources:FindFirstChild("Distance"),
 	}
 	
 	for _, value in pairs(values) do
@@ -702,6 +703,13 @@ local function updateRacer(player, deltaTime)
 	local currentDistance = math.max(previousDistance, forwardDistance)
 	
 	if currentDistance <= previousDistance then return end 
+	
+	local distanceGained = currentDistance - previousDistance
+	local distanceResource = resources:FindFirstChild("Distance")
+	
+	if distanceResource then
+		distanceResource.Value += distanceGained
+	end
 	
 	state.SegmentMaxDistance = currentDistance
 	
