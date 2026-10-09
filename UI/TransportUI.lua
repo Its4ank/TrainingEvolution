@@ -26,10 +26,10 @@ local BAR_TWEEN_TIME = 0.25
 local WARNING_DURATION = 3
 
 --// REMOTES
-local transportEvent = ReplicatedStorage.Remotes:WaitForChild("TransportEvent")
+local transportEvent = ReplicatedStorage:WaitForChild("TransportEvent")
 
 local actionEvent = transportEvent:WaitForChild("TransportActionEvent")
-local resultEvent = transportEvent:WaitForChild("TransportResultEvent")
+local resultEvent = transportEvent:WaitForChild("TransportActionResultEvent")
 local warningEvent = transportEvent:WaitForChild("TransportWarningEvent")
 
 --// GUI
@@ -38,7 +38,7 @@ local transportFolder = script.Parent
 local host = transportFolder:WaitForChild("TransportHost")
 local transportMenu = host:WaitForChild("TransportMenu")
 local stageMenu = host:WaitForChild("TranStageMenu")
-local stageResources = host:WaitForChild("TranStageResources")
+local stageResources = host:WaitForChild("TranStageResource")
 local blurFrame = host:WaitForChild("TranBlurFrame")
 local warningLabel = host:WaitForChild("TranWarningLabel")
 
@@ -83,7 +83,8 @@ local xpLabel = details:WaitForChild("BarXpLabel")
 local equipButton = details:WaitForChild("TranEquipButton")
 local equipLabel = equipButton:WaitForChild("TranDetEquipLabel")
 local upgradeButton = details:WaitForChild("TranDetUpgButton")
-local upgradeMoney = upgradeButton:WaitForChild("UpgPriceTouch")
+local upgradeMoney = upgradeButton:WaitForChild("UpgPriceMoney")
+local upgradeTouch = upgradeButton:WaitForChild("UpgPriceTouch")
 local stageOpenButton = details:WaitForChild("TranDetStageUpButton")
 
 --// STAGE MENU
@@ -146,7 +147,7 @@ end
 local function getCurrentResources()
 	return {
 		
-		Money = moneyValue.value,
+		Money = moneyValue.Value,
 		RaceTouch = touchValue.Value,
 		XP = xpValue.Value,
 		Distance = distanceValue.Value,
@@ -211,19 +212,17 @@ end
 
 --// ICON
 local function setIcon(object, iconId)
-	if iconId and iconId ~= "" then
-		object.Image = iconId
-	end
+	object.Image = iconId or ""
 end
 
 --// SELECTION INDICATORS
-local function updateSelecionIndicators()
+local function updateSelectionIndicators()
 	for index, indicator in ipairs(selectionIndicators) do
 		local transportId = transportOrder[index]
 		local selected = transportId == selectedTransportId
 		local state = selected and "Selected" or "Default"
 		
-		local icon = TransportModule.GetTransportIocn(LOCATION_ID, transportId, state)
+		local icon = TransportModule.GetTransportIcon(LOCATION_ID, transportId, state)
 		
 		setIcon(indicator, icon)
 	end
@@ -272,7 +271,7 @@ end
 
 --// VIEWPORT
 local function updateViewport()
-	viewport:ClearAllChiuldren()
+	viewport:ClearAllChildren()
 	
 	local config = TransportModule.GetTransport(LOCATION_ID, selectedTransportId)
 	if not config then return end
@@ -313,11 +312,14 @@ end
 
 --// XP PROGRESS
 local function updateXPBar(data)
-	local canUpgrade = TransportModule.CanLevelUp(data.Level, data.Stage)
-	
-	if not canUpgrade then
+	if TransportModule.IsMaxTransport(data.Level, data.Stage) then
 		xpLabel.Text = "MAX"
-		
+		updateBar(xpBar, 1, XP_BAR_MIN, XP_BAR_MAX, 0.27)
+		return
+	end
+	
+	if not TransportModule.CanLevelUp(data.Level, data.Stage) then
+		xpLabel.Text = "STAGE UP"
 		updateBar(xpBar, 1, XP_BAR_MIN, XP_BAR_MAX, 0.27)
 		return
 	end
@@ -325,7 +327,6 @@ local function updateXPBar(data)
 	local price = TransportModule.GetNextLevelPrice(LOCATION_ID, selectedTransportId, data.Level)
 	if not price then 
 		xpLabel.Text = "0/0"
-		
 		updateBar(xpBar, 0, XP_BAR_MIN, XP_BAR_MAX, 0.27)
 		return
 	end
@@ -341,10 +342,15 @@ end
 
 --// UPGRADE PRICE
 local function updateUpgradePrice(data)
-	local canUpgrade = TransportModule.CanLevelUp(data.Level, data.Stage)
-	if not canUpgrade then
+	if TransportModule.IsMaxTransport(data.Level, data.Stage) then
 		upgradeMoney.Text = "MAX"
 		upgradeTouch.Text = "MAX"
+		return
+	end
+	
+	if not TransportModule.CanLevelUp(data.Level, data.Stage) then
+		upgradeMoney.Text = "-"
+		upgradeTouch.Text = "-"
 		return
 	end
 	
@@ -355,8 +361,8 @@ local function updateUpgradePrice(data)
 		return
 	end
 	
-	updateMoney.Text = formatNumber(price.Money)
-	upgradeTouch.Text = formatNumber(price.Touch)
+	upgradeMoney.Text = formatNumber(price.Money)
+	upgradeTouch.Text = formatNumber(price.RaceTouch)
 end
 
 --// BOOSTS
@@ -465,7 +471,7 @@ local function updateStageMenu()
 	
 	local costs = stageData.Cost or {}
 	
-	requiredLevel.Text = formatNumber(data.Level) .. "/" // formatNumber(stageData.RequiredLevel)
+	requiredLevel.Text = formatNumber(data.Level) .. "/" .. formatNumber(stageData.RequiredLevel)
 	requiredMoney.Text = formatNumber(costs.Money)
 	requiredTouch.Text = formatNumber(costs.RaceTouch)
 	requiredDistance.Text = formatNumber(costs.Distance)
@@ -480,7 +486,7 @@ end
 
 --// REFRESH
 local function refreshUI()
-	updateSelecionIndicators()
+	updateSelectionIndicators()
 	updateTransportButtons()
 	updateDetails()
 	
@@ -524,6 +530,19 @@ end
 
 --// STAGE WINDOW
 local function openStageMenu()
+	local data = getTransportData(selectedTransportId)
+	if not data then return end
+	
+	if not data.Unlocked then
+		showWarning("This transport in locked.")
+		return
+	end
+	
+	if not data.Owned then
+		showWarning("Buy the transport first.")
+		return
+	end
+	
 	stageMenu.Visible = true 
 	stageResources.Visible = true 
 	blurFrame.Visible = true 
@@ -544,7 +563,7 @@ local function sendAction(actionName)
 		return
 	end
 	
-	actionEvent:FireServer(actionName, LOCATION_ID. selectedTransportId)
+	actionEvent:FireServer(actionName, LOCATION_ID, selectedTransportId)
 end
 
 --// EQUIP / BUY
@@ -586,7 +605,7 @@ local function onUpgradeClicked()
 	end
 	
 	if not TransportModule.CanLevelUp(data.Level, data.Stage) then
-		showWarning("Firest, increase then stage.")
+		showWarning("Upgrade the stage first.")
 		return
 	end
 	
@@ -597,6 +616,11 @@ end
 local function onStageUpClicked()
 	local data = getTransportData(selectedTransportId)
 	if not data then return end 
+	
+	if not data.Unlocked then
+		showWarning("This transport in locked.")
+		return
+	end
 	
 	if not data.Owned then
 		showWarning("First, buy a transport.")
@@ -639,9 +663,9 @@ local function buildMissingMessage(missing)
 		end
 	end
 	
-	if #parts == 0 then return "Insuffcient resources" end
+	if #parts == 0 then return "Insufficient resources." end
 	
-	return "You are lacking: " .. table.concat(parts, ", ")
+	return "Missing: " .. table.concat(parts, ", ")
 end
 
 --// SERVER WARNINGS
@@ -662,18 +686,34 @@ resultEvent.OnClientEvent:Connect(function(actionName, success, reason, location
 	if locationId ~= LOCATION_ID then return end 
 	
 	if not success then 
-		if reason == "STAGE_UP_REQUIRED" then
-			showWarning("First, increase the stage.")
-		elseif reason == "NOT_OWNED" then
-			showWarning("Fist buy the transport.")
-		elseif reason == "MAX" then
-			showWarning("Maximum level.")
-		elseif reason == "MAX_STAGE" then
-			showWarning("Maximum stage.")
-		elseif reason == "SERVER_STAGE" then
-			showWarning("Server Error.")
-		elseif reason == "PRICE_NOT_FOUND" then
-			showWarning("Upgrade cost not found.")
+		local messages = {
+			INVALID_TRANSPORT = "Transport not found.",
+			ALREADY_OWNED = "You already own this transport.",
+			NOT_PURCHASABLE = "This transport cannot be purchased.",
+			INVALID_PRICE = "Transport price not found.",
+			RESOURCXES_NOT_FOUND = "Player resources not found.",
+			PURCHASE_FAILED = "Transport purchase failed.",
+			NOT_OWNED = "Buy the transport first.",
+			STAGE_UP_REQUIRED = "Upgrade the stage first.",
+			PRICE_NOT_FOUND = "Upgrade cost not found.",
+			UPGRADE_FAILED = "Transport upgrade failed.",
+			MAX = "Maximum level reached.",
+			MAX_STAGE = "Maximum stage reached.",
+			STAGE_MAX = "Stage is already MAX",
+			STAGE_DATA_NOT_FOUND = "Stage data not found.",
+			REQUIREMENTS_NOT_FOUND = "Stage requirements not found.",
+			STAGE_UP_FAILED = "Stage upgrade failed.",
+			SERVER_ERROR = "Server error.",
+		}
+		
+		local handledByWarningEvent = {
+			LOCKED = true,
+			MISSING_RESOURCES = true, 
+			MISSING_REQUIREMENTS = true,
+		}
+		
+		if not handledByWarningEvent[reason] then
+			showWarning(messages[reason] or "Action unavailable.")
 		end
 	end
 	
