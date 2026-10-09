@@ -1,810 +1,753 @@
+--// TransportUI v1.3
+
+--// SEVICES
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
-local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
-local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
-local FormatModule = require(game.ReplicatedStorage.Modules.FormatModule)
+--// PLAYER
+local player = Players.LocalPlayer 
 
-local raceGui = script.Parent
-local player = Players.LocalPlayer
-ClientDataModule.WaitUntilReady(player)
-MenuManager.init(raceGui)
+--// MODULES
+local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
+local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 
-local guiFolder = raceGui:WaitForChild("GuiFolder")
+--// CONFIG
+local LOCATION_ID = "StoneAge"
 
+local XP_BAR_MIN = -0.95
+local XP_BAR_MAX = 0.02
 
-local itemsFolderUI = guiFolder:WaitForChild("ItemsFolder")
-local uiBalance = guiFolder:WaitForChild("UIBalance")
+local STAGE_BAR_MIN = -0.95
+local STAGE_BAR_MAX = 0.018
 
---//RemoteEvents
-local buyItemEvent = ReplicatedStorage:WaitForChild("BuyItemEvent")
-local upgradeItemEvent = ReplicatedStorage:WaitForChild("UpgradeItemEvent")
-local evolveItemEvent = ReplicatedStorage:WaitForChild("EvolveItemEvent")
-local itemSREvent = ReplicatedStorage:WaitForChild("ItemSREvent") 
+local BAR_TWEEN_TIME = 0.25
 
+local WARNING_DURATION = 3
 
+--// REMOTES
+local transportEvent = ReplicatedStorage.Remotes:WaitForChild("TransportEvent")
 
---//Player stats
-local energy = ClientDataModule.GetEnergy(player)
-local money = ClientDataModule.GetMoney(player)
-local srRobux = ClientDataModule.GetSrRobux(player)
+local actionEvent = transportEvent:WaitForChild("TransportActionEvent")
+local resultEvent = transportEvent:WaitForChild("TransportResultEvent")
+local warningEvent = transportEvent:WaitForChild("TransportWarningEvent")
 
+--// GUI
+local transportFolder = script.Parent 
 
+local host = transportFolder:WaitForChild("TransportHost")
+local transportMenu = host:WaitForChild("TransportMenu")
+local stageMenu = host:WaitForChild("TranStageMenu")
+local stageResources = host:WaitForChild("TranStageResources")
+local blurFrame = host:WaitForChild("TranBlurFrame")
+local warningLabel = host:WaitForChild("TranWarningLabel")
 
---// Items Menu
-local itemsMenu = itemsFolderUI:WaitForChild("ItemsMenu")
-local itemsOpenButton = uiBalance:WaitForChild("ItemsOpenButton")
-local backButtonItemsMenu = itemsMenu:WaitForChild("BackButtonItemsMenu")
+--// TRANSPORT MENU
+local viewport = transportMenu:WaitForChild("TranViewportModel")
 
-local itemDetails = itemsMenu:WaitForChild("ItemDetailsFrame")
+local locationFolder = transportMenu:WaitForChild("TranLocation")
+local stoneAgeButton = locationFolder:WaitForChild("TranLocatStoneAge")
+local feetButton = locationFolder:WaitForChild("TranLocFeedButton")
+local logButton = locationFolder:WaitForChild("TranLocLogButton")
+local stoneButton = locationFolder:WaitForChild("TranLocStoneButton")
 
+local backButton = transportMenu:WaitForChild("TranBackButton")
+local nextButton = transportMenu:WaitForChild("TranNextButton")
+local closeButton = transportMenu:WaitForChild("TranMenuClose")
 
-
---// Item balance UI
-local leaderstatsUIImage = itemsMenu:WaitForChild("leaderstatsUIImage")
-
-local srRobuxLabel = leaderstatsUIImage:WaitForChild("SRRobuxLabel")
-local itemsMoneyLabel = leaderstatsUIImage:WaitForChild("MoneyLabel")
-local itemsEnergyLabel = leaderstatsUIImage:WaitForChild("EnergyLabel")
-
-
-
---// Item details UI
-local itemNameLabel = itemDetails:WaitForChild("ItemNameLabel")
-local itemLevelLabel = itemDetails:WaitForChild("ItemLevelLabel")
-local itemEvolutionLabel = itemDetails:WaitForChild("ItemEvolutionLabel")
-local itemTierLabel = itemDetails:WaitForChild("ItemTierLabel")
-local itemPreviewViewport = itemDetails:WaitForChild("ItemPreviewViewport")
-local itemAccelerationLabel = itemDetails:WaitForChild("ItemAccelerationLabel")
-local itemRacePowerLabel = itemDetails:WaitForChild("ItemRacePowerLabel")
-local itemRarityLabel = itemDetails:WaitForChild("ItemRarityLabel")
-
-local buyItemButton = itemDetails:WaitForChild("BuyItemButton")
-local upgradeItemButton = itemDetails:WaitForChild("UpgradeItemButton")
-local evolveItemButton = itemDetails:WaitForChild("EvolveItemButton")
-local srItemButton = itemDetails:WaitForChild("SRItemButton")
-
-local buyEquippedLabel = buyItemButton:WaitForChild("BuyEquippedLabel")
-local buyUnequippedLabel = buyItemButton:WaitForChild("BuyUnequippedLabel")
-local upgradeLabel = upgradeItemButton:WaitForChild("UpgradeLabel")
-
-local itemRarityImage = itemDetails:WaitForChild("ItemRarityImage")
-local itemTierRarityImage = itemDetails:WaitForChild("ItemTierRarityImage")
-
-
-
---// SR Menu
-local srFolder = itemsFolderUI:WaitForChild("SRItem")
-
-local srShoesFrame = srFolder:WaitForChild("SRShoesFrame")
-local srBackButton = srShoesFrame:WaitForChild("BackButton")
-local srShoesButton = srShoesFrame:WaitForChild("SRShoesButton")
-
-local evolutionShoesSR = srShoesFrame:WaitForChild("EvolutionShoesSR")
-local levelShoesSR = srShoesFrame:WaitForChild("LevelShoesSR")
-local energyShoesSR = srShoesFrame:WaitForChild("EnergyShoesSR")
-
-
-
---// Item data
-local itemsFolder = ClientDataModule.GetItems(player)
-local earthFolder = itemsFolder:WaitForChild("Earth")
-local shoesFolder = earthFolder:WaitForChild("Shoes")
-
-local shoesOwned = shoesFolder:WaitForChild("Owned")
-local shoesEquipped = shoesFolder:WaitForChild("Equipped")
-local shoesLevel = shoesFolder:WaitForChild("Level")
-local shoesEvolution = shoesFolder:WaitForChild("Evolution")
-local shoesTier = shoesFolder:WaitForChild("ItemTier")
-local shoesAcceleration = shoesFolder:WaitForChild("Acceleration")
-local shoesRacePower = shoesFolder:WaitForChild("RacePower")
-
-
-
---// States
-local locationFramee = itemsMenu:WaitForChild("LocationFrame")
-local locationFrame = locationFramee:WaitForChild("ScrollLocationFrame")
-
-local earthButton = locationFrame:WaitForChild("EarthButton")
-
-local era1Button = locationFrame:WaitForChild("Era1")
-
-local itemsListFrame1 = itemsMenu:WaitForChild("ItemsListFrame1")
-local itemsListFrame2 = itemsMenu:WaitForChild("ItemsListFrame2")
-local itemsListFrame3 = itemsMenu:WaitForChild("ItemsListFrame3")
-local itemsListFrame4 = itemsMenu:WaitForChild("ItemsListFrame4")
-local itemsListFrame5 = itemsMenu:WaitForChild("ItemsListFrame5")
-
-local shoesButton = itemsListFrame1:WaitForChild("ShoesButton")
-local boardButton = itemsListFrame2:WaitForChild("BoardButton")
-local scooterButton = itemsListFrame3:WaitForChild("ScooterButton")
-local hoverboardButton = itemsListFrame4:WaitForChild("HoverboardButton")
-local eScooterButton = itemsListFrame5:WaitForChild("EScooterButton")
-
-local shoesViewport = shoesButton:WaitForChild("ItemViewport")
-local boardViewport = boardButton:WaitForChild("ItemViewport")
-local scooterViewport = scooterButton:WaitForChild("ItemViewport")
-local hoverboardViewport = hoverboardButton:WaitForChild("ItemViewport")
-local eScooterViewport = eScooterButton:WaitForChild("ItemViewport")
-
-local shoesLockedLabel = shoesButton:WaitForChild("LockedLabel")
-local boardLockedLabel = boardButton:WaitForChild("LockedLabel")
-local scooterLockedLabel = scooterButton:WaitForChild("LockedLabel")
-local hoverboardLockedLabel = hoverboardButton:WaitForChild("LockedLabel")
-local eScooterLockedLabel = eScooterButton:WaitForChild("LockedLabel")
-
-
-
-local earthOpen = false
-local era1Open = false
-local selectedItemTier = 1
-
-MenuManager.register("Items", itemsMenu)
-
-
-
-
---// Balance
-local UPGRADE_PRICES = {
-	[1] = 750,
-	[2] = 1250,
-	[3] = 1750,
-	[4] = 2000,
-	[5] = 2350,
-	[6] = 2750,
-	[7] = 3250,
-	[8] = 3750,
-	[9] = 4100,
-	[10] = 4500,
+--// SELECTION INDICATORS
+local selectionIndicators = {
+	transportMenu:WaitForChild("TranSelect1"),
+	transportMenu:WaitForChild("TranSelect2"),
+	transportMenu:WaitForChild("TranSelect3"),
 }
 
-local TIER_PRICE_MULTIPLIER = {
-	[1] = 1.00,
-	[2] = 1.25,
-	[3] = 1.5,
-	[4] = 1.75,
-	[5] = 2.00,
+--// DETAILS
+local detailsFolder = transportMenu:WaitForChild("TranDetailsFolder")
+local details = detailsFolder:WaitForChild("TranDetails")
+local nameLabel = details:WaitForChild("TranDetName")
+local stageNameLabel = details:WaitForChild("TranDetNameStage")
+local stageIcon = details:WaitForChild("TranDetStageIcon")
+local powerCurrent = details:WaitForChild("DetPowerCurBoost")
+local powerNext = details:WaitForChild("DetPowerNextBoost")
+local accelerationCurrent = details:WaitForChild("DetAccCurBoost")
+local accelerationNext = details:WaitForChild("DetAccNextBoost")
+local levelLabel = details:WaitForChild("DetLvlNumber")
+
+--// XP BAR
+local xpBarWindow = details:WaitForChild("DetUpgBarWindow")
+local xpBar = xpBarWindow:WaitForChild("DetUpgBarXp")
+local xpLabel = details:WaitForChild("BarXpLabel")
+
+--// BUTTONS
+local equipButton = details:WaitForChild("TranEquipButton")
+local equipLabel = equipButton:WaitForChild("TranDetEquipLabel")
+local upgradeButton = details:WaitForChild("TranDetUpgButton")
+local upgradeMoney = upgradeButton:WaitForChild("UpgPriceTouch")
+local stageOpenButton = details:WaitForChild("TranDetStageUpButton")
+
+--// STAGE MENU
+local stageCurrentIcon = stageMenu:WaitForChild("StaCurIcon")
+local stageNextIcon = stageMenu:WaitForChild("StaNextIcon")
+local stageCurrentName = stageMenu:WaitForChild("StageCurName")
+local stageNextName = stageMenu:WaitForChild("StageNextName")
+local stageCurrentBoost = stageMenu:WaitForChild("StaCurBoost")
+local stageNextBoost = stageMenu:WaitForChild("StaNextBoost")
+local requiredLevel = stageMenu:WaitForChild("StaRequirLevel")
+local requiredTouch = stageMenu:WaitForChild("StaRequirTouch")
+local requiredMoney = stageMenu:WaitForChild("StaRequirMoney")
+local requiredDistance = stageMenu:WaitForChild("StaRequirDistance")
+local stageBarWindow = stageMenu:WaitForChild("StaBarWindow")
+local stageBar = stageBarWindow:WaitForChild("StageRequirBar")
+local stagePercent = stageMenu:WaitForChild("StaRequirBarPercent")
+local stageUpButton = stageMenu:WaitForChild("StageUpButton")
+local stageCloseButton = stageMenu:WaitForChild("StageClose")
+
+--// CURRENT RESOURCES
+local resourceTouch = stageResources:WaitForChild("ResRaceTouchLabel")
+local resourceMoney = stageResources:WaitForChild("ResMoneyLabel")
+local resourceDistance = stageResources:WaitForChild("ResDistanceLabel")
+
+--// PLAYER DATA
+local playerData = player:WaitForChild("PlayerData")
+local resources = player:WaitForChild("Resources")
+local moneyValue = playerData:WaitForChild("Money")
+local touchValue = playerData:WaitForChild("RaceTouch")
+local xpValue = resources:WaitForChild("XPModule")
+local distanceValue = resources:WaitForChild("Distance")
+local transports = player:WaitForChild("Transports")
+local locationData = transports:WaitForChild(LOCATION_ID)
+
+--// TRANSPORT ORDER
+local transportOrder = TransportModule.GetTransportOrder(LOCATION_ID) or {}
+
+local transportButtons = {
+	Feet = feetButton,
+	Log = logButton,
+	Stone = stoneButton,
 }
 
-local ITEM_PREVIEW_BY_TIER = {
-	[1] = "ShoesVisual",
-	[2] = "Board",
-	[3] = "Scooter",
-	[4] = "Hoverboard_Red",
-	[5] = "E-Scooter",
-}
+--// STATE
+local selectedTransportId = TransportModule.DEFAULT_TRANSPORT
 
-local ITEM_NAMES_BY_TIER = {
-	[1] = "Shoes",
-	[2] = "Board",
-	[3] = "Scooter",
-	[4] = "Hoverboard",
-	[5] = "E-Scooter",
-}
+local warningToken = 0
+local activeTweens = {}
 
-local ITEM_RARITY_BY_TIER = {
-	[1] = "Common",
-	[2] = "Uncommon",
-	[3] = "Rare",
-	[4] = "Epic",
-	[5] = "Legendary",
-}
-
-local ITEM_RARITY_IMAGE_BY_TIER = {
-	[1] = "rbxassetid://125557164640494",
-	[2] = "rbxassetid://139402889171300",
-	[3] = "rbxassetid://99898076943285",
-	[4] = "rbxassetid://125028078426045",
-	[5] = "rbxassetid://98153882736668",
-}
-
-local ITEM_TIER_IMAGE_BY_TIER = {
-	[1] = "rbxassetid://73943552547641",
-	[2] = "rbxassetid://118679363157693",
-	[3] = "rbxassetid://104403571627394",
-	[4] = "rbxassetid://125968338598520",
-	[5] = "rbxassetid://95006719050053",
-}
-
-local ITEM_DETAILS_BY_TIER = {
-	[1] = {
-	Name = "Shoes",
-	Rarity = "Common",
-	Acceleration = 1.00,
-	RacePower = 1.00,
-	},
-	
-	[2] = {
-		Name = "Board",
-		Rarity = "Uncommon",
-		Acceleration = 1.05,
-		RacePower = 1.05,
-	},
-	
-	[3] = {
-		Name = "Scooter",
-		Rarity = "Rare",
-		Acceleration = 1.10,
-		RacePower = 1.10,
-	},
-	
-	[4] = {
-		Name = "Hoverboard",
-		Rarity = "Epic",
-		Acceleration = 1.15,
-		RacePower = 1.15,
-	},
-	
-	[5] = {
-		Name = "E-Scooter",
-		Rarity = "Legendary",
-		Acceleration = 1.20,
-		RacePower = 1.20,
-	},
-}
-
-
-
---// Utils
-local function getItemTierName(tier)
-	if tier == 1 then return "Novice" end 
-	if tier == 2 then return "Advanced" end 
-	if tier == 3 then return "Expert" end 
-	if tier == 4 then return "Master" end 
-	if tier == 5 then return "Legend" end 
-	return "Unknown"
+--// FORMAT
+local function formatNumber(value)
+	return FormatModule.FormatNumber(value or 0)
 end
 
-
-
---//Preview
-local function cleanPreviewModel(model)
-	for _, obj in ipairs(model:GetDescendants()) do
-		if obj:IsA("Script")
-			or obj:IsA("LocalScript")
-			or obj:IsA("ClickDetector")
-			or obj:IsA("sound") then 
-			obj:Destroy()
-		end
-
-		if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
-			obj.Disabled = true
-			obj.CanTouch = false
-			obj.CanCollide = false
-		end
-
-		if obj:IsA("BasePart") then
-			obj.Anchored = true
-			obj.CanCollide = false
-			obj.CanTouch = false
-		end
-	end
+local function formatPercent(value)
+	return FormatModule.FormatPercent(value or 0)
 end
 
-local function setupItemButtonViewport(viewport, visualName)
-	viewport:ClearAllChildren()
-	
-	local previewRoot = game.ReplicatedStorage:FindFirstChild("ItemPreviewModels")
-	if not previewRoot then return end
-	
-	local earthFolder = previewRoot:FindFirstChild("Earth")
-	if not earthFolder then return end
-	
-	local modelTemplate = earthFolder:FindFirstChild(visualName)
-	if not modelTemplate then
-		warn("Preview not found:", visualName)
-		return
-	end
-	
-	local clone = modelTemplate:Clone()
-	clone.Parent = viewport
-	
-	local camera = Instance.new("Camera")
-	camera.Parent = viewport
-	viewport.CurrentCamera = camera
-	
-	for _, obj in ipairs(clone:GetDescendants()) do
-		if obj:IsA("BasePart") then
-			obj.Anchored = true
-			obj.CanCollide = false
-		end
-	end
-	
-	local cf, size = clone:GetBoundingBox()
-	local center = cf.Position
-	
-	clone:PivotTo(CFrame.new(-center) * clone:GetPivot())
-	
-	local biggest = math.max(size.X, size.Y, size.Z)
-	
-	local distance = biggest *  1.2
-	local height = size.Y * 0.25
-	
-	if visualName == "ShoesVisual" then
-		distance = biggest * 1.1
-		height = size.Y * 0.25
-	elseif visualName == "Board" then
-		distance = biggest * 0.9
-		height = size.Y * 0.35
-		clone:PivotTo(CFrame.Angles(0.3, math.rad(90), 0) * clone:GetPivot())
-	elseif visualName == "Scooter" then
-		distance = biggest * 1.0
-		height = size.Y * 0.35
-	elseif visualName == "Hoverboard_Red" then
-		distance = biggest * 0.9
-		height = size.Y * 0.35
-		clone:PivotTo(CFrame.Angles(0.1, math.rad(90), 0) * clone:GetPivot())
-	elseif visualName == "E-Scooter" then
-		distance = biggest * 1.2
-		height = size.Y * 0.35
-	end
-	
-	camera.CFrame = CFrame.new( 
-		Vector3.new(0, height, distance),
-		Vector3.new(0, 0, 0)
-	)
-end
-
-local currentPreviewModel = nil
-local currentPreviewBaseCFrame = nil
-local previewRotationAngle = 0
-
-local function updateShoesPreview()
-
-	itemPreviewViewport:ClearAllChildren()
-
-	local previewRoot = game.ReplicatedStorage:FindFirstChild("ItemPreviewModels")
-	if not previewRoot then return end
-
-	local earthPreviewFolder = previewRoot:FindFirstChild("Earth")
-	if not earthPreviewFolder then return end
-
-	local visualName = ITEM_PREVIEW_BY_TIER[selectedItemTier] or "ShoesVisual"
-	local visualTemplate = earthPreviewFolder:FindFirstChild(visualName)
-
-	if not visualTemplate then
-		warn("Preview visual not found:", visualName)
-		return
-	end
-
-	local worldModel = Instance.new("WorldModel")
-	worldModel.Parent = itemPreviewViewport
-
-	local clone = visualTemplate:Clone()
-	clone.Parent = worldModel
-
-	cleanPreviewModel(clone)
-
-	local previewOffset = CFrame.new(0, 0, 0)
-	local previewRotation = CFrame.Angles(0, math.rad(150), 0)
-
-	if selectedItemTier == 1 then
-		-- ShoesVisual
-		previewOffset = CFrame.new(0, 0, 0)
-		previewOffset = CFrame.Angles(0, math.rad(150), 0)
-	elseif selectedItemTier == 2 then
-		-- Board
-		previewOffset = CFrame.new(0, 0, 0)
-		previewOffset = CFrame.Angles(0, math.rad(90), 0)
-	elseif selectedItemTier == 3 then
-		-- Scooter
-		previewOffset = CFrame.new(0, 0, 0)
-		previewOffset = CFrame.Angles(0, math.rad(130), 0)
-	elseif selectedItemTier == 4 then
-		-- Hoverboard
-		previewOffset = CFrame.new(0, 1, 0)
-		previewOffset = CFrame.Angles(0, math.rad(90), 0)
-	elseif selectedItemTier == 5 then
-		-- E-Scooter
-		previewOffset = CFrame.new(0, 0, 0)
-		previewOffset = CFrame.Angles(0, math.rad(140), 0)
-	end
-
-	clone:PivotTo(previewOffset * previewRotation * clone:GetPivot())
-
-	local cf, size = clone:GetBoundingBox()
-	local center = cf.Position
-
-	clone:PivotTo(CFrame.new(-center) * clone:GetPivot())
-	clone:PivotTo(previewOffset * previewRotation * clone:GetPivot())
-	
-	currentPreviewModel = clone
-	currentPreviewBaseCFrame = clone:GetPivot()
-	previewRotationAngle = 0
-
-	local _, newSize = clone:GetBoundingBox()
-
-	local _, newSize = clone:GetBoundingBox()
-	local biggest = math.max(newSize.X, newSize.Y, newSize.Z)
-	local distance = math.max(biggest * 1.1, 5)
-
-	local camera = Instance.new("Camera")
-	camera.Parent = itemPreviewViewport
-	itemPreviewViewport.CurrentCamera = camera
-
-	itemPreviewViewport.Ambient = Color3.fromRGB(255, 255, 255)
-	itemPreviewViewport.LightColor = Color3.fromRGB(255, 255, 255)
-	itemPreviewViewport.LightDirection = Vector3.new(0, 1, 0)
-
-	camera.CFrame = CFrame.new(
-		Vector3.new(0, newSize.Y * 0.4, distance),
-		Vector3.new(0, newSize.Y * 0.25, 0)
-	)
-end
-
-local function updateSRShoesButton()
-	local canSR = shoesLevel.Value >=10 and shoesEvolution.Value >= 5 and energy.Value >= 1000 and shoesTier.Value < 5
-
-	if canSR then
-		srShoesButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-		srShoesButton.Text = "SR Item"
-		srShoesButton.Active = true
-		srShoesButton.AutoButtonColor = true
-	else
-		srShoesButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-		srShoesButton.Text = "Locked"
-		srShoesButton.Active = true
-		srShoesButton.AutoButtonColor = false
-	end
-
-	if shoesTier.Value >= 5 then
-		srShoesButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-		srShoesButton.Text = "MAX TIER"
-		srShoesButton.Active = false
-		srShoesButton.AutoButtonColor = false
-	end
-end
-
-local function updateSRShoesRequirements()
-	local requiredEvolution = 5
-	local requiredLevel = 10
-	local requiredEnergy = 1000
-
-	local currentEvolution = shoesEvolution.Value
-	local currentLevel = shoesLevel.Value
-	local currentEnergy = energy.Value
-
-	evolutionShoesSR.Text = "Evolution" .. tostring(currentEvolution) .. "/" .. tostring(requiredEvolution)
-	levelShoesSR.Text = "Level: " .. tostring(currentLevel) .. "/" .. tostring(requiredLevel)
-	energyShoesSR.Text = "Energy: " .. tostring(currentEnergy) .. "/" .. tostring(requiredEnergy)
-
-	if currentEvolution >= requiredEvolution then
-		evolutionShoesSR.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-	else
-		evolutionShoesSR.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-	end
-
-	if currentLevel >= requiredLevel then
-		levelShoesSR.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-	else
-		levelShoesSR.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-	end
-
-	if currentEnergy >= requiredEnergy then
-		energyShoesSR.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-	else
-		energyShoesSR.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
-	end
-end
-
-local function updateItemBalanceUI()
-	itemsEnergyLabel.Text = "" .. FormatModule.FormatShort(energy.Value)
-	itemsMoneyLabel.Text = "" .. FormatModule.FormatShort(money.Value)
-	
-	if srRobux then
-		srRobuxLabel.Text = "" .. FormatModule.FormatShort(srRobux.Value)
-	else
-		srRobuxLabel.Text = "0"
-	end
-end
-
-local function isSelectedItemUnlocked()
-	return selectedItemTier <= shoesTier.Value
-end
-
-local function updateItemSlotLocks()
-	local slots = {
-		[1] = {
-			lockedLabel = shoesLockedLabel,
-		},
-
-		[2] = {
-			lockedLabel = boardLockedLabel,
-		},
-
-		[3] = {
-			lockedLabel = scooterLockedLabel,
-		},
-
-		[4] = {
-			lockedLabel = hoverboardLockedLabel,
-		},
-
-		[5] = {
-			lockedLabel = eScooterLockedLabel,
-		},
+--// RESOURCES
+local function getCurrentResources()
+	return {
+		
+		Money = moneyValue.value,
+		RaceTouch = touchValue.Value,
+		XP = xpValue.Value,
+		Distance = distanceValue.Value,
 	}
-
-	for tier, slot in ipairs(slots) do
-		local unlocked = tier <= shoesTier.Value
-
-		if unlocked then
-			slot.lockedLabel.Visible = false
-		else
-			slot.lockedLabel.Visible = true
-
-			slot.lockedLabel.Text = "Locked"
-		end
-	end
 end
 
-
-local function updateShoes()
-	updateShoesPreview()
-	updateItemSlotLocks()
-	local currentTier = selectedItemTier
-	local unlocked = isSelectedItemUnlocked()
+--// TRANSPORT DATA
+local function getTransportData(transportId)
+	local folder = locationData:FindFirstChild(transportId)
+	if not folder then return nil end
 	
-	local details = ITEM_DETAILS_BY_TIER[currentTier]
-	if not details then return end
+	local unlocked = folder:FindFirstChild("Unlocked")
+	local owned = folder:FindFirstChild("Owned")
+	local equipped = folder:FindFirstChild("Equipped")
+	local level = folder:FindFirstChild("Level")
+	local stage = folder:FindFirstChild("Stage")
 	
-	itemNameLabel.Text = details.Name
-	itemRarityLabel.Text = "Rarity: " .. details.Rarity
+	if not unlocked or not owned or not equipped or not level or not stage then return nil end
 	
-	itemRarityImage.Image = ITEM_RARITY_IMAGE_BY_TIER[currentTier] or ""
-	itemTierRarityImage.Image = ITEM_TIER_IMAGE_BY_TIER[currentTier] or ""
-
-	itemLevelLabel.Text = "Level: " .. tostring(shoesLevel.Value)
-	itemEvolutionLabel.Text = "Evolution: " .. tostring(shoesEvolution.Value) .. "/5"
-	itemTierLabel.Text = "Tier: " .. getItemTierName(shoesTier.Value)
-	itemAccelerationLabel.Text = "Acceleration: x" .. string.format("%.2f", details.Acceleration)
-	itemRacePowerLabel.Text = "RAce Power: x" .. string.format("%.2f", details.RacePower)
-	
-	if not unlocked then
-		itemNameLabel.Text = details.Name
-		itemRarityLabel.Text = "Locked"
-		itemLevelLabel.Text = "Required: " .. getItemTierName(currentTier)
-		itemEvolutionLabel.Text = "Unclock Tier: " .. tostring(currentTier)
-		itemTierLabel.Text = "Need " .. getItemTierName(currentTier)
-		itemAccelerationLabel.Text = "Locked"
-		itemRacePowerLabel.Text = "Locked"
-			
-		buyItemButton.Visible = false
-		upgradeItemButton.Visible = false
-		evolveItemButton.Visible = false
-		srItemButton.Visible = false
-			
-		return
-	end
-
-	upgradeItemButton.Visible = false
-	evolveItemButton.Visible = false
-	srItemButton.Visible = false
-	
-	if shoesOwned.Value then
-		if shoesLevel.Value < 10 then
-			upgradeItemButton.Visible = true
-		elseif shoesEvolution.Value < 5 then
-			evolveItemButton.Visible = true
-		elseif shoesEvolution.Value >= 5 then
-			srItemButton.Visible = true
-		end
-	end
-	
-	buyItemButton.Visible = true
-	buyItemButton.Active = true
-	buyItemButton.AutoButtonColor = true
-	
-	buyEquippedLabel.Visible = false
-	buyUnequippedLabel.Visible = false
-
-	if not shoesOwned.Value then
-		buyUnequippedLabel.Visible = true
-		buyUnequippedLabel.Text = "Buy"
-	else
-		if shoesEquipped.Value then
-			buyEquippedLabel.Visible = true
-			buyEquippedLabel.Text = "Equipped"
-		else
-			buyUnequippedLabel.Visible = true
-			buyUnequippedLabel.Text = "Equip"
-		end
-	end
-
-	if shoesLevel.Value >= 10 then
-		upgradeLabel.Text = "Upgrade: MAX"
-
-		if shoesEvolution.Value < 5 then
-			evolveItemButton.Visible = true
-		else
-			evolveItemButton.Visible = false
-		end
-	else
-		local nextLevel = shoesLevel.Value + 1
-
-		local basePrice = UPGRADE_PRICES[nextLevel] or 999999
-		local tierMultiplier = TIER_PRICE_MULTIPLIER[shoesTier.Value] or 1
-		local price = math.floor(basePrice * tierMultiplier)
-
-		upgradeLabel.Text = "Upgrade: " .. FormatModule.FormatShort(price)
-	end
+	return {
+		Unlocked = unlocked.Value,
+		Owned = owned.Value,
+		Equipped = equipped.Value,
+		Level = level.Value,
+		Stage = stage.Value,
+	}
 end
 
-local function refreshItemsMenuState()
-	era1Button.Visible = earthOpen
-	itemsListFrame1.Visible = era1Open
-	itemsListFrame2.Visible = era1Open
-	itemsListFrame3.Visible = era1Open
-	itemsListFrame4.Visible = era1Open
-	itemsListFrame5.Visible = era1Open
-	itemDetails.Visible = selectedItem ~= nil
-end
-
-local function selectItemTier(tier)
-	selectedItemTier = tier
-	itemDetails.Visible = true
-	updateShoes()
-end
-
-
-
---// Button Handlers
-itemsOpenButton.MouseButton1Click:Connect(function()
-	if itemsMenu.Visible then
-		refreshItemsMenuState()
-	end
+--// WARNING
+local function showWarning(message)
+	warningToken += 1
 	
-	MenuManager.toggleFull("Items")
-end)
-
-backButtonItemsMenu.MouseButton1Click:Connect(function()
-	MenuManager.close("Items")
-end)
-
-earthButton.MouseButton1Click:Connect(function()
-	earthOpen = not earthOpen
-
-	if not earthOpen then
-		era1Open = false
-		selectedItem = nil
-	end
-
-	refreshItemsMenuState()
-end)
-
-era1Button.MouseButton1Click:Connect(function()
-	era1Open = not era1Open
+	local token = warningToken
 	
-	if not era1Open then
-		selectedItem = nil
-	end
+	warningLabel.Text = message
+	warningLabel.Visible = true
 	
-	refreshItemsMenuState()
-end)
-
---local function selectItem(itemTier)
-	--selectedItem = itemTier 
-	--itemDetails.Visible = true
-	
-	--updateShoes()
-	--refreshItemsMenuState()
---end
-
-shoesButton.MouseButton1Click:Connect(function() 
-	selectItemTier(1)
-end)
-
-boardButton.MouseButton1Click:Connect(function()
-	selectItemTier(2)
-end)
-
-scooterButton.MouseButton1Click:Connect(function()
-	selectItemTier(3)
-end)
-
-hoverboardButton.MouseButton1Click:Connect(function()
-	selectItemTier(4)
-end)
-
-eScooterButton.MouseButton1Click:Connect(function()
-	selectItemTier(5)
-end)
-
-
-buyItemButton.MouseButton1Click:Connect(function()
-	print("BUY/EQUIP BUTTON CLICK")
-	buyItemEvent:FireServer("Earth", "Shoes")
-end)
-
-upgradeItemButton.MouseButton1Click:Connect(function()
-	upgradeItemEvent:FireServer("Earth", "Shoes")
-end)
-
-evolveItemButton.MouseButton1Click:Connect(function()
-	evolveItemEvent:FireServer("Earth", "Shoes")
-end)
-
-srItemButton.MouseButton1Click:Connect(function()
-	itemsMenu.Visible = false
-	srShoesFrame.Visible = true
-	updateSRShoesButton()
-	updateSRShoesRequirements()
-end)
-
-srShoesButton.MouseButton1Click:Connect(function()
-	if shoesLevel.Value >= 10 and shoesEvolution.Value >= 5 and energy.Value >= 1000 and shoesTier.Value < 5 then
-		print("SR SHOES BUTTON CLICK")
-		itemSREvent:FireServer()
-	end
-end)
-
-srBackButton.MouseButton1Click:Connect(function()
-	srShoesFrame.Visible = false
-	itemsMenu.Visible = true
-	
-	updateShoes()
-end)
-
-
-
---//Value Connections
-shoesOwned.Changed:Connect(updateShoes)
-shoesEquipped.Changed:Connect(updateShoes)
-shoesLevel.Changed:Connect(updateShoes)
-shoesEvolution.Changed:Connect(updateShoes)
-shoesTier.Changed:Connect(updateShoes)
-shoesAcceleration.Changed:Connect(updateShoes)
-shoesRacePower.Changed:Connect(updateShoes)
-
-shoesLevel.Changed:Connect(updateSRShoesButton)
-shoesEvolution.Changed:Connect(updateSRShoesButton)
-shoesTier.Changed:Connect(updateSRShoesButton)
-
-shoesLevel.Changed:Connect(updateSRShoesRequirements)
-shoesEvolution.Changed:Connect(updateSRShoesRequirements)
-energy.Changed:Connect(updateSRShoesRequirements)
-energy.Changed:Connect(updateItemBalanceUI)
-money.Changed:Connect(updateItemBalanceUI)
-
-if srRobux then
-	srRobux:GetPropertyChangedSignal("Value"):Connect(function()
-		updateItemBalanceUI()
+	task.delay(WARNING_DURATION, function()
+		if warningToken == token then
+			warningLabel.Visible = false 
+		end
 	end)
 end
 
+--// BAR ANIMATION
+local function updateBar(bar, progress, minX, maxX, yScale)
+	progress = math.clamp(progress or 0, 0, 1)
+	
+	local targetX = minX + (maxX - minX) * progress
+	
+	local targetPosition = UDim2.new(targetX, 0, yScale, 0)
+	
+	if activeTweens[bar] then
+		activeTweens[bar]:Cancel()
+	end
+	
+	local tween = TweenService:Create(bar, TweenInfo.new(BAR_TWEEN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = targetPosition})
+	
+	activeTweens[bar] = tween
+	tween:Play()
+end
 
+--// ICON
+local function setIcon(object, iconId)
+	if iconId and iconId ~= "" then
+		object.Image = iconId
+	end
+end
 
---// Init
-refreshItemsMenuState()
-updateShoes()
-updateSRShoesButton()
-updateSRShoesRequirements()
-updateItemBalanceUI()
-
---ButtonViewport
-setupItemButtonViewport(shoesViewport, "ShoesVisual")
-setupItemButtonViewport(boardViewport, "Board")
-setupItemButtonViewport(scooterViewport, "Scooter")
-setupItemButtonViewport(hoverboardViewport, "Hoverboard_Red")
-setupItemButtonViewport(eScooterViewport, "E-Scooter")
-
-era1Button.Visible = false
-itemsListFrame1.Visible = false
-itemsListFrame2.Visible = false
-itemsListFrame3.Visible = false
-itemsListFrame4.Visible = false
-itemsListFrame5.Visible = false
-itemDetails.Visible = false
-
-RunService.RenderStepped:Connect(function(dt)
-	if currentPreviewModel and currentPreviewBaseCFrame then
-		previewRotationAngle = previewRotationAngle + (dt * math.rad(35))
+--// SELECTION INDICATORS
+local function updateSelecionIndicators()
+	for index, indicator in ipairs(selectionIndicators) do
+		local transportId = transportOrder[index]
+		local selected = transportId == selectedTransportId
+		local state = selected and "Selected" or "Default"
 		
-		currentPreviewModel:PivotTo( 
-			currentPreviewBaseCFrame * CFrame.Angles(0, previewRotationAngle, 0)
-		)
+		local icon = TransportModule.GetTransportIocn(LOCATION_ID, transportId, state)
+		
+		setIcon(indicator, icon)
+	end
+end
+
+--// TRANSPORT BUTTONS
+local function updateTransportButtons()
+	for _, transportId in ipairs(transportOrder) do
+		local button = transportButtons[transportId]
+		if not button then continue end 
+		
+		local data = getTransportData(transportId)
+		if not data then continue end
+		
+		local state
+		
+		if not data.Unlocked then
+			state = "Locked"
+		elseif selectedTransportId == transportId then
+			state = "Selected"
+		else 
+			state = "Default"
+		end
+		
+		local icon = TransportModule.GetTransportIcon(LOCATION_ID, transportId, state)
+		
+		setIcon(button, icon)
+		
+		local lockIcon = button:FindFirstChild("TranLockIcon")
+		if lockIcon then
+			lockIcon.Visible = not data.Unlocked
+		end
+		
+		local requiredStageLabel = button:FindFirstChild("LocStageName")
+		if requiredStageLabel then
+			local config = TransportModule.GetTransport(LOCATION_ID, transportId)
+			
+			if config and config.Unlock then
+				requiredStageLabel.Text = "STAGE " .. tostring(config.Unlock.RequiredStage or 5)
+			end
+			
+			requiredStageLabel.Visible = not data.Unlocked
+		end
+	end
+end
+
+--// VIEWPORT
+local function updateViewport()
+	viewport:ClearAllChiuldren()
+	
+	local config = TransportModule.GetTransport(LOCATION_ID, selectedTransportId)
+	if not config then return end
+	
+	local visual = TransportModule.GetViewportData(LOCATION_ID, selectedTransportId)
+	if not visual or not visual.ModelName then return end
+	
+	local modelsFolder = ReplicatedStorage:FindFirstChild("TransportModels")
+	if not modelsFolder then return end
+	
+	local originalModel = modelsFolder:FindFirstChild(visual.ModelName)
+	if not originalModel then return end
+	
+	local worldModel = Instance.new("WorldModel")
+	worldModel.Parent = viewport
+	
+	local model = originalModel:Clone()
+	model.Parent = worldModel
+	
+	local boundingCFrame, boundingSize = model:GetBoundingBox()
+	
+	model:PivotTo(CFrame.new(0, 0, 0) * boundingCFrame.Rotation)
+	
+	local camera = Instance.new("Camera")
+	camera.Parent = viewport
+	
+	viewport.CurrentCamera = camera
+	
+	local viewportConfig = visual.Viewport or {}
+	local rotation = viewportConfig.Rotation or Vector3.zero
+	local cameraDistance = viewportConfig.CameraDistance or math.max(boundingSize.Magnitude, 5)
+	local cameraHeight = viewportConfig.CameraHeight or viewportConfig.CameraHight or 1
+	local rotationCFrame = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
+	local cameraOffset = rotationCFrame:VectorToWorldSpace(Vector3.new(0, cameraHeight, cameraDistance))
+	
+	camera.CFrame = CFrame.lookAt(cameraOffset, Vector3.zero)
+end
+
+--// XP PROGRESS
+local function updateXPBar(data)
+	local canUpgrade = TransportModule.CanLevelUp(data.Level, data.Stage)
+	
+	if not canUpgrade then
+		xpLabel.Text = "MAX"
+		
+		updateBar(xpBar, 1, XP_BAR_MIN, XP_BAR_MAX, 0.27)
+		return
+	end
+	
+	local price = TransportModule.GetNextLevelPrice(LOCATION_ID, selectedTransportId, data.Level)
+	if not price then 
+		xpLabel.Text = "0/0"
+		
+		updateBar(xpBar, 0, XP_BAR_MIN, XP_BAR_MAX, 0.27)
+		return
+	end
+	
+	local requiredXP = price.XP or 0
+	local currentXP = xpValue.Value
+	
+	local progress = requiredXP > 0 and math.clamp(currentXP / requiredXP, 0, 1) or 1
+	
+	xpLabel.Text = formatNumber(currentXP) .. "/" .. formatNumber(requiredXP)
+	updateBar(xpBar, progress, XP_BAR_MIN, XP_BAR_MAX, 0.27)
+end
+
+--// UPGRADE PRICE
+local function updateUpgradePrice(data)
+	local canUpgrade = TransportModule.CanLevelUp(data.Level, data.Stage)
+	if not canUpgrade then
+		upgradeMoney.Text = "MAX"
+		upgradeTouch.Text = "MAX"
+		return
+	end
+	
+	local price = TransportModule.GetNextLevelPrice(LOCATION_ID, selectedTransportId, data.Level)
+	if not price then
+		upgradeMoney.Text = "-"
+		upgradeTouch.Text = "-"
+		return
+	end
+	
+	updateMoney.Text = formatNumber(price.Money)
+	upgradeTouch.Text = formatNumber(price.Touch)
+end
+
+--// BOOSTS
+local function updateBoosts(data)
+	local boostData = TransportModule.GetCurrentAndNextBoost(LOCATION_ID, selectedTransportId, data.Level, data.Stage)
+	if not boostData then return end
+	
+	local current = boostData.Current
+	local nextBoost = boostData.Next
+	
+	if current then
+		powerCurrent.Text = formatPercent(current.RacePower)
+		accelerationCurrent.Text = formatPercent(current.Acceleration)
+	end
+	
+	if nextBoost then
+		powerNext.Text = formatPercent(nextBoost.RacePower)
+		accelerationNext.Text = formatPercent(nextBoost.Acceleration)
+	else 
+		powerNext.Text = "MAX"
+		accelerationNext.Text = "MAX"
+	end
+end
+
+--// EQUIP BUTTON
+local function updateEquipButton(data)
+	if not data.Unlocked then 
+		equipLabel.Text = "LOCKED"
+		return
+	end
+	
+	if not data.Owned then
+		equipLabel.Text = "BUY"
+		return
+	end
+	
+	if data.Equipped then
+		equipLabel.Text = "UNEQUIP"
+	else 
+		equipLabel.Text = "EQUIP"
+	end
+end
+
+--// DETAILS
+local function updateDetails()
+	local data = getTransportData(selectedTransportId)
+	local config = TransportModule.GetTransport(LOCATION_ID, selectedTransportId)
+	
+	if not data or not config then return end
+	
+	local stageConfig = TransportModule.GetStage(data.Stage)
+	
+	nameLabel.Text = config.Name
+	stageNameLabel.Text = stageConfig and stageConfig.Name or "Stage 1"
+	levelLabel.Text = tostring(data.Level) .. "/" .. tostring(TransportModule.GetStageMaxLevel(data.Stage) or TransportModule.MAX_LEVEL)
+	setIcon(stageIcon, TransportModule.GetStageIcon(data.Stage, "Default"))
+	
+	updateBoosts(data)
+	updateXPBar(data)
+	updateUpgradePrice(data)
+	updateEquipButton(data)
+end
+
+--// STAGE RESOURCES
+local function updateStageResources()
+	resourceMoney.Text = formatNumber(moneyValue.Value)
+	resourceTouch.Text = formatNumber(touchValue.Value)
+	resourceDistance.Text = formatNumber(distanceValue.Value)
+end
+
+--// STAGE MENU
+local function updateStageMenu()
+	local data = getTransportData(selectedTransportId)
+	if not data then return end
+	
+	local currentStage = TransportModule.GetStage(data.Stage)
+	local nextStage = TransportModule.GetStage(data.Stage + 1)
+	if not currentStage then return end
+	
+	stageCurrentName.Text = currentStage.Name
+	stageCurrentBoost.Text = formatNumber(currentStage.BoostMultiplier) .. "x"
+	setIcon(stageCurrentIcon, TransportModule.GetStageIcon(data.Stage, "Default"))
+	
+	if not nextStage then
+		stageNextName.Text = "MAX"
+		stageNextBoost.Text = "MAX"
+		
+		requiredLevel.Text = "MAX"
+		requiredMoney.Text = "MAX"
+		requiredTouch.Text = "MAX"
+		requiredDistance.Text = "MAX"
+		
+		stagePercent.Text = "100%"
+		
+		updateBar(stageBar, 1, STAGE_BAR_MIN, STAGE_BAR_MAX, 0.204)
+		updateStageResources()
+		return
+	end
+	
+	stageNextName.Text = nextStage.Name
+	stageNextBoost.Text = formatNumber(nextStage.BoostMultiplier) .. "x"
+	setIcon(stageNextIcon, TransportModule.GetStageIcon(data.Stage + 1, "Default"))
+	
+	local stageData = TransportModule.GetStageUpData(LOCATION_ID, selectedTransportId, data.Stage)
+	if not stageData then return end
+	
+	local costs = stageData.Cost or {}
+	
+	requiredLevel.Text = formatNumber(data.Level) .. "/" // formatNumber(stageData.RequiredLevel)
+	requiredMoney.Text = formatNumber(costs.Money)
+	requiredTouch.Text = formatNumber(costs.RaceTouch)
+	requiredDistance.Text = formatNumber(costs.Distance)
+	
+	local progress = TransportModule.GetStageRequirementProgress(LOCATION_ID, selectedTransportId, data.Level, data.Stage, getCurrentResources())
+	if progress then
+		stagePercent.Text = formatPercent(progress.OverallPercent)
+		updateBar(stageBar, progress.OverallProgress, STAGE_BAR_MIN, STAGE_BAR_MAX, 0.204)
+	end
+	updateStageResources()
+end
+
+--// REFRESH
+local function refreshUI()
+	updateSelecionIndicators()
+	updateTransportButtons()
+	updateDetails()
+	
+	if stageMenu.Visible then
+		updateStageMenu()
+	end
+end
+
+--// SELECT TRANSPORT
+local function selectTransport(transportId)
+	if not TransportModule.GetTransport(LOCATION_ID, transportId) then return end
+	
+	selectedTransportId = transportId 
+	
+	updateViewport()
+	refreshUI()
+end
+
+--// NAVIGATION
+local function getSelectedIndex()
+	for index, transportId in ipairs(transportOrder) do
+		if transportId == selectedTransportId then return index end
+	end
+	return 1
+end
+
+local function selectPrevious()
+	local index = getSelectedIndex()
+	if index <= 1 then return end
+	
+	selectTransport(transportOrder[index - 1])
+end
+
+local function selectNext()
+	local index = getSelectedIndex()
+	
+	if index >= #transportOrder then return end
+	
+	selectTransport(transportOrder[index + 1])
+end
+
+--// STAGE WINDOW
+local function openStageMenu()
+	stageMenu.Visible = true 
+	stageResources.Visible = true 
+	blurFrame.Visible = true 
+	
+	updateStageMenu()
+end
+
+local function closeStageMenu()
+	stageMenu.Visible = false
+	stageResources.Visible = false 
+	blurFrame.Visible = false 
+end
+
+--// ACTION
+local function sendAction(actionName)
+	if player:GetAttribute("DataReady") ~= true then
+		showWarning("Player data is still loading.")
+		return
+	end
+	
+	actionEvent:FireServer(actionName, LOCATION_ID. selectedTransportId)
+end
+
+--// EQUIP / BUY
+local function onEquipClicked()
+	local data = getTransportData(selectedTransportId)
+	if not data then return end 
+	
+	if not data.Unlocked then
+		showWarning("This transport is unavailable.")
+		return
+	end
+	
+	if not data.Owned then
+		sendAction("BuyTransport")
+		return
+	end
+	
+	sendAction("EquipTransport")
+end
+
+--// UPGRADE
+local function onUpgradeClicked()
+	local data = getTransportData(selectedTransportId)
+	if not data then return end 
+	
+	if not data.Unlocked then
+		showWarning("This transport is unavailable.")
+		return
+	end
+	
+	if not data.Owned then
+		showWarning("First, buy a transport.")
+		return
+	end
+	
+	if TransportModule.IsMaxTransport(data.Level, data.Stage) then
+		showWarning("The maximum level has been reached.")
+		return
+	end
+	
+	if not TransportModule.CanLevelUp(data.Level, data.Stage) then
+		showWarning("Firest, increase then stage.")
+		return
+	end
+	
+	sendAction("UpgradeTransport")
+end
+
+--// STAGE UP
+local function onStageUpClicked()
+	local data = getTransportData(selectedTransportId)
+	if not data then return end 
+	
+	if not data.Owned then
+		showWarning("First, buy a transport.")
+		return
+	end
+	
+	if data.Stage >= TransportModule.MAX_STAGE then
+		showWarning("Maximum stage reached.")
+		return
+	end
+	
+	sendAction("StageUpTransport")
+end
+
+--// MISSING REQUIREMENTS
+local function buildMissingMessage(missing)
+	local names = {
+		Level = "Level",
+		Money = "Money",
+		RaceTouch = "RaceTouch",
+		XP = "XP",
+		Distance = "Distance",
+	}
+	
+	local order = {
+		"Level",
+		"Money",
+		"RaceTouch",
+		"XP",
+		"Distance",
+	}
+	
+	local parts = {}
+	
+	for _, resourceName in ipairs(order) do
+		local amount = missing[resourceName]
+		
+		if amount and amount > 0 then
+			table.insert(parts, formatNumber(amount) .. " " .. names[resourceName])
+		end
+	end
+	
+	if #parts == 0 then return "Insuffcient resources" end
+	
+	return "You are lacking: " .. table.concat(parts, ", ")
+end
+
+--// SERVER WARNINGS
+warningEvent.OnClientEvent:Connect(function(warningType, data)
+	if warningType == "TRANSPORT_LOCKED" then
+		showWarning("This transport is not available.")
+	elseif warningType == "MISSING_RESOURCES" then
+		showWarning(buildMissingMessage(data))
+	elseif warningType == "MISSING_STAGE_REQUIREMENTS" then
+		showWarning(buildMissingMessage(data))
+	else 
+		showWarning("Action unavailable")
 	end
 end)
 
-print("ItemUI loaded")
+--// SERVER RESULTS
+resultEvent.OnClientEvent:Connect(function(actionName, success, reason, locationId, transportId)
+	if locationId ~= LOCATION_ID then return end 
+	
+	if not success then 
+		if reason == "STAGE_UP_REQUIRED" then
+			showWarning("First, increase the stage.")
+		elseif reason == "NOT_OWNED" then
+			showWarning("Fist buy the transport.")
+		elseif reason == "MAX" then
+			showWarning("Maximum level.")
+		elseif reason == "MAX_STAGE" then
+			showWarning("Maximum stage.")
+		elseif reason == "SERVER_STAGE" then
+			showWarning("Server Error.")
+		elseif reason == "PRICE_NOT_FOUND" then
+			showWarning("Upgrade cost not found.")
+		end
+	end
+	
+	refreshUI()
+end)
+
+--// BUTTOM CONNECTIONS
+feetButton.MouseButton1Click:Connect(function()
+	selectTransport("Feet")
+end)
+
+logButton.MouseButton1Click:Connect(function()
+	selectTransport("Log")
+end)
+
+stoneButton.MouseButton1Click:Connect(function()
+	selectTransport("Stone")
+end)
+
+backButton.MouseButton1Click:Connect(selectPrevious)
+nextButton.MouseButton1Click:Connect(selectNext)
+
+stoneAgeButton.MouseButton1Click:Connect(function()
+	selectTransport(TransportModule.DEFAULT_TRANSPORT)
+end)
+
+equipButton.MouseButton1Click:Connect(onEquipClicked)
+upgradeButton.MouseButton1Click:Connect(onUpgradeClicked)
+stageOpenButton.MouseButton1Click:Connect(openStageMenu)
+stageUpButton.MouseButton1Click:Connect(onStageUpClicked)
+stageCloseButton.MouseButton1Click:Connect(closeStageMenu)
+
+closeButton.MouseButton1Click:Connect(function()
+	closeStageMenu()
+	transportMenu.Visible = false
+end)
+
+--// RESOURCE CHANGES
+moneyValue.Changed:Connect(refreshUI)
+touchValue.Changed:Connect(refreshUI)
+xpValue.Changed:Connect(refreshUI)
+distanceValue.Changed:Connect(refreshUI)
+
+--// TRANSPORT DATA CHANGES
+local function connectTransportData()
+	for _, transportId in ipairs(transportOrder) do
+		local folder = locationData:WaitForChild(transportId)
+		
+		for _, value in ipairs(folder:GetChildren()) do
+			if value:IsA("ValueBase") then
+				value.Changed:Connect(refreshUI)
+			end
+		end
+	end
+end
+
+--// MENU VISIBILITY
+transportMenu:GetPropertyChangedSignal("Visible"):Connect(function()
+	if transportMenu.Visible then
+		selectTransport(TransportModule.DEFAULT_TRANSPORT)
+	end
+end)
+
+--// INITIALIZATION
+local function initialize()
+	closeStageMenu()
+	
+	warningLabel.Visible = false 
+	
+	connectTransportData()
+	selectTransport(TransportModule.DEFAULT_TRANSPORT)
+	updateStageResources()
+end
+
+initialize()
+
+print("TransportUI v1.3 loaded")
