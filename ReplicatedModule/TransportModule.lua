@@ -58,7 +58,7 @@ TransportModule.Locations = {
 					Viewport = {
 						Rotation = Vector3.new(0, 0, 0),
 						CameraDistance = 7,
-						CameraHight = 1,
+						CameraHeight = 1,
 					},
 				},
 				
@@ -764,7 +764,7 @@ function TransportModule.getTransportDisplayData(locationId, transportId, level,
 		
 		CurrentBoost = boostData and boostData.Current or nil,
 		NextBoost = boostData and boostData.Next or nil,
-		NextBoostType = boostData.NextType or nil,
+		NextBoostType = boostData and boostData.NextType or nil,
 		
 		
 		CanLevelUp = TransportModule.CanLevelUp(level, stageNumber),
@@ -786,36 +786,450 @@ function TransportModule.getTransportDisplayData(locationId, transportId, level,
 end
 
 --// VALIDATION
-function TransportModule.ValidateTransport(locationId, transportId)
-	local transport = TransportModule.GetTransport(locationId, transportId)
+local VALID_LEVEL_RESOURCES = {
+	Money = true,
+	RaceTouch = true,
+	XP = true,
+}
+
+local VALID_STAGE_RESOURCES = {
+	Money = true,
+	RaceTouch = true,
+	Distance = true,
+}
+
+local VALID_PURCHASE_RESOURCES = {
+	Money = true,
+	RaceTouch = true,
+}
+
+local function validateResourceTable(resources, validResources, context)
+	if type(resources) ~= "table" then
+		return false, context .. " must be a table"
+	end
 	
-	if not transport then return false, "Transport does not exist" end
-	if not transport.Id then return false, "Missing Id" end
-	if not transport.Name then return false, "Missing Name" end
-	if not transport.Order then return false, "Missing Order" end
-	if not transport.LevelPrice then return false, "Missing LevelPrice" end
-	if not transport.LevelBoost then return false, "Missing LevelBoost" end
-	if not transport.StageUp then return false, "Missing StageUp" end
+	for resourceName, amount in pairs(resources) do
+		if not validResources[resourceName] then
+			return false, context .. " contains invalid resource: " .. tostring(resourceName)
+		end
+		
+		if type(amount) ~= "number" then
+			return false, context .. "." .. resourceName .. " must be a number"
+		end
+		
+		if amount < 0 then
+			return false, context .. "." .. resourceName .. " cannot be negative"
+		end
+	end
 	
-	for stageNumber = 1, TransportModule.MAX_STAGE - 1 do
-		if not transport.StageUp[stageNumber] then
-			return false, "Missing StageUp config for Stage " .. stageNumber
+	return true
+end
+
+local function validateLevelPrice(transport)
+	local coveredLevels = {}
+	
+	for rangeIndex, range in ipairs(transport.LevelPrice) do
+		if type(range.FromLevel) ~= "number" or type(range.ToLevel) ~= "number" then
+			
+			return false, "LevelPrice range " .. rangeIndex .. " has invalid FromLevel/ToLevel"
+		end
+		
+		if range.FromLevel > range.ToLevel then
+			return false, "LevelPrice range " .. rangeIndex .. " has FromLevel greater than ToLevel"
+		end
+		
+		if range.FromLevel < 1 or range.ToLevel > TransportModule.MAX_LEVEL then
+			return false, "LevelPrice range " .. rangeIndex .. " is outside level limits"
+		end
+		
+		local validStart, startReason = validateResourceTable(range.StartPrice, VALID_LEVEL_RESOURCES, "LevelPrice[" .. rangeIndex .. "].StartPrice")
+		if not validStart then return false, startReason end
+		
+		local validEnd, endReason = validateResourceTable(range.EndPrice, VALID_LEVEL_RESOURCES, "LevelPrice[" .. rangeIndex .. "].EndPrice")
+		if not validEnd then return false, endReason end
+		
+		for level = range.FromLevel, range.ToLevel do
+			if coveredLevels[level] then
+				return false, "LevelPrice overlaps at Level " .. level 
+			end
+			
+			coveredLevels[level] = true 
+		end
+	end
+	
+	for level = 1, TransportModule.MAX_LEVEL do
+		if not coveredLevels[level] then
+			return false, "LevelPrice does not cover Level " .. level 
+		end
+	end
+	
+	return true 
+end
+
+local function validateLevelBoost(transport)
+	local ranges = transport.LevelBoost
+	
+	if #ranges ~= TransportModule.MAX_STAGE then 
+		return false, "LevelBoost must contain exactly " .. TransportModule.MAX_STAGE .. " range"
+	end
+	
+	for stageNumber = 1, TransportModule.MAX_STAGE do 
+		local range = ranges[stageNumber]
+		local stage = TransportModule.Stages[stageNumber]
+		
+		if not range then
+			return false, "Missing LevelBoost range for Stage " .. stageNumber
+		end
+		
+		if range.FromLevel ~= stage.MinLevel then
+			return false, "LevelBoost Stage " .. stageNumber .. " FromLevel must be " .. stage.MinLevel
+		end
+		
+		if range.ToLevel ~= stage.MaxLevel then
+			return false, "LevelBoost Stage " .. stageNumber .. " ToLevel must be " .. stage.MaxLevel
+		end
+		
+		local boostFields = {
+			"StartRacePower",
+			"EndRacePower",
+			"StartAcceleration",
+			"EndAcceleration",
+		}
+		
+		for _, fieldName in ipairs(boostFields) do
+			local value = range[fieldName]
+			
+			if type(value) ~= "number" then
+				return false, "LevelBoost Stage " .. stageNumber .. " missing numeric " .. fieldName
+			end
+			
+			if value < 0 then
+				return false, "LevelBoost Stage " .. stageNumber .. " " .. fieldName .. " cannot be negative"
+			end
+		end
+		
+		if stageNumber > 1 then
+			local previousRange = ranges[stageNumber - 1]
+			
+			if previousRange.EndRacePower ~= range.StartRacePower then
+				return false, "RacePower boost is not continuous beetween Stage " .. (stageNumber - 1) .. " and Stage " .. stageNumber
+			end
+			
+			if previousRange.EndAcceleration ~= range.StartAcceleration then
+				return false, "Acceleration boost is not continuous between Stage " .. (stageNumber - 1) .. " and Stage " .. stageNumber
+			end
 		end
 	end
 	return true 
 end
 
+local function validateStageUp(transport)
+	for stageNumber = 1, TransportModule.MAX_STAGE - 1 do
+		local stageUp = transport.StageUp[stageNumber]
+		local stage = TransportModule.Stages[stageNumber]
+		
+		if not stageUp then
+			return false, "Missing StageUp config for Stage " .. stageNumber
+		end
+		
+		if stageUp.RequiredLevel ~= stage.MaxLevel then
+			return false, "StageUp Stage " .. stageNumber .. " RequiredLevel must be " .. stage.MaxLevel
+		end
+		
+		local validCost, costReason = validateResourceTable(stageUp.Cost, VALID_STAGE_RESOURCES, "StageUp[" .. stageNumber .. "].Cost")
+		if not validCost then return false, costReason end
+	end
+	
+	if transport.StageUp[TransportModule.MAX_STAGE] ~= nil then
+		return false, "Stage " .. TransportModule.MAX_STAGE .. " must not have StageUp config"
+	end
+	return true
+end
+
+local function validateUnlock(locationId, transportId, transport)
+	local location = TransportModule.GetLocation(locationId)
+	
+	if transport.DefaultUnlocked then return true end 
+		
+	if type(transport.Unlock) ~= "table" then
+		return false, "Locked transport is missing Unlock config"
+	end
+		
+	local previousTransportId = transport.Unlock.PreviousTransport
+		
+	if type(previousTransportId) ~= "string" or previousTransportId == "" then
+		return false, "Unlock.PreviousTransport is missing"
+	end
+	
+	local previousTransport = TransportModule.GetTransport(locationId, previousTransportId)
+	
+	if not previousTransport then
+		return false, "Unlock.PreviousTransport does not exist: " .. previousTransportId
+	end
+	
+	if previousTransportId == transportId then
+		return false, "Transport cannot unlock itself"
+	end
+	
+	local expectedPreviousId = location.TransportOrder[transport.Order - 1]
+	if expectedPreviousId ~= previousTransportId then
+		return false, "Unlock.PreviousTransport must be " .. tostring(expectedPreviousId)
+	end
+	
+	local requiredStage = transport.Unlock.RequiredStage
+	local requiredLevel = transport.Unlock.RequiredLevel
+	
+	if type(requiredStage) ~= "number" or requiredStage < 1 or requiredLevel > TransportModule.MAX_STAGE then
+	   return false, "Unlock.RequiredStage is invalid"
+	end
+	
+	if type(requiredLevel) ~= "number" or requiredLevel < 0 or requiredLevel > TransportModule.MAX_LEVEL then
+		return false, "Unlock.RequiredLevel is invalid"
+	end
+	
+	local requiredStageConfig = TransportModule.GetStage(requiredStage)
+	if not requiredStageConfig then
+		return false, "Unlock.RequiredStage does not exist"
+	end
+	
+	if requiredLevel < requiredStageConfig.MinLevel or requiredLevel > requiredStageConfig.MaxLevel then
+		return false, "Unlock.RequiredLevel does not belong to RequiredStage"
+	end
+	
+	return true 
+end
+
+local function validateViewport(transport)
+	if type(transport.Visual) ~= "table" then
+		return false, "Missing Visual config"
+	end
+	
+	if transport.Value.ModelName ~= nil and type(transport.Visual.ModelName) ~= "string" then
+		return false, "Visual.ModelName must be a string or nil"
+	end
+	
+	local viewport = transport.Visual.Viewport
+	
+	if type(viewport) ~= "table" then
+		return false, "Missing Visual.Viewport config"
+	end
+	
+	if viewport.Rotation ~= nil and typeof(viewport.Rotation) ~= "Vector3" then
+		return false, "Viewport.Rotation must be Vector3"
+	end
+	
+	if type(viewport.CameraDistance) ~= "number" or viewport.CameraDistance <= 0 then
+		return false, "Viewport.CameraDistance must be greater than 0"
+	end
+	
+	if type(viewport.CameraHeight) ~= "number" then
+		return false, "Viewport.CameraHeight must be a number"
+	end
+	return true 
+end
+
+function TransportModule.ValidateTransport(locationId, transportId)
+	local location = TransportModule.GetLocation(locationId)
+	if not location then return false, "Locaiton does not exist" end
+	
+	local transport = TransportModule.GetTransport(locationId, transportId)
+	if not transport then return false, "Transport does not exist" end
+	
+	if transport.Id ~= transportId then
+		return false, "Id must match transport key: " .. transportId 
+	end
+	
+	if type(transport.Name) ~= "string" or transport.Name == "" then
+		return false, "Missing or invalid Name"
+	end
+	
+	if type(transport.Order) ~= "number" then
+		return false, "Missing or invalid Order"
+	end
+	
+	if transport.Order % 1 ~= 0 then
+		return false, "Order must be a integer"
+	end
+	
+	if transport.Order < 1 or transport.Order > #location.TransportOrder then
+		return false, "Order is outside TransportOrder"
+	end
+	
+	if location.TransportOrder[transport.Order] ~= transportId then
+		return false, "Order does not match TransportOrder. Expected " .. tostring(location.TransportOrder[transport.Order])
+	end
+	
+	if type(transport.DefaultUnlocked) ~= "boolean" then
+		return false, "DefaultUnlocked must be boolean"
+	end
+	
+	if type(transport.DefaultOwned) ~= "boolean" then
+		return false, "DefaultOwned must be boolean"
+	end
+	
+	if type(transport.DefaultEquipped) ~= "boolean" then
+		return false, "DefaultEquipped must be boolean"
+	end
+	
+	if transport.DefaultOwned and not transport.DefaultUnlocked then
+		return false, "DefaultOwned requires DefaultUnlocked"
+	end
+	
+	if transport.DefaultEquipped and (not transport.DefaultOwned or not transport.DefaultUnlocked) then
+		return false, "DefaultEquipped requires DefaultOwned and DefaultUnlocked"
+	end
+	
+	if type(transport.Purchasable) ~= "boolean" then
+		return false, "Purchasable must be boolean"
+	end
+	
+	if transport.Purchasable then
+		local validPrice, priceReason = validateResourceTable(transport.PurchasePrice, VALID_PURCHASE_RESOURCES, "PurchasePrice")
+		if not validPrice then return false, priceReason end
+	end
+	
+	if type(transport.LevelPrice) ~= "table" then
+		return false, "Missing LevelPrice"
+	end
+	
+	if type(transport.LevelBoost) ~= "table" then
+		return false, "Missing LevelBoost"
+	end
+	
+	if type(transport.StageUp) ~= "table" then
+		return false, "Missing StageUp"
+	end
+	
+	local validLevelPrice, levelPriceReason = validateLevelPrice(transport)
+	if not validLevelPrice then return false, levelPriceReason end
+	
+	local validLevelBoost, levelBoostReason = validateLevelBoost(transport)
+	if not validLevelBoost then return false, levelBoostReason end
+	
+	local validStageUp, stageUpReason = validateStageUp(transport)
+	if not validStageUp then return false, stageUpReason end
+	
+	local validUnlock, unlockReason = validateUnlock(locationId, transportId, transport)
+	if not validUnlock then return false, unlockReason end
+	
+	local validViewport, viewportReason = validateViewport(transport)
+	if not validViewport then return false, viewportReason end
+	
+	return true
+end
+
 function TransportModule.ValidateAll()
+	if type(TransportModule.Stages) ~= "table" then
+		return false, "Stage config is missing"
+	end
+	
+	for stageNumber = 1, TransportModule.MAX_STAGE do 
+		local stage = TransportModule.Stages[stageNumber]
+		if not stage then return false, "Missing Stage " .. stageNumber end
+		
+		if type(stage.MinLevel) ~= "number" or type(stage.MaxLevel) ~= "number" then
+			return false, "Stage " .. stageNumber .. " has invalid level boundaries"
+		end
+		
+		if stage.MinLevel > stage.MaxLevel then
+			return false, "Stage " .. stageNumber .. " has invalid level range"
+		end
+		
+		if stageNumber == 1 then
+			if stage.MinLevel ~= 0 then
+				return false, "Stage 1 MinLevel must be 0"
+			end
+		else 
+			local previousStage = TransportModule.Stages[stageNumber - 1]
+			
+			if stage.MinLevel ~= previousStage.MaxLevel then
+				return false, "Stage " .. stageNumber .. " MinLevel must equal Stage " .. (stageNumber - 1) .. " MaxLevel"
+			end
+		end
+		
+		if type(stage.BoostMultiplier) ~= "number" or stage.BoostMultiplier <= 0 then
+			return false, "Stage " .. stageNumber .. " has invalid BoostMultiplier"
+		end
+	end
+	
+	local finalStage = TransportModule.Stages[TransportModule.MAX_STAGE]
+	if not finalStage then return false, "Final stage is missing" end
+	
+	if finalStage.MaxLevel ~= TransportModule.MAX_LEVEL then
+		return false, "Final stage MaxLevel must equal MAX_LEVEL"
+	end
+	
+	local defaultLocation = TransportModule.Locations[TransportModule.DEFAULT_LOCATION]
+	if not defaultLocation then
+		return false, "DEFAULT_LOCATION does not exist"
+	end
+	
 	for locationId, location in pairs(TransportModule.Locations) do
+		if type(location.Transports) ~= "table" then
+			return false, locationId .. ": missing Transports"
+		end
+		
+		if type(location.TransportOrder) ~= "table" or #location.TransportOrder == 0 then
+			return false, locationId .. ": missing TransportOrder"
+		end
+		
+		local orderSeen = {}
+		local defaultEquippedCount = 0
+		
+		for order, transportId in ipairs(location.TransportOrder) do
+			if orderSeen[transportId] then
+				return false, locationId .. ": duplicate transport in TransportOrder: " .. tostring(transportId)
+			end
+			
+			orderSeen[transportId] = true 
+			
+			local transport = location.Transports[transportId]
+			if not transport then
+				return false, locationId .. ": TransportOrder contains missing transport: " .. tostring(transportId)
+			end
+			
+			if transport.Order ~= order then
+				return false, locationId .. "/" .. transportId .. ": Order must be " .. order 
+			end
+			
+			if transport.DefaultEquipped == true then
+				defaultEquippedCount += 1
+			end
+		end
+		
+		if defaultEquippedCount > 1 then
+			return false, locationId .. ": multiple transports have DefaultEquipped = true"
+		end
+		
 		for transportId in pairs(location.Transports) do
+			if not orderSeen[transportId] then
+				return false, locationId .. ": transport missing from TransportOrder: " .. transportId
+			end
+			
 			local valid, reason = TransportModule.ValidateTransport(locationId, transportId)
 			if not valid then
-				warn("[TransportModule]", locationId, transportId, reason)
-				return false
+				return false, locationId .. "/" .. transportId .. ": " .. tostring(reason)
 			end
 		end
 	end
-	return true 
+	
+	local defaultTransport = TransportModule.GetTransport(TransportModule.DEFAULT_LOCATION, TransportModule.DEFAULT_TRANSPORT)
+	if not defaultTransport then
+		return false, "DEFAULT_TRANSPORT does not exist in DEFAULT_LOCATION"
+	end
+	
+	if defaultLocation.TransportOrder[1] ~= TransportModule.DEFAULT_LOCATION then
+		return false, "DEFAULT_TRANSPORT must be first in DEFAULT_LOCATION TransportOrder"
+	end
+	
+	if defaultTransport.Purchasable then
+		return false, "DEFAULT_TRANSPORT must not be purchasable"
+	end
+	
+	if not defaultTransport.DefaultUnlocked or not defaultTransport.DefaultOwned or not defaultTransport.DefaultEquipped then
+		return false, "DEFAULT_TRANSPORT must start Unlocked, Owned and Equipped"
+	end
+	return true
 end
 
 return TransportModule
