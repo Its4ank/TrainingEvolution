@@ -40,11 +40,44 @@ local function getOrCreateValue(parent, className, name, defaultValue)
 	local value = parent:FindFirstChild(name)
 	
 	if not value then
+		if value.ClassName == className then
+			return value 
+		end
+		
+		local recoveredValue = defaultValue
+		
+		if value:IsA("ValueBase") then
+			local oldValue = value.Value
+			
+			if className == "IntValue" or className == "NumberValue" then
+				local number = tonumber(oldValue)
+				
+				if number and number == number and number ~= math.rad and number ~= -math.huge then
+					recoveredValue = className == "IntValue" and math.floor(number) or number 
+				end
+			elseif className == "BoolValue" then
+				if oldValue == true or oldValue == "true" or oldValue == 1 then
+					recoveredValue = true 
+				elseif oldValue == false or oldValue == "false" or oldValue == 0 then
+					recoveredValue = false
+				end
+			end
+		end
+		
+		warn("[TransportServer] Incorrect value class:", name, "Expected:", className, "Found:", value.CalssName)
+		value:Destroy()
 		value = Instance.new(className)
 		value.Name = name
 		value.Value = defaultValue
 		value.Parent = parent
+		return value 
 	end
+	
+	value = Instance.new(className)
+	value.Name = name
+	value.Value = defaultValue
+	value.Parent = parent
+	
 	return value 
 end
 
@@ -72,8 +105,8 @@ local function getPlayerResources(player)
 		Distance = resources:FindFirstChild("Distance"),
 	}
 	
-	for _, value in pairs(values) do
-		if not value then return nil end
+	if not values.Money or not values.RaceTouch or not values.XP or not values.Distance then
+		return nil
 	end
 	return values 
 end
@@ -150,19 +183,28 @@ end
 
 local function getTransportValues(player, locationId, transportId)
 	local folder = getTransportFolder(player, locationId, transportId)
-	if not folder then return nil end
+	if not folder or not folder:IsA("Folder") then return nil end
+	
+	local requiredValues = {
+		Unlocked = "BoolValue",
+		Owned = "BoolValue",
+		Equipped = "BoolValue",
+		Level = "IntValue",
+		Stage = "IntValue",
+	}
 	
 	local values = {
 		Folder = folder,
-		Unlocked = folder:FindFirstChild("Unlocked"),
-		Owned = folder:FindFirstChild("Owned"),
-		Equipped = folder:FindFirstChild("Equipped"),
-		Level = folder:FindFirstChild("Level"),
-		Stage = folder:FindFirstChild("Stage"),
 	}
 	
-	for name, value in pairs(values) do
-		if name ~= "Folder" and not value then return nil end
+	for name, className in pairs(requiredValues) do
+		local value = folder:FindFirstChild(name)
+		
+		if not value or value.ClassName ~= className then 
+			warn("[TransportServer] Missing or invalid transport value:", locationId, transportId, name)
+			return nil
+		end
+		values[name] = value 
 	end
 	return values 
 end
@@ -188,6 +230,39 @@ local function setupPlayerTransports(player)
 		if locationConfig.Transports then
 			for transportId, transportConfig in pairs(locationConfig.Transports) do
 				setupTransport(player, locationId, transportId, transportConfig)
+			end
+		end
+	end
+end
+
+--// VALIDATE SAVED TRANSPORT PROGRESS
+local function validateTransportProgress(player)
+	for locationId, locationConfig in pairs(TransportModule.Locations) do
+		for _, transportId in ipairs(locationConfig.TransportOrder) do
+			local data = getTransportValues(player, locationId, transportId)
+			
+			if not data then
+				warn("[TransportServer] Transport data missing:", locationId, transportId)
+				continue
+			end
+			
+			local oldStage = data.Stage.Value
+			local oldLevel = data.Level.Value
+			
+			local stage = math.clamp(oldStage, 1, TransportModule.MAX_STAGE)
+			local stageConfig = TransportModule.GetStage(stage)
+			if not stageConfig then
+				warn("[TransportServer] Invalid stage:", stage)
+				continue
+			end
+			
+			local level = math.clamp(oldLevel, stageConfig.MinLevel, stageConfig.MaxLevel)
+			
+			if oldStage ~= stage or oldLevel ~= level then
+				warn("[TransportServer] Correcting transportt progress:", locationId, transportId, "Stage:", oldStage, "->", stage, "Level:", oldLevel, "->", level)
+				
+				data.Stage.Value = stage
+				data.Level.Value = level
 			end
 		end
 	end
@@ -442,7 +517,8 @@ local function equipTransport(player, locationId, transportId)
 		return true, "UNEQUIPPED_TO_DEFAULT"
 	end
 	
-	equipTransportInternal(player, locationId, transportId)
+	local success = equipTransportInternal(player, locationId, transportId)
+	if not success then return false, "EQUIP_FAILED" end 
 	
 	return true, "EQUIPPED"
 end
@@ -610,6 +686,8 @@ end)
 --// DATA LOADED
 local function onPlayerDataReady(player)
 	setupPlayerTransports(player)
+	
+	validateTransportProgress(player)
 	
 	refreshAllUnlocks(player)
 	normalizeEquippedTransport(player)
