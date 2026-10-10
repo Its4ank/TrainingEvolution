@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 
 --// PLAYER
 local player = Players.LocalPlayer 
+local raceGui = script.Parent
 
 --// MODULES
 local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
@@ -33,7 +34,8 @@ local resultEvent = transportEvent:WaitForChild("TransportActionResultEvent")
 local warningEvent = transportEvent:WaitForChild("TransportWarningEvent")
 
 --// GUI
-local transportFolder = script.Parent 
+local guiFolder = raceGui:WaitForChild("GuiFolder")
+local transportFolder = guiFolder:WaitForChild("TransportFolder")
 
 local host = transportFolder:WaitForChild("TransportHost")
 local transportMenu = host:WaitForChild("TransportMenu")
@@ -271,7 +273,13 @@ end
 
 --// VIEWPORT
 local function updateViewport()
-	viewport:ClearAllChildren()
+	viewport.CurrentCamera = nil
+	
+	for _, child in ipairs(viewport:GetChildren()) do
+		if child:IsA("WorldModel") or child:IsA("Camera") then
+			child:Destroy()
+		end
+	end
 	
 	local config = TransportModule.GetTransport(LOCATION_ID, selectedTransportId)
 	if not config then return end
@@ -292,8 +300,9 @@ local function updateViewport()
 	model.Parent = worldModel
 	
 	local boundingCFrame, boundingSize = model:GetBoundingBox()
+	local currentPivot = model:GetPivot()
 	
-	model:PivotTo(CFrame.new(0, 0, 0) * boundingCFrame.Rotation)
+	model:PivotTo(currentPivot + (-boundingCFrame.Position))
 	
 	local camera = Instance.new("Camera")
 	camera.Parent = viewport
@@ -406,7 +415,11 @@ local function updateEquipButton(data)
 	end
 	
 	if data.Equipped then
-		equipLabel.Text = "UNEQUIP"
+		if selectedTransportId == TransportModule.DEFAULT_TRANSPORT then
+			equipLabel.Text = "EQUIPPED"
+		else 
+			equipLabel.Text = "UNEQUIP"
+		end
 	else 
 		equipLabel.Text = "EQUIP"
 	end
