@@ -6,9 +6,23 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
 
+local transportConfigValid, transportConfigError = TransportModule.ValidateAll()
+if not transportConfigValid then
+	error("[TransportServer] Invalid TransportModule config: " .. tostring(transportConfigError))
+end
+
 --// CONFIG
 local DEFAULT_LOCATION = "StoneAge"
 local DEFAULT_TRANSPORT = "Feet"
+
+--// TRANSPORT TEST MODE
+local TRANSPORT_TEST_MODE = true
+
+local TEST_TRANSPORT = {
+	Feet = true,
+	Log = false,
+	Stone = false,
+}
 
 --// HELPERS
 local function getOrCreateFolder(parent, name)
@@ -179,6 +193,24 @@ local function setupPlayerTransports(player)
 	end
 end
 
+--// TEST MODE
+local function getTestTransportId()
+	if not TRANSPORT_TEST_MODE then return nil end
+	
+	local selectedTransportId = nil
+	
+	for _, transportId in ipairs(TransportModule.GetTransportOrder(DEFAULT_LOCATION) or {}) do
+		if TEST_TRANSPORT[transportId] == true then
+			if selectedTransportId then
+				warn("[TransportServer] Multiple test transports are enabled:", selectedTransportId, transportId)
+				return nil
+			end
+			selectedTransportId = transportId
+		end
+	end
+	return selectedTransportId
+end
+
 --// EQUIPPED STATE
 local function unequipAll(player)
 	local transportsFolder = player:FindFirstChild("Transports")
@@ -216,6 +248,32 @@ local function equipDefaultTransport(player)
 	return equipTransportInternal(player, DEFAULT_LOCATION, DEFAULT_TRANSPORT)
 end
 
+local function forceEquipTestTransport(player)
+	if not TRANSPORT_TEST_MODE then
+		player:SetAttribute("TestTransport", nil)
+		return false 
+	end
+	
+	local transportId = getTestTransportId()
+	
+	if not transportId then
+		player:SetAttribute("TestTransport", nil)
+		warn("[TransportServer] No valid test transport selected.")
+		return false
+	end
+	
+	local transportConfig = TransportModule.GetTransport(DEFAULT_LOCATION, transportId)
+	if not transportConfig then
+		player:SetAttribute("TestTransport", nil)
+		warn("[TransportServer] Invalid test transport:", transportId)
+		return false
+	end
+	
+	player:SetAttribute("TestTransport", transportId) 
+	
+	return true 
+end
+
 local function normalizeEquippedTransport(player)
 	local transportsFolder = player:FindFirstChild("Transports")
 	if not transportsFolder then return end
@@ -243,7 +301,7 @@ local function normalizeEquippedTransport(player)
 					if validEquipped then
 						if transportConfig.Order > equippedCandidateOrder then
 							if equippedCandidate then
-								equippedCamdidate.Value = false
+								equippedCandidate.Value = false
 							end
 							
 							equippedCandidate = equipped 
@@ -555,6 +613,12 @@ local function onPlayerDataReady(player)
 	
 	refreshAllUnlocks(player)
 	normalizeEquippedTransport(player)
+	
+	if TRANSPORT_TEST_MODE then
+		forceEquipTestTransport(player)
+	else 
+		player:SetAttribute("TestTransport", nil)
+	end
 	
 	player:SetAttribute("TransportServerReady", true)
 end
