@@ -979,7 +979,7 @@ local function validateUnlock(locationId, transportId, transport)
 	local requiredStage = transport.Unlock.RequiredStage
 	local requiredLevel = transport.Unlock.RequiredLevel
 	
-	if type(requiredStage) ~= "number" or requiredStage < 1 or requiredLevel > TransportModule.MAX_STAGE then
+	if type(requiredStage) ~= "number" or requiredStage % 1 ~= 0 or requiredStage< 1 or requiredStage > TransportModule.MAX_STAGE then
 	   return false, "Unlock.RequiredStage is invalid"
 	end
 	
@@ -1004,7 +1004,7 @@ local function validateViewport(transport)
 		return false, "Missing Visual config"
 	end
 	
-	if transport.Value.ModelName ~= nil and type(transport.Visual.ModelName) ~= "string" then
+	if transport.Visual.ModelName ~= nil and type(transport.Visual.ModelName) ~= "string" then
 		return false, "Visual.ModelName must be a string or nil"
 	end
 	
@@ -1218,7 +1218,7 @@ function TransportModule.ValidateAll()
 		return false, "DEFAULT_TRANSPORT does not exist in DEFAULT_LOCATION"
 	end
 	
-	if defaultLocation.TransportOrder[1] ~= TransportModule.DEFAULT_LOCATION then
+	if defaultLocation.TransportOrder[1] ~= TransportModule.DEFAULT_TRANSPORT then
 		return false, "DEFAULT_TRANSPORT must be first in DEFAULT_LOCATION TransportOrder"
 	end
 	
