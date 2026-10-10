@@ -303,7 +303,7 @@ local function updateViewport()
 	local viewportConfig = visual.Viewport or {}
 	local rotation = viewportConfig.Rotation or Vector3.zero
 	local cameraDistance = viewportConfig.CameraDistance or math.max(boundingSize.Magnitude, 5)
-	local cameraHeight = viewportConfig.CameraHeight or viewportConfig.CameraHight or 1
+	local cameraHeight = viewportConfig.CameraHeight or 1
 	local rotationCFrame = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 	local cameraOffset = rotationCFrame:VectorToWorldSpace(Vector3.new(0, cameraHeight, cameraDistance))
 	
@@ -368,7 +368,13 @@ end
 --// BOOSTS
 local function updateBoosts(data)
 	local boostData = TransportModule.GetCurrentAndNextBoost(LOCATION_ID, selectedTransportId, data.Level, data.Stage)
-	if not boostData then return end
+	if not boostData then
+		powerCurrent.Text = "-"
+		powerNext.Text = "-"
+		accelerationCurrent.Text = "-"
+		accelerationNext.Text = "-"
+		return
+	end
 	
 	local current = boostData.Current
 	local nextBoost = boostData.Next
@@ -450,6 +456,8 @@ local function updateStageMenu()
 		stageNextName.Text = "MAX"
 		stageNextBoost.Text = "MAX"
 		
+		setIcon(stageNextIcon, "")
+		
 		requiredLevel.Text = "MAX"
 		requiredMoney.Text = "MAX"
 		requiredTouch.Text = "MAX"
@@ -467,7 +475,17 @@ local function updateStageMenu()
 	setIcon(stageNextIcon, TransportModule.GetStageIcon(data.Stage + 1, "Default"))
 	
 	local stageData = TransportModule.GetStageUpData(LOCATION_ID, selectedTransportId, data.Stage)
-	if not stageData then return end
+	if not stageData then 
+		requiredLevel.Text = "-"
+		requiredMoney.Text = "-"
+		requiredTouch.Text = "-"
+		requiredDistance.Text = "-"
+		stagePercent.Text = "0%"
+		
+		updateBar(stageBar, 0, STAGE_BAR_MIN, STAGE_BAR_MAX, 0.204)
+		updateStageResources()
+		return
+	end
 	
 	local costs = stageData.Cost or {}
 	
@@ -534,7 +552,7 @@ local function openStageMenu()
 	if not data then return end
 	
 	if not data.Unlocked then
-		showWarning("This transport in locked.")
+		showWarning("This transport is locked.")
 		return
 	end
 	
@@ -560,6 +578,11 @@ end
 local function sendAction(actionName)
 	if player:GetAttribute("DataReady") ~= true then
 		showWarning("Player data is still loading.")
+		return
+	end
+	
+	if player:GetAttribute("TransportServerReady") ~= true then
+		showWarning("Transport systen is still loading.")
 		return
 	end
 	
@@ -618,7 +641,7 @@ local function onStageUpClicked()
 	if not data then return end 
 	
 	if not data.Unlocked then
-		showWarning("This transport in locked.")
+		showWarning("This transport is locked.")
 		return
 	end
 	
@@ -640,7 +663,7 @@ local function buildMissingMessage(missing)
 	local names = {
 		Level = "Level",
 		Money = "Money",
-		RaceTouch = "RaceTouch",
+		RaceTouch = "Race Touch",
 		XP = "XP",
 		Distance = "Distance",
 	}
@@ -677,7 +700,7 @@ warningEvent.OnClientEvent:Connect(function(warningType, data)
 	elseif warningType == "MISSING_STAGE_REQUIREMENTS" then
 		showWarning(buildMissingMessage(data))
 	else 
-		showWarning("Action unavailable")
+		showWarning("Action unavailable.")
 	end
 end)
 
@@ -691,7 +714,7 @@ resultEvent.OnClientEvent:Connect(function(actionName, success, reason, location
 			ALREADY_OWNED = "You already own this transport.",
 			NOT_PURCHASABLE = "This transport cannot be purchased.",
 			INVALID_PRICE = "Transport price not found.",
-			RESOURCXES_NOT_FOUND = "Player resources not found.",
+			RESOURCES_NOT_FOUND = "Player resources not found.",
 			PURCHASE_FAILED = "Transport purchase failed.",
 			NOT_OWNED = "Buy the transport first.",
 			STAGE_UP_REQUIRED = "Upgrade the stage first.",
@@ -699,7 +722,6 @@ resultEvent.OnClientEvent:Connect(function(actionName, success, reason, location
 			UPGRADE_FAILED = "Transport upgrade failed.",
 			MAX = "Maximum level reached.",
 			MAX_STAGE = "Maximum stage reached.",
-			STAGE_MAX = "Stage is already MAX",
 			STAGE_DATA_NOT_FOUND = "Stage data not found.",
 			REQUIREMENTS_NOT_FOUND = "Stage requirements not found.",
 			STAGE_UP_FAILED = "Stage upgrade failed.",
