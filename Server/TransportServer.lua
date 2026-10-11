@@ -19,9 +19,13 @@ local DEFAULT_TRANSPORT = "Feet"
 local TRANSPORT_TEST_MODE = true
 
 local TEST_TRANSPORT = {
-	Feet = true,
+	Feet = false,
 	Log = false,
-	Stone = false,
+	Stone = true,
+}
+
+local TESTER_USER_IDS = {
+	[1074520286] = true,
 }
 
 --// HELPERS
@@ -38,47 +42,71 @@ end
 
 local function getOrCreateValue(parent, className, name, defaultValue)
 	local value = parent:FindFirstChild(name)
-	
-	if not value then
+
+	if value then
 		if value.ClassName == className then
-			return value 
+			return value
 		end
-		
+
 		local recoveredValue = defaultValue
-		
+
 		if value:IsA("ValueBase") then
 			local oldValue = value.Value
-			
+
 			if className == "IntValue" or className == "NumberValue" then
 				local number = tonumber(oldValue)
-				
-				if number and number == number and number ~= math.rad and number ~= -math.huge then
-					recoveredValue = className == "IntValue" and math.floor(number) or number 
+
+				if number
+					and number == number
+					and number ~= math.huge
+					and number ~= -math.huge then
+
+					if className == "IntValue" then
+						recoveredValue = math.floor(number)
+					else
+						recoveredValue = number
+					end
 				end
+
 			elseif className == "BoolValue" then
-				if oldValue == true or oldValue == "true" or oldValue == 1 then
-					recoveredValue = true 
-				elseif oldValue == false or oldValue == "false" or oldValue == 0 then
+				if oldValue == true
+					or oldValue == "true"
+					or oldValue == 1 then
+
+					recoveredValue = true
+
+				elseif oldValue == false
+					or oldValue == "false"
+					or oldValue == 0 then
+
 					recoveredValue = false
 				end
 			end
 		end
-		
-		warn("[TransportServer] Incorrect value class:", name, "Expected:", className, "Found:", value.CalssName)
+
+		warn(
+			"[TransportServer] Incorrect value class:",
+			name,
+			"Expected:", className,
+			"Found:", value.ClassName
+		)
+
 		value:Destroy()
+
 		value = Instance.new(className)
 		value.Name = name
-		value.Value = defaultValue
+		value.Value = recoveredValue
 		value.Parent = parent
-		return value 
+
+		return value
 	end
-	
+
 	value = Instance.new(className)
 	value.Name = name
 	value.Value = defaultValue
 	value.Parent = parent
-	
-	return value 
+
+	return value
 end
 
 --// REMOTES
@@ -107,6 +135,13 @@ local function getPlayerResources(player)
 	
 	if not values.Money or not values.RaceTouch or not values.XP or not values.Distance then
 		return nil
+	end
+	
+	for resourceName, value in pairs(values) do
+		if not value:IsA("NumberValue") and not value:IsA("IntValue") then
+			warn("[TransportServer] Invalid resource type:", player.Name, resourceName, value.ClassName)
+			return nil
+		end
 	end
 	return values 
 end
@@ -512,7 +547,8 @@ local function equipTransport(player, locationId, transportId)
 			return true, "DEFAULT_STAYS_EQUIPPED"
 		end
 		
-		equipDefaultTransport(player)
+		local success = equipDefaultTransport(player)
+		if not success then return false, "DEFAULT_EQUIP_FAILED" end
 		
 		return true, "UNEQUIPPED_TO_DEFAULT"
 	end
@@ -689,10 +725,19 @@ local function onPlayerDataReady(player)
 	
 	validateTransportProgress(player)
 	
+	local defaultData = getTransportValues(player, DEFAULT_LOCATION, DEFAULT_TRANSPORT)
+	if not defaultData then
+		warn("[TransportServer] Default transport data missing:", player.Name)
+		return
+	end
+	
+	defaultData.Unlocked.Value = true
+	defaultData.Owned.Value = true
+	
 	refreshAllUnlocks(player)
 	normalizeEquippedTransport(player)
 	
-	if TRANSPORT_TEST_MODE then
+	if TRANSPORT_TEST_MODE and TESTER_USER_IDS[player.UserId] then
 		forceEquipTestTransport(player)
 	else 
 		player:SetAttribute("TestTransport", nil)
