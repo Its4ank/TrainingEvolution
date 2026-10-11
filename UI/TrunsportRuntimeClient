@@ -1,1 +1,215 @@
-...
+--// TransportRuntimeClient v1.3
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local CONFIG = {
+	Log = {
+		Radius = 1.546,
+		RollSign = -1,
+		StepStrength = 0.55,
+		TurnStrength = 0.85,
+	},
+	
+	Stone = {
+		Radius = 2.048,
+		RollSign = 1,
+		StepStrength = 0.38,
+		TurnStrength = 0.55,
+	},
+	
+	ReferenceSpeed = 16,
+	MinMovementSpeed = 0.5,
+	MaxTurnRate = 2.5,
+	BalanceAngle = math.rad(9),
+	SwayAngle = math.rad(4),
+	ArmSpread = math.rad(65),
+}
+
+local states = {}
+
+local JOINT_NAMES = {
+	"Waist",
+	"LeftShoulder",
+	"RightShoulder",
+	"LeftHip",
+	"RightHip",
+	"LeftKnee",
+	"RightKnee",
+}
+
+local function findJoint(character, jointName)
+	for _, object in ipairs(character:GetDescendants()) do
+		if object.Name == jointName and (object:IsA("Motor6D") or object:IsA("AnimationConstraint")) then return object end
+	end
+	return nil
+end
+
+local function buildState(character, runtime)
+	local joints = {}
+	
+	for _, name in ipairs(JOINT_NAMES) do
+		joints[name] = findJoint(character, name)
+	end
+	
+	return {
+		Character = character,
+		Runtime = runtime,
+		Joints = joints,
+		
+		Motor = runtime:FindFirstChild("TransportRollMotor", true),
+		
+		Phase = 0,
+		RollAngle = 0,
+		StoneRotation = CFrame.identity,
+		LastLook = nil,
+		
+		SmoothForward = 0,
+		SmoothRight = 0,
+		SmoothTurn = 0,
+	}
+end
+
+local function setJoint(joint, transform)
+	if joint and joint.Parent then
+		joint.Transform = transform * joint.Transform
+	end
+end
+
+local function animateCharacter(state, transportId, forwardSpeed, speedFactor, turn, dt)
+	local joints = state.Joints
+	local config = CONFIG[transportId]
+	if not config then return end
+	
+	local moving = math.abs(forwardSpeed) > CONFIG.MinMovementSpeed
+	local direction = forwardSpeed >= 0 and 1 or -1
+	
+	if moving then
+		state.Phase += math.abs(forwardSpeed) * dt * 1.8
+	end
+	
+	local wave = math.sin(state.Phase)
+	local sway = math.sin(state.Phase * 0.5)
+	
+	local leftHip = 0
+	local rightHip = 0
+	
+	if transportId == "Log" then
+		local leftScale = math.clamp(1 + turn * config.TurnStrength, 0.1, 1.9)
+		local rightScale = math.clamp(1 - turn * config.TurnStrength, 0.1, 1.9)
+		
+		leftHip = wave * config.StepStrength * speedFactor * direction * leftScale
+		rightHip = -wave * config.StepStrength * speedFactor * direction * rightScale
+		
+		leftHip -= turn * 0.16 * speedFactor
+		rightHip += turn * 0.08 * speedFactor
+	elseif transportId == "Stone" then
+		leftHip = wave * config.StepStrength * speedFactor * direction
+		rightHip = -wave * config.StepStrength * speedFactor * direction
+		
+		leftHip += turn * 0.38 * speedFactor
+		rightHip += turn * 0.16 * speedFactor
+	end
+	
+	local balance = sway * CONFIG.SwayAngle * speedFactor
+	local sideLean = -turn * CONFIG.BalanceAngle
+	
+	setJoint(joints.Waist, CFrame.Angles(balance * 0.5, turn * 0.10, sideLean))
+	
+	setJoint(joints.LeftShoulder, CFrame.Angles(balance, 0, -CONFIG.ArmSpread + sideLean * 0.4))
+	setJoint(joints.RightShoulder, CFrame.Angles(-balance, 0, CONFIG.ArmSpread + sideLean * 0.4))
+	
+	setJoint(joints.LeftHip, CFrame.Angles(leftHip, 0, 0))
+	setJoint(joints.RightHip, CFrame.Angles(rightHip, 0, 0))
+	
+	setJoint(joints.LeftKnee, CFrame.Angles(math.max(0, -leftHip) * 0.4, 0, 0))
+	
+	setJoint(joints.RightKnee, CFrame.Angles(math.max(0, -rightHip) * 0.4, 0, 0))
+end
+
+local function updateTransport(player, dt)
+	local character = player.Character
+	if not character then states[player] = nil return end
+	
+	local runtime = character:FindFirstChild("ActiveTransportRuntime")
+	if not runtime then states[player] = nil return end
+	
+	local transportId = runtime:GetAttribute("TransportId")
+	local config = CONFIG[transportId]
+	
+	if not config then states[player] = nil return end
+	
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChild("Humanoid")
+	
+	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
+	
+	local state = states[player]
+	
+	if not state or state.Runtime ~= runtime then
+		state = buildState(character, runtime)
+		states[player] = state 
+	end
+	
+	local velocity = rootPart.AssemblyLinearVelocity
+	local horizontalVelocity = Vector3.new(velocity.X, 0, velocity.Z)
+	local forwardSpeed = horizontalVelocity:Dot(rootPart.CFrame.LookVector)
+	local rightSpeed = horizontalVelocity:Dot(rootPart.CFrame.RightVector)
+	
+	local speed = horizontalVelocity.Magnitude
+	local speedFactor = math.clamp(speed / CONFIG.ReferenceSpeed, 0, 1)
+	
+	local look = rootPart.CFrame.LookVector
+	local turnRate = 0
+	
+	if state.LastLook then
+		local previous = state.LastLook
+		local cross = previous:Cross(look)
+		local dot = math.clamp(previous:Dot(look), -1, 1)
+		local angle = math.atan2(cross.Y, dot)
+		turnRate = -angle / math.max(dt, 1 / 240)
+	end
+	
+	state.LastLook = look
+	
+	local targetTurn = math.clamp(turnRate / CONFIG.MaxTurnRate, -1, 1)
+	local alpha = 1 - math.exp(-10 * dt)
+	
+	state.SmoothForward += (forwardSpeed - state.SmoothForward) * alpha
+	state.SmoothRight += (rightSpeed - state.SmoothRight) * alpha
+	state.SmoothTurn += (targetTurn - state.SmoothTurn) * alpha
+	
+	local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
+	
+	if state.Motor and state.Motor.Parent then
+		if grounded then
+			if transportId == "Log" then
+				state.RollAngle += (state.SmoothForward / config.Radius) * dt * config.RollSign
+				state.RollAngle %= (math.pi * 2)
+				state.Motor.Transform = CFrame.Angles(0, 0, state.RollAngle)
+			elseif transportId == "Stone" then
+				local forwardRoll = (state.SmoothForward / config.Radius) * dt * config.RollSign
+				local sideRoll = (state.SmoothRight / config.Radius) * dt * config.RollSign
+				
+				state.StoneRotation *= CFrame.Angles(forwardRoll, 0, sideRoll)
+				state.Motor.Transform = state.StoneRotation
+			end
+		end
+	end
+	
+	animateCharacter(state, transportId, state.SmoothForward, grounded and speedFactor or 0, state.SmoothTurn, dt)
+end
+
+RunService.PreSimulation:Connect(function(dt)
+	dt = math.min(dt, 0.05)
+	
+	for _, player in ipairs(Players:GetPlayers()) do
+		updateTransport(player, dt)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	states[player] = nil
+end)
+
+print("[TransportRuntimeClient v1.3] Loaded")
