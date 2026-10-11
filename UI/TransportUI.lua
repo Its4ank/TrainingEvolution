@@ -739,6 +739,8 @@ resultEvent.OnClientEvent:Connect(function(actionName, success, reason, location
 			REQUIREMENTS_NOT_FOUND = "Stage requirements not found.",
 			STAGE_UP_FAILED = "Stage upgrade failed.",
 			SERVER_ERROR = "Server error.",
+			EQUIP_FAILED = "Failed to equip transport.",
+			DEFAULT_EQUIP_FAILED = "Failed to equip default transport.",
 		}
 		
 		local handledByWarningEvent = {
