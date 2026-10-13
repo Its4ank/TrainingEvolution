@@ -4,6 +4,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 --// PLAYER
 local player = Players.LocalPlayer 
@@ -12,6 +13,9 @@ local raceGui = script.Parent
 --// MODULES
 local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local TransportViewportCarousel = require(ReplicatedStorage.Modules.TransportViewportCarousel)
+local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 
 --// CONFIG
 local LOCATION_ID = "StoneAge"
@@ -25,6 +29,8 @@ local STAGE_BAR_MAX = 0.018
 local BAR_TWEEN_TIME = 0.25
 
 local WARNING_DURATION = 3
+
+MenuManager.init(raceGui)
 
 --// REMOTES
 local transportEvent = ReplicatedStorage:WaitForChild("TransportEvent")
@@ -44,6 +50,8 @@ local stageResources = host:WaitForChild("TranStageResource")
 local blurFrame = host:WaitForChild("TranBlurFrame")
 local warningLabel = host:WaitForChild("TranWarningLabel")
 
+MenuManager.register("Transport", host)
+
 --// TRANSPORT MENU
 local viewport = transportMenu:WaitForChild("TranViewportModel")
 
@@ -56,6 +64,9 @@ local stoneButton = locationFolder:WaitForChild("TranLocStoneButton")
 local backButton = transportMenu:WaitForChild("TranBackButton")
 local nextButton = transportMenu:WaitForChild("TranNextButton")
 local closeButton = transportMenu:WaitForChild("TranMenuClose")
+
+local tranRaceTouchRes = assert(transportFolder:FindFirstChild("TranRaceTouchRes", true), "[TransportUI] TranRaceTouch not found")
+local tranMoneyRes = assert(transportFolder:FindFirstChild("TranMoneyRes", true), "[TransportUI] TranMoneyTouch not found")
 
 --// SELECTION INDICATORS
 local selectionIndicators = {
@@ -114,8 +125,8 @@ local resourceDistance = stageResources:WaitForChild("ResDistanceLabel")
 --// PLAYER DATA
 local playerData = player:WaitForChild("PlayerData")
 local resources = player:WaitForChild("Resources")
-local moneyValue = playerData:WaitForChild("Money")
-local touchValue = playerData:WaitForChild("RaceTouch")
+local moneyValue = ClientDataModule.GetMoney(player)
+local touchValue = ClientDataModule.GetRaceTouch(player)
 local xpValue = resources:WaitForChild("XPModule")
 local distanceValue = resources:WaitForChild("Distance")
 local transports = player:WaitForChild("Transports")
@@ -132,6 +143,8 @@ local transportButtons = {
 
 --// STATE
 local selectedTransportId = TransportModule.DEFAULT_TRANSPORT
+
+local viewportCarousel = TransportViewportCarousel.new(viewport, player, TransportModule, LOCATION_ID, transportOrder)
 
 local warningToken = 0
 local activeTweens = {}
@@ -272,52 +285,7 @@ local function updateTransportButtons()
 end
 
 --// VIEWPORT
-local function updateViewport()
-	viewport.CurrentCamera = nil
-	
-	for _, child in ipairs(viewport:GetChildren()) do
-		if child:IsA("WorldModel") or child:IsA("Camera") then
-			child:Destroy()
-		end
-	end
-	
-	local config = TransportModule.GetTransport(LOCATION_ID, selectedTransportId)
-	if not config then return end
-	
-	local visual = TransportModule.GetViewportData(LOCATION_ID, selectedTransportId)
-	if not visual or not visual.ModelName then return end
-	
-	local modelsFolder = ReplicatedStorage:FindFirstChild("TransportModels")
-	if not modelsFolder then return end
-	
-	local originalModel = modelsFolder:FindFirstChild(visual.ModelName)
-	if not originalModel then return end
-	
-	local worldModel = Instance.new("WorldModel")
-	worldModel.Parent = viewport
-	
-	local model = originalModel:Clone()
-	model.Parent = worldModel
-	
-	local boundingCFrame, boundingSize = model:GetBoundingBox()
-	local currentPivot = model:GetPivot()
-	
-	model:PivotTo(currentPivot + (-boundingCFrame.Position))
-	
-	local camera = Instance.new("Camera")
-	camera.Parent = viewport
-	
-	viewport.CurrentCamera = camera
-	
-	local viewportConfig = visual.Viewport or {}
-	local rotation = viewportConfig.Rotation or Vector3.zero
-	local cameraDistance = viewportConfig.CameraDistance or math.max(boundingSize.Magnitude, 5)
-	local cameraHeight = viewportConfig.CameraHeight or 1
-	local rotationCFrame = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
-	local cameraOffset = rotationCFrame:VectorToWorldSpace(Vector3.new(0, cameraHeight, cameraDistance))
-	
-	camera.CFrame = CFrame.lookAt(cameraOffset, Vector3.zero)
-end
+
 
 --// XP PROGRESS
 local function updateXPBar(data)
@@ -503,9 +471,9 @@ local function updateStageMenu()
 	local costs = stageData.Cost or {}
 	
 	requiredLevel.Text = formatNumber(data.Level) .. "/" .. formatNumber(stageData.RequiredLevel)
-	requiredMoney.Text = formatNumber(costs.Money)
-	requiredTouch.Text = formatNumber(costs.RaceTouch)
-	requiredDistance.Text = formatNumber(costs.Distance)
+	requiredMoney.Text = formatNumber(costs.Money) .. "/" .. formatNumber(costs.Money or 0)
+	requiredTouch.Text = formatNumber(costs.RaceTouch) .. "/" .. formatNumber(costs.RaceTouch or 0)
+	requiredDistance.Text = formatNumber(costs.Distance) .. "/" .. formatNumber(costs.Distance or 0)
 	
 	local progress = TransportModule.GetStageRequirementProgress(LOCATION_ID, selectedTransportId, data.Level, data.Stage, getCurrentResources())
 	if progress then
@@ -515,11 +483,18 @@ local function updateStageMenu()
 	updateStageResources()
 end
 
+--// TRANSPORT RESOURCE DISPLAY
+local function updateTransportResoures()
+	tranRaceTouchRes.Text = FormatModule.FormatNumber(touchValue.Value)
+	tranMoneyRes.Text = FormatModule.FormatNumber(moneyValue.Value)
+end
+
 --// REFRESH
 local function refreshUI()
 	updateSelectionIndicators()
 	updateTransportButtons()
 	updateDetails()
+	updateTransportResoures()
 	
 	if stageMenu.Visible then
 		updateStageMenu()
@@ -527,12 +502,13 @@ local function refreshUI()
 end
 
 --// SELECT TRANSPORT
-local function selectTransport(transportId)
+local function selectTransport(transportId, direction)
 	if not TransportModule.GetTransport(LOCATION_ID, transportId) then return end
 	
 	selectedTransportId = transportId 
 	
-	updateViewport()
+	viewportCarousel:Select(transportId, direction)
+	
 	refreshUI()
 end
 
@@ -545,18 +521,23 @@ local function getSelectedIndex()
 end
 
 local function selectPrevious()
-	local index = getSelectedIndex()
-	if index <= 1 then return end
+	local count = # transportOrder
+	if count == 0 then return end
 	
-	selectTransport(transportOrder[index - 1])
+	local index = getSelectedIndex()
+	local previousIndex = ((index - 2) % count) + 1
+	
+	selectTransport(transportOrder[previousIndex], -1)
 end
 
 local function selectNext()
+	local count = #transportOrder 
+	if count == 0 then return end
+	
 	local index = getSelectedIndex()
+	local nextIndex = (index % count) + 1
 	
-	if index >= #transportOrder then return end
-	
-	selectTransport(transportOrder[index + 1])
+	selectTransport(transportOrder[nextIndex], 1)
 end
 
 --// STAGE WINDOW
@@ -785,7 +766,7 @@ stageCloseButton.MouseButton1Click:Connect(closeStageMenu)
 
 closeButton.MouseButton1Click:Connect(function()
 	closeStageMenu()
-	transportMenu.Visible = false
+	MenuManager.close("Transport")
 end)
 
 --// RESOURCE CHANGES
@@ -810,7 +791,9 @@ end
 --// MENU VISIBILITY
 transportMenu:GetPropertyChangedSignal("Visible"):Connect(function()
 	if transportMenu.Visible then
-		selectTransport(TransportModule.DEFAULT_TRANSPORT)
+		selectedTransportId = TransportModule.DEFAULT_TRANSPORT
+		viewportCarousel:SnapTo(selectedTransportId)
+		refreshUI()
 	end
 end)
 
@@ -826,5 +809,12 @@ local function initialize()
 end
 
 initialize()
+
+--// REFRESH PLAYER PREVIEW AFTER RESPAWN
+player.CharacterAppearanceLoaded:Connect(function(character)
+	if character ~= player.Character then return end 
+	
+	viewportCarousel:RefreshAvatar()
+end)
 
 print("TransportUI v1.3 loaded")
