@@ -55,11 +55,14 @@ PetModule.Rarities = {
 
 --// PetData
 PetModule.Pets = {
-	Dog = {
-		Name = "Dog",
+	Dodo = {
+		Name = "Dodo",
+		DisplayName = "Dodo",
+		ModelName = "DodoPet",
+		ModelFolder = "Egg1",
+		
 		Rarity = "Common",
 		Icon = "",
-		ModelName = "Dog",
 		
 		BaseStats = {
 			Energy = 1,
@@ -68,11 +71,14 @@ PetModule.Pets = {
 		},
 	},
 	
-	Cow = {
-		Name = "Cow",
+	Turtle = {
+		Name = "Turtle",
+		DisplayName = "Turtle",
+		ModelName = "TurtlePet",
+		ModelFolder = "Egg1",
+		
 		Rarity = "Uncommon",
 		Icon = "",
-		ModelName = "Cow",
 		
 		BaseStats = {
 			Energy = 2.5,
@@ -81,11 +87,14 @@ PetModule.Pets = {
 		},
 	},
 	
-	Cat = {
-		Name = "Cat",
+	Boar = {
+		Name = "Boar",
+		DisplayName = "Boar",
+		ModelName = "BoarPet",
+		ModelFolder = "Egg1",
+		
 		Rarity = "Rare",
 		Icon = "",
-		ModelName = "Cat",
 		
 		BaseStats = {
 			Energy = 5,
@@ -94,11 +103,14 @@ PetModule.Pets = {
 		},
 	},
 	
-	Pig = {
-		Name = "Pig",
+	Deer = {
+		Name = "Deer",
+		DisplayName = "Deer",
+		ModelName = "DeerPet",
+		ModelFolder = "Egg1",
+		
 		Rarity = "Epic",
 		Icon = "",
-		ModelName = "Pig",
 		
 		BaseStats = {
 			Energy = 10,
@@ -107,11 +119,14 @@ PetModule.Pets = {
 		},
 	},
 	
-	Chicken = {
-		Name = "Chicken",
+	Wolf = {
+		Name = "Wolf",
+		DisplayName = "Wolf",
+		ModelName = "WolfPet",
+		ModelFolder = "Egg1",
+		
 		Rarity = "Legendary",
 		Icon = "",
-		ModelName = "Chicken",
 		
 		BaseStats = {
 			Energy = 15,
@@ -125,6 +140,7 @@ PetModule.Pets = {
 		Rarity = "Rare",
 		Icon = "",
 		ModelName = "Reaper",
+		ModelFolder = "PetRewardHourly",
 		
 		BaseStats = {
 			Energy = 7.5,
@@ -138,6 +154,7 @@ PetModule.Pets = {
 		Rarity = "Epic",
 		Icon = "",
 		ModelName = "DualReaper",
+		ModelFolder = "PetRewardHourly",
 		
 		BaseStats = {
 			Energy = 15,
@@ -151,6 +168,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "HugeQueen",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 45,
@@ -164,6 +182,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "ErrCube",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 70,
@@ -177,6 +196,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "Thunger",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 100,
@@ -190,6 +210,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "CubeHead",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 125,
@@ -203,6 +224,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "TheCube",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 150,
@@ -216,6 +238,7 @@ PetModule.Pets = {
 		Rarity = "Legendary",
 		Icon = "",
 		ModelName = "MagicalGolden",
+		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
 			Energy = 175,
@@ -224,6 +247,18 @@ PetModule.Pets = {
 		},
 	},
 }
+
+PetModule.LegacyPetNames = {
+	Dog = "Dodo",
+	Cow = "Turtle",
+	Cat = "Boar",
+	Pig = "Deer",
+	Chicken = "Wolf",
+}
+
+function PetModule.ResolvePetName(petName)
+	return PetModule.LegacyPetNames[petName] or petName
+end
 
 --// Pattern
 PetModule.PatternRanges = {
