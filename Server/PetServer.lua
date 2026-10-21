@@ -388,7 +388,7 @@ local function getPetModule(petName)
 	local modelFolder = config.ModelFolder or "Egg1"
 	
 	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
-	local eraFolder = previewRoot and previewRoot:FindFirstChild("StoneAge")
+	local eraFolder = previewRoot and previewRoot:FindFirstChild("StoneAge1")
 	local categoryFolder = eraFolder and eraFolder:FindFirstChild(modelFolder)
 	
 	if not categoryFolder then
@@ -466,7 +466,9 @@ local function updatePetVisuals(player)
 				for _, object in ipairs(clone:GetDescendants()) do
 					if object:IsA("BasePart") then
 						object.Anchored = true	
-						object.CanCollide = true
+						object.CanCollide = false
+						object.CanTouch = false
+						object.CanQuerty = false
 						object.Massless = true
 					end
 				end
