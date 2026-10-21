@@ -12,7 +12,7 @@ local XPModule = require(game.ServerScriptService.Modules.XPModule)
 local PlayerDataSetupModule = require(game.ServerScriptService.Modules.PlayerDataSetupModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 
-local player = Players.LocalPlayer
+local PetModule = require(game.ReplicatedStorage.Modules.PetModule)
 
 local trainerEvent = ReplicatedStorage:WaitForChild("TrainerEvent")
 local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
@@ -506,14 +506,6 @@ end
 
 -- TODO: REMOVE AFTER 2.0 WIPE
 -- Temporaly mogration from old pet names to StoneAge1 names.
-local LEGACY_PET_NAMES = {
-	Dog = "Dodo",
-	Cow = "Turtle",
-	Cat = "Boar",
-	Pig = "Deer",
-	Chicken = "Wolf",
-}
-
 local function migrateLegacyPetNames(player)
 	local petsFolder = player:FindFirstChild("Pets")
 	if not petsFolder then return end
@@ -525,10 +517,11 @@ local function migrateLegacyPetNames(player)
 			local petNameValue = petFolder:FindFirstChild("PetName")
 
 			if petNameValue and petNameValue:IsA("StringValue") then
-				local newName = LEGACY_PET_NAMES[petNameValue.Value]
+				local oldName = petNameValue.Value
+				local newName = PetModule.ResolvePetName(petNameValue.Value)
 
-				if newName then
-					prtNameValue.Value = newName
+				if newName and newName ~= oldName then
+					petNameValue.Value = newName
 					migratedCount += 1
 				end
 			end
