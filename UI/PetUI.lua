@@ -155,23 +155,25 @@ end
 local function findPetModel(petName)
 	local config = PetModule.GetPetConfig(petName)
 	if not config then return nil end
+
+	local modelName = config.ModelName or petName
+	local modelFolder = config.ModelFolder or "Egg1"
 	
-	local modelName = config.ModelName or config.Name
+	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
+	local eraFolder = previewRoot and previewRoot:FindFirstChild("StoneAge1")
+	local categoryFolder = eraFolder and eraFolder:FindFirstChild(modelFolder)
 	
-	local cityEggFolder = workspace:FindFirstChild("CityEggFolder")
-	if not cityEggFolder then 
-		warn("CityEggFolder not found")
+	if not categoryFolder then
+		warn("PET UI: Model folder not found:", modelFolder)
 		return nil
 	end
 	
-	for _, eggFolder in ipairs(cityEggFolder:GetChildren()) do 
-		local model = eggFolder:FindFirstChild(modelName)
-		
-		if model then return model end
+	local model = categoryFolder:FindFirstChild(modelName)
+	if not model then
+		warn("PET UI: Model not found:", modelFolder, modelName)
 	end
 	
-	warn("Pet model not found:", modelName)
-	return nil
+	return model
 end
 
 local function setupViewport(viewport, petName, distanceMultiplier)
@@ -452,8 +454,7 @@ local function getSortedPets()
 		if petFolder:IsA("Folder") then
 			local data = getPetData(petFolder)
 			if data then
-				local config = PetModule.GetPetConfig(data.PetName)
-				local displayData = config and (config.DisplayName or config.Name) or data.PetName
+				local displayData = PetModule.GetDisplayName(data.PetName)
 				local matchesSearch = searchText == "" or string.find(string.lower(displayData), searchText, 1, true)
 				
 				if matchesSearch then
