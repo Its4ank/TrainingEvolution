@@ -28,8 +28,8 @@ MenuManager.init(raceGui)
 MenuManager.register("Egg", eggHost)
 
 --// Egg zone
-local cityEggFolder = workspace:WaitForChild("CityEggFolder")
-local egg1World = cityEggFolder:WaitForChild("Egg1")
+local petStoneAgeEggFolder = workspace:WaitForChild("PetStoneAgeEggFolder")
+local egg1World = petStoneAgeEggFolder:WaitForChild("Egg1")
 local egg1Zone = egg1World:WaitForChild("Egg1Zone")
 
 local insideEggZone = false
@@ -149,17 +149,27 @@ local function clearViewport(viewport)
 end
 
 local function findPetModel(petName)
-	local petConfig = PetModule.GetPetConfig(petName)
-	if not petConfig then return nil end
+	local config = PetModule.GetPetConfig(petName)
+	if not config then return nil end
 
-	local modelName = petConfig.ModelName or petName
-	local cityEggFolder = workspace:FindFirstChild("CityEggFolder")
-	if not cityEggFolder then return nil end
-
-	local eggWorld = cityEggFolder:FindFirstChild(currentEggName)
-	if not eggWorld then return nil end 
+	local modelName = config.ModelName or petName
+	local modelFolder = config.ModelFolder or "Egg1"
 	
-	return eggWorld:FindFirstChild(modelName)
+	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
+	local eraFolder = previewRoot and previewRoot:FindFirstChild("StoneAge1")
+	local categoryFolder = eraFolder and eraFolder:FindFirstChild(modelFolder)
+	
+	if not categoryFolder then
+		warn("EGG UI: Model folder not found:", modelFolder)
+		return nil
+	end
+	
+	local model = categoryFolder:FindFirstChild(modelName)
+	if not model then
+		warn("EGG UI: Model not found:", modelFolder, modelName)
+	end
+	
+	return model
 end
 
 local function setupViewport(viewport, petName)
