@@ -66,11 +66,11 @@ EggModule.Eggs = {
 		AllowGlobalAutoDelete = true,
 		
 		Pets = {
-			{PetName = "Dog", Chance = 35, ButtonName = "EggCommonBut",},
-			{PetName = "Cow", Chance = 25, ButtonName = "EggUncommonBut",},
-			{PetName = "Cat", Chance = 20, ButtonName = "EggRareBut",},
-			{PetName = "Pig", Chance = 15, ButtonName = "EggEpicBut",},
-			{PetName = "Chicken", Chance = 5, ButtonName = "EggLegendaryBut",},
+			{PetName = "Dodo", Chance = 35, ButtonName = "EggCommonBut",},
+			{PetName = "Turtle", Chance = 25, ButtonName = "EggUncommonBut",},
+			{PetName = "Boar", Chance = 20, ButtonName = "EggRareBut",},
+			{PetName = "Deer", Chance = 15, ButtonName = "EggEpicBut",},
+			{PetName = "Wolf", Chance = 5, ButtonName = "EggLegendaryBut",},
 		},
 	},
 }
