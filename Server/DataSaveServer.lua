@@ -27,7 +27,7 @@ end
 local sessionLockMap = MemoryStoreService:GetSortedMap("TrainingEvolution_SessionLocks_v1")
 local SERVER_ID = game.JobId
 
-local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
+local DATA_STORE_NAME = "TrainingEvolution_Data_v5"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
 local AUTOSAVE_TIME = 60
@@ -504,6 +504,42 @@ grantPotionPurchaseFunction.OnInvoke = function(player, purchaseId, potionId, am
 	return true, "PURCHASE_GRANTED"
 end
 
+-- TODO: REMOVE AFTER 2.0 WIPE
+-- Temporaly mogration from old pet names to StoneAge1 names.
+local LEGACY_PET_NAMES = {
+	Dog = "Dodo",
+	Cow = "Turtle",
+	Cat = "Boar",
+	Pig = "Deer",
+	Chicken = "Wolf",
+}
+
+local function migrateLegacyPetNames(player)
+	local petsFolder = player:FindFirstChild("Pets")
+	if not petsFolder then return end
+
+	local migratedCount = 0
+
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			local petNameValue = petFolder:FindFirstChild("PetName")
+
+			if petNameValue and petNameValue:IsA("StringValue") then
+				local newName = LEGACY_PET_NAMES[petNameValue.Value]
+
+				if newName then
+					prtNameValue.Value = newName
+					migratedCount += 1
+				end
+			end
+		end
+	end
+
+	if migratedCount > 0 then
+		print("[PET MIGRATION 2.0]", player.Name, "Nigrated pets:", migratedCount)
+	end
+end
+
 Players.PlayerAdded:Connect(function(player)
 	local lockOk = acquireSessionLock(player)
 	
@@ -550,6 +586,7 @@ Players.PlayerAdded:Connect(function(player)
 		end
 	end
 	
+	migrateLegacyPetNames(player)
 	PlayerDataSetupModule.setup(player)
 	XPModule.setupPlayer(player)
 	ItemModule.setupItems(player)
