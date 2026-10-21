@@ -385,16 +385,23 @@ local function getPetModule(petName)
 	if not config then return nil end
 	
 	local modelName = config.ModelName or config.Name
+	local modelFolder = config.ModelFolder or "Egg1"
+	
 	local previewRoot = ReplicatedStorage:FindFirstChild("PetPreviewModels")
-	if not previewRoot then return nil end
+	local eraFolder = previewRoot and previewRoot:FindFirstChild("StoneAge")
+	local categoryFolder = eraFolder and eraFolder:FindFirstChild(modelFolder)
 	
-	local earth = previewRoot:FindFirstChild("Earth")
-	if not earth then return nil end
+	if not categoryFolder then
+		warn("PET SERVER: Model folder not found:", modelFolder)
+		return nil
+	end
 	
-	local egg1 = earth:FindFirstChild("Egg1")
-	if not egg1 then return nil end
+	local model = categoryFolder:FindFirstChild(modelName)
+	if not model then
+		warn("PET SERVER: Model not found:", modelFolder, modelName)
+	end
 	
-	return egg1:FindFirstChild(modelName)
+	return model 
 end
 
 local function getPetOffset(count)
