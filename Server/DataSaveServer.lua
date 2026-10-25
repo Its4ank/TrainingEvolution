@@ -574,7 +574,7 @@ grantPassPurchaseFunction.OnInvoke = function(player, passId)
 	end
 	
 	if typeof(passId) ~= "string" or not ShopModule.IsPassConfigured(passId) then
-		return false, "NOT_CONFIGURE"
+		return false, "NOT_CONFIGURED"
 	end
 	
 	return runSavedShopPurchase(player, function(registerUndo)
