@@ -5,6 +5,7 @@ local PlayerDataSetupModule = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local EggModule = require(ReplicatedStorage.Modules.EggModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 local function getOrCreateFolder(parent, name)
 	local folder = parent:FindFirstChild(name)
@@ -94,9 +95,11 @@ function PlayerDataSetupModule.setup(player)
 	end
 	
 	--// Gamepass
-	getOrCreateValue(gamepasses, "BoolValue", "EnergyPass", false)
-	getOrCreateValue(gamepasses, "BoolValue", "MaxRebirthPass", false)
-	getOrCreateValue(gamepasses, "BoolValue", "AutoRebirthPass", false)
+	local equippedGamepasses = getOrCreateFolder(playerData, "EquippedGamepasses")
+	for _, passId in ipairs(ShopModule.PassOrder) do
+		getOrCreateValue(gamepasses, "BoolValue", passId, false)
+		getOrCreateValue(equippedGamepasses, "BoolValue", passId, false)
+	end
 	
 	--// Boosts
 	
