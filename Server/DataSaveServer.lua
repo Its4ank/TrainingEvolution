@@ -13,6 +13,7 @@ local PlayerDataSetupModule = require(game.ServerScriptService.Modules.PlayerDat
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
 
 local PetModule = require(game.ReplicatedStorage.Modules.PetModule)
+local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
 
 local trainerEvent = ReplicatedStorage:WaitForChild("TrainerEvent")
 local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
@@ -24,10 +25,24 @@ if not grantPotionPurchaseFunction then
 	grantPotionPurchaseFunction.Parent = ServerScriptService
 end
 
+local grantPassPurchaseFunction = ServerScriptService:FindFirstChild("GrantPassPurchaseFunction")
+if not grantPassPurchaseFunction then
+	grantPassPurchaseFunction = Instance.new("BindableFunction")
+	grantPassPurchaseFunction.Name = "GrantPassPurchaseFunction"
+	grantPassPurchaseFunction.Parent = ServerScriptService
+end
+
+local grantSRPotionPurchaseFunction = ServerScriptService:FindFirstChild("GrantSRPotionPurchaseFunction")
+if not grantSRPotionPurchaseFunction then
+	grantSRPotionPurchaseFunction = Instance.new("BindableFunction")
+	grantSRPotionPurchaseFunction.Name = "GrantSRPotionPurchaseFunction"
+	grantSRPotionPurchaseFunction.Parent = ServerScriptService
+end
+
 local sessionLockMap = MemoryStoreService:GetSortedMap("TrainingEvolution_SessionLocks_v1")
 local SERVER_ID = game.JobId
 
-local DATA_STORE_NAME = "TrainingEvolution_Data_v5"
+local DATA_STORE_NAME = "TrainingEvolution_Data_v1"
 local dataStore = DataStoreService:GetDataStore(DATA_STORE_NAME)
 
 local AUTOSAVE_TIME = 60
@@ -502,6 +517,157 @@ grantPotionPurchaseFunction.OnInvoke = function(player, purchaseId, potionId, am
 	end
 	unlockPlayerSave(player)
 	return true, "PURCHASE_GRANTED"
+end
+
+local function runSavedShopPurchase(player, applyChange)
+	lockPlayerSave(player)
+	
+	local rollback = nil
+	local ok, granted, reason = pcall(function()
+		if player:GetAttribute("DataReady") ~= true then
+			return false, "DATA_NOT_READY"
+		end
+		
+		local accepted, result = applyChange(function(undo)
+			rollback = undo
+		end)
+		
+		if not accepted then
+			return false, result
+		end
+		
+		local saved, saveError = savePlayerUnlocked(player)
+		if not saved then
+			warn("SHOP PURCHASE SAVE FAILED:", player.Name, saveError)
+			return false, "SAVE_FAILED"
+		end
+		
+		return true, "PURCHASE_GRANTED"
+	end)
+	
+	if not ok or not granted then
+		if rollback then
+			local restored, restoreError = pcall(rollback)
+			if not restored then
+				warn("SHOP PURCHASE ROLLBACK FAILED:", player.Name, restoreError)
+			end
+		end
+	end
+	
+	unlockPlayerSave(player)
+	
+	if not ok then
+		warn("SHOP PURCHASE ERROR:", player.Name, granted)
+		return false, "PURCHASE_FAILED"
+	end
+	
+	return granted, reason 
+end
+
+grantPassPurchaseFunction.OnInvoke = function(player, passId)
+	if not player or not player:IsA("Player") then
+		return false, "INVALID_PLAYER"
+	end
+	
+	if player:GetAttribute("DataReady") ~= true then
+		return false, "DATA_NOT_READY"
+	end
+	
+	if typeof(passId) ~= "string" or not ShopModule.IsPassConfigured(passId) then
+		return false, "NOT_CONFIGURE"
+	end
+	
+	return runSavedShopPurchase(player, function(registerUndo)
+		local data = player:FindFirstChild("PlayerData")
+		local ownedFolder = data and data:FindFirstChild("Gamepasses")
+		local equippedFolder = data and data:FindFirstChild("EquippedGamepasses")
+		
+		local owned = ownedFolder and ownedFolder:FindFirstChild(passId)
+		local equipped = equippedFolder and equippedFolder:FindFirstChild(passId)
+		local balance = data and data:FindFirstChild("SrRobux")
+		
+		if not owned or not owned:IsA("BoolValue")
+			or not equipped or not equipped:IsA("BoolValue")
+			or not balance or not balance:IsA("IntValue") then
+			return false, "PASS_DATA_MISSING"
+		end
+		
+		if owned.Value then
+			return false, "ALREADY_OWNED"
+		end
+		
+		local price = ShopModule.GetPassPrice(passId, "SRRobux")
+		if not price then
+			return false, "NOT_CONFIGURED"
+		end
+		
+		if balance.Value < price then
+			return false, "NOT_ENOUGH_SRROBUX"
+		end
+		
+		local oldBalance = balance.Value
+		local oldOwned = owned.Value
+		local oldEquipped = equipped.Value
+		
+		registerUndo(function()
+			balance.Value = oldBalance
+			owned.Value = oldOwned
+			equipped.Value = oldEquipped
+		end)
+		
+		balance.Value = oldBalance - price
+		owned.Value = true 
+		equipped.Value = true
+		
+		return true 
+	end)
+end
+
+grantSRPotionPurchaseFunction.OnInvoke = function(player, potionId, amount)
+	if not player or not player:IsA("Player") then
+		return false, "INVALID_PLAYER"
+	end
+	
+	if player:GetAttribute("DataReady") ~= true then
+		return false, "DATA_NOT_READY"
+	end
+	
+	if typeof(potionId) ~= "string" or (amount ~= 1 and amount ~= 5 and amount ~= 10) then
+		return false, "INVALID_REQUEST"
+	end
+	
+	local price = ShopModule.GetPotionPrice(potionId, amount, "SRRobux")
+	if not price then
+		return false, "NOT_CONFIGURED"
+	end
+	
+	return runSavedShopPurchase(player, function(registerUndo)
+		local data = player:FindFirstChild("PlayerData")
+		local balance = data and data:FindFirstChild("SrRobux")
+		local potions = player:FindFirstChild("Potions")
+		local potion = potions and potions:FindFirstChild(potionId)
+		
+		if not balance or not balance:IsA("IntValue") or not potion or not potion:IsA("IntValue") then
+			return false, "POTION_DATA_MISSING"
+		end
+		
+		if balance.Value < price then
+			return false, "NOT_ENOUGH_SRROBUX"
+		end
+		
+		local oldBalance = balance.Value
+		local oldAmount = potion.Value
+		
+		registerUndo(function()
+			balance.Value = oldBalance
+			potion.Value = oldAmount
+		end)
+		
+		balance.Value = oldBalance - price
+		potion.Value = oldAmount + amount 
+		
+		return true
+	end)
 end
 
 -- TODO: REMOVE AFTER 2.0 WIPE
