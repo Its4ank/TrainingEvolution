@@ -82,7 +82,7 @@ ShopModule.Potions = {
 		Prices = {
 			[1] = {Robux = 19, SRRobux = 9},
 			[5] = {Robux = 79, SRRobux = 49},
-			[10] = {Robux = 169, XRRobux = 99},
+			[10] = {Robux = 169, SRRobux = 99},
 		},
 	},
 	
@@ -140,7 +140,7 @@ function ShopModule.GetPotionPrice(potionId, amount, currency)
 	return price 
 end
 
-function ShopModule.IsGmepassTest(passId)
+function ShopModule.IsGamepassTest(passId)
 	local config = ShopModule.TestGamepasses
 	
 	return config.Enabled == true and (config.All == true or config[passId] == true)
@@ -229,7 +229,7 @@ function ShopModule.GetTransportRacePowerMultiplier(player, transportBoost)
 end
 
 function ShopModule.ApplyAcceleration(player, baseAcceleration, currentAcceleration)
-	return ShopModule.AddBaseBonus(player, "AccelerationPass", baseAcceleration. currentAcceleratio)
+	return ShopModule.AddBaseBonus(player, "AccelerationPass", baseAcceleration, currentAcceleration)
 end
 
 function ShopModule.GetRebirthAward(player, purchaseAmount)
@@ -292,7 +292,7 @@ function ShopModule.GetAutoEggOpenCount(player, freeSlots, canAfford)
 	
 	local limit = math.min(ShopModule.GetEggOpenLimit(player), math.max(0, math.floor(freeSlots)))
 	
-	for amount = limit, 1 -1 do 
+	for amount = limit, 1, -1 do 
 		if canAfford(amount) then return amount end
 	end
 	
