@@ -295,7 +295,7 @@ purchaseButton.Activated:Connect(function()
 	end
 	
 	if not ShopModule.IsPassConfigured(selectedPass) then
-		showWarning(ShopModule.ErrorMessage.NOT_CONFIGURED)
+		showWarning(ShopModule.ErrorMessages.NOT_CONFIGURED)
 		return
 	end
 	
@@ -310,12 +310,14 @@ end)
 
 local function buySelectedPass(currency)
 	if not selectedPass then return end
-	if getPassState(ShopModule.ErrorMessage.ALREADY_OWNED) then
+	local owned = getPassState(selectedPass)
+	if owned then
+		showWarning(ShopModule.ErrorMessages.ALREADY_OWNED)
 		return
 	end
 	
 	if not ShopModule.IsPassConfigured(selectedPass) then
-		showWarning(ShopModule.ErrorMessage.NOT_CONFIGURED)
+		showWarning(ShopModule.ErrorMessages.NOT_CONFIGURED)
 		return
 	end
 	
@@ -454,7 +456,7 @@ local function setupPotionFrame(potionId)
 		if button then
 			button.Activated:Connect(function()
 				if value.Value <= 0 then
-					showPotionInfo(potionId, ShopModule.ErrorMessage.NOT_ENOUGH_POTIONS)
+					showPotionInfo(potionId, ShopModule.ErrorMessages.NOT_ENOUGH_POTIONS)
 				else 
 					selectedPotionAmount(potionId, option)
 				end
