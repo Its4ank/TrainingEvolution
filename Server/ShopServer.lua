@@ -302,7 +302,7 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 end)
 
 local function processPotionPurchase(player, potionId, amount, currency)
-	if typeof(potionId) ~= "string" or not ShopModule.Potion[potionId] then
+	if typeof(potionId) ~= "string" or not ShopModule.Potions[potionId] then
 		report(player, potionId, false, "UNKNOWN_POTION")
 		return
 	end
@@ -325,7 +325,7 @@ local function processPotionPurchase(player, potionId, amount, currency)
 	end
 	
 	if currency == "Robux" then
-		local productId = ShopModule.Potion[potionId].Product[amount]
+		local productId = ShopModule.Potions[potionId].Products[amount]
 		if not productId then
 			report(player, potionId, false, "NOT_CONFIGURED")
 			return
@@ -369,7 +369,7 @@ local function processPotionPurchase(player, potionId, amount, currency)
 	report(player, potionId, true, "PURCHASE_GRANTED")
 end
 
-buyPotionEvent.OnServerEvent(function(player, potionId, amount, currency)
+buyPotionEvent.OnServerEvent:Connect(function(player, potionId, amount, currency)
 	if not lockPlayer(player, potionId) then return end
 	local ok, err = pcall(processPotionPurchase, player, potionId, amount, currency)
 	
@@ -381,8 +381,8 @@ buyPotionEvent.OnServerEvent(function(player, potionId, amount, currency)
 	end
 end)
 
-usePotionEvent.OnServerEvent(function(player, potionId, amountMode)
-	if typeof(potionId) ~= "string" or not ShopModule.Potion[potionId] then
+usePotionEvent.OnServerEvent:Connect(function(player, potionId, amountMode)
+	if typeof(potionId) ~= "string" or not ShopModule.Potions[potionId] then
 		report(player, potionId, false, "UNKNOWN_POTION")
 		return
 	end
@@ -411,7 +411,7 @@ usePotionEvent.OnServerEvent(function(player, potionId, amountMode)
 			return
 		end
 		
-		local activated = BoostModule.ActivatePersonalPotion(player, ShopModule.Potion[potionId].BoostType, amount)
+		local activated = BoostModule.ActivatePersonalPotion(player, ShopModule.Potions[potionId].BoostType, amount)
 		if not activated then
 			report(player, potionId, false, "POTION_USE_FAILED")
 			return
@@ -438,7 +438,7 @@ for potionId, potionData in pairs(ShopModule.Potions) do
 end
 
 MarketplaceService.ProcessReceipt = function(receipt)
-	local player = Players:GetplayerByUserId(receipt.PlayerId)
+	local player = Players:GetPlayerByUserId(receipt.PlayerId)
 	if not player or player:GetAttribute("DataReady") ~= true then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
@@ -446,7 +446,7 @@ MarketplaceService.ProcessReceipt = function(receipt)
 	local product = productToPotion[receipt.ProductId]
 	if not product then
 		warn("Unknown developer product:", receipt.ProductId, receipt.PurchaseId)
-		return Enum.ProductPurchaseDecision.NotPricessedYet 
+		return Enum.ProductPurchaseDecision.NotProcessedYet 
 	end
 	
 	local ok, granted, reason = pcall(grantPotionPurchase.Invoke, grantPotionPurchase, player, tostring(receipt.PurchaseId), product.PotionId, product.Amount)
