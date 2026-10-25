@@ -1,298 +1,466 @@
+--ShopServer 1.3v
+
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
-local ServerScriptService = game:GetService("ServerScriptService")
 
-local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
-local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
-local BetaPurchaseTracker = require(game.ServerScriptService.Modules.BetaPurchaseTracker)
+--// Modules
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+local BoostModule = require(ServerScriptService.Modules.BoostModule)
+local BetaPurchaseTracker = require(ServerScriptService.Modules.BetaPurchaseTracker)
 
-local grantPotionPurchaseFunction = ServerScriptService:WaitForChild("GrantPotionPurchaseFunction")
+--// Remotes
+local shopEvent = ReplicatedStorage:WaitForChild("ShopEvent")
+local buyPassEvent = shopEvent:WaitForChild("BuyPassEvent")
+local shopUpdateEvent = shopEvent:WaitForChild("ShopUpdateEvent")
+local buyPotionEvent = shopEvent:WaitForChild("BuyPotionEvent")
+local usePotionEvent = shopEvent:WaitForChild("UsePotionEvent")
+local equipPassEvent = shopEvent:WaitForChild("EquipPassEvent")
 
---//RemoteEvents
-local shopEventFolder = ReplicatedStorage:WaitForChild("ShopEvent")
-local buyPassEvent = shopEventFolder:WaitForChild("BuyPassEvent")
-local shopUpdateEvent = shopEventFolder:WaitForChild("ShopUpdateEvent")
-local buyPotionEvent = shopEventFolder:WaitForChild("BuyPotionEvent")
-local usePotionEvent = shopEventFolder:WaitForChild("UsePotionEvent")
+local dataLoadedEvent = ReplicatedStorage:WaitForChild("TrainerEvent"):WaitForChild("PlayerDataLoadedEvent")
+local grantPotionPurchase = ServerScriptService:WaitForChild("GrantPotionPurchaseFunction")
+local grantPassPurchase = ServerScriptService:WaitForChild("GrantPassPurchaseFunction")
+local grantSRPotionPurchase = ServerScriptService:WaitForChild("GrantSRPotionPurchaseFunction")
 
-local trainerEvent = ReplicatedStorage:WaitForChild("TrainerEvent")
-local playerDataLoadedEvent = trainerEvent:WaitForChild("PlayerDataLoadedEvent")
+local busy = {}
 
+local function report(player, itemId, success, code)
+	if player.Parent == Players then
+		shopUpdateEvent:FireClient(player, itemId, success, code)
+	end
+end
 
+local function getPlayerData(player)
+	if player:GetAttribute("DataReqdy") ~= true then return nil end
+	local data = player:FindFirstChild("PlayerData")
+	if not data or not data:IsA("Folder") then return nil end
+	return data 
+end
 
-local PASSES = ShopModule.Passes
-local POTIONS = ShopModule.Potions
+local function getPassValues(player, passId)
+	local data = getPlayerData(player)
+	local ownedFolder = data and data:FindFirstChild("Gamepasses")
+	local equippedFolder = data and data:FindFirstChild("EquippedGamepasses")
+	local owned = ownedFolder and ownedFolder:FindFirstChild(passId)
+	local equipped = equippedFolder and equippedFolder:FindFirstChild(passId)
+	
+	if not owned or not owned:IsA("BoolValue") then return nil, nil end
+	if not equipped or not equipped:IsA("BoolValue") then return nil, nil end
+	
+	return owned, equipped
+end
 
 local function getPotionValue(player, potionId)
-	local potions = player:FindFirstChild("Potions")
-	if not potions then return nil end
+	local folder = player:FindFirstChild("Potions")
+	local value = folder and folder:FindFirstChild(potionId)
 	
-	return potions:FindFirstChild(potionId)
+	return value and value:IsA("IntValue") and value or nil
 end
 
-local function getSRRobux(player)
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return nil end
+local function getCurrency(player)
+	local data = getPlayerData(player)
+	local value = data and data:FindFirstChild("SrRobux")
 	
-	return playerData:FindFirstChild("SrRobux")
+	return value and value:IsA("IntValue") and value or nil
 end
 
-local function syncRobloxGamepasses(player)
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return end 
+local function ensurePassValues(player)
+	local data = getPlayerData(player)
+	if not data then return false end
 	
-	local gamepasses = playerData:FindFirstChild("Gamepasses")
-	if not gamepasses then return end
+	local ownedFolder = data:FindFirstChild("Gamepasses")
+	if not ownedFolder then
+		ownedFolder = Instance.new("Folder")
+		ownedFolder.Name = "Gamepasses"
+		ownedFolder.Parent = data
+	end
 	
-	for passId, passData in pairs(PASSES) do
-		local gamePassId = passData.GamePassId
-		if gamePassId and gamePassId ~= 0 then
-			local passValue = gamepasses:FindFirstChild(passId)
-			
-			if passValue then
-				local success, ownsPass = pcall(function()
-					return MarketplaceService:UserOwnsGamePassAsync(player.UserId, gamePassId)
-				end)
-				
-				if success and ownsPass then 
-					passValue.Value = true
+	local equippedFolder = data:FindFirstChild("EquippedGamepasses")
+	if not equippedFolder then
+		equippedFolder = Instance.new("Folder")
+		equippedFolder.Name = "EquippedGamepasses"
+		equippedFolder.Parent = data
+	end
+	
+	for _, passId in ipairs(ShopModule.PassOwned) do
+		if not ownedFolder:FindFirstChild(passId) then
+			local value = Instance.new("BoolValue")
+			value.Name = passId
+			value.Value = false
+			value.Parent = ownedFolder
+		end
+		
+		if not equippedFolder:FindFirstChild(passId) then
+			local value = Instance.new("BoolValue")
+			value.Name = passId
+			value.Value = true
+			value.Parent = equippedFolder 
+		end
+	end
+	return true
+end
+
+local function syncRobloxPasses(player)
+	if not ensurePassValues(player) then return end
+	
+	for _, passId in ipairs(ShopModule.PassOrder) do
+		local data = ShopModule.GetPass(passId)
+		if type(data.GamePassId) == "number" and data.GamePassId > 0 then
+			local ok, owns = pcall(MarketplaceService.UseOwnsGamePassAsync, MarketplaceService, player.UserId, data.GamePassId)
+			if ok and owns and player.Parent == Players then
+				local owned = getPassValues(player, passId)
+				if owned then
+					owned.Value = true
+					report(player, passId, true, "SYNC")
 				end
+			elseif not ok then
+				warn("Shop pass sync failed:", player.Name, passId, owns)
 			end
 		end
 	end
 end
 
-playerDataLoadedEvent.Event:Connect(function(player)
-	syncRobloxGamepasses(player)
+dataLoadedEvent.Event:Connect(function(player)
+	task.spawn(syncRobloxPasses, player)
 end)
 
-buyPotionEvent.OnServerEvent:Connect(function(player, potionId, amount, payType)
-	local potionData = POTIONS[potionId]
-	if not potionData then return end
+for _, player in ipairs(Players:GetPlayers()) do
+	if player:GetAttribute("DataReady") == true then
+		task.spawn(syncRobloxPasses, player)
+	end
+end
+
+local function lockPlayer(player, itemId)
+	if busy[player] then
+		report(player, itemId, false, "BUSY")
+		return false
+	end
 	
-	local priceData = potionData.Prices[amount]
-	if not priceData then return end
-	
-	local potionValue = getPotionValue(player, potionId)
-	if not potionValue then return end
-	
-	if payType == "Robux" then
-		local productId = potionData.Products and potionData.Products[amount]
-		if not productId then return end
-		
-		MarketplaceService:PromptProductPurchase(player, productId)
+	busy[player] = true
+	return true
+end
+
+local function unlockPlayer(player)
+	busy[player] = nil
+end
+
+Players.PlayerRemoving:Connect(unlockPlayer)
+
+local function processPassPurchase(player, passId, currency)
+	if typeof(passId) ~= "string" or not ShopModule.GetPass(passId) then
+		report(player, passId, false, "UNKNOWN_PASS")
 		return
 	end
 	
-	if payType == "SRRobux" then
-		local srRobux = getSRRobux(player)
-		if not srRobux then return end 
-		
-		if srRobux.Value < priceData.SRRobux then
+	if currency ~= "Roblox" and currency ~= "SRRobux" then
+		report(player, passId, false, "INVALID_CURRENCY")
+		return 
+	end
+	
+	if not ensurePassValues(player) then
+		report(player, passId, false, "DATA_NOT_READY")
+		return
+	end
+	
+	if not ShopModule.IsPassConfigured(passId) then
+		report(player, passId, false, "NOT_CONFIGURED")
+		return
+	end
+	
+	local owned, equipped = getPassValues(player, passId)
+	if not owned then
+		report(player, passId, false, "PASS_DATA_MISSING")
+		return
+	end
+	
+	if owned.Value then
+		report(player, passId, false, "ALREADY_OWNED")
+		return
+	end
+	
+	local passData = ShopModule.GetPass(passId)
+	local ok, robloxOwns = pcall(MarketplaceService.UseOwnsGamePassAsync, MarketplaceService, player.UserId, passData.GamePassId)
+	if not ok then
+		report(player, passId, false, "OWNERSHIP_CHECK_FAILED")
+		return
+	end
+	
+	if robloxOwns then
+		owned.Value = true
+		equipped.Value = true
+		report(player, passId, true, "ALREADY_OWNED")
+		return
+	end
+	
+	if currency == "Roblox" then
+		local prompted, promptError = pcall(MarketplaceService.PromptGamePassPurchase, MarketplaceService, player, passData.GamePassId)
+		if not prompted then
+			warn("Pass prompt failed:", player.Name, passId, promptError)
+			report(player, passId, false, "PROMPT_FAILED")
+		else 
+			report(player, passId, true, "PROMPT_OPENED")
+		end
+		return
+	end
+	
+	local balance = getCurrency(player)
+	if not balance then
+		report(player, passId, false, "BALANCE_MISSING")
+		return
+	end
+	
+	local price = ShopModule.GetPassPrice(passId, "SRRobux")
+	if balance.Value < price then
+		report(player, passId, false, "NOT_ENOUGH_SRROBUX")
+		return
+	end
+	
+	local invoked, granted, reason = pcall(grantPassPurchase.Invoke, grantPassPurchase, player, passId)
+	if not invoked then
+		warn("Pass grant failed:", player.Name, passId, granted)
+		report(player, passId, false, "PURCHASE_FAILED")
+	elseif not granted then
+		report(player, passId, false, reason or "PURCHASE_FAILED")
+	else 
+		report(player, passId, true, "PURCHASE_GRANTED")
+	end
+end
+
+buyPassEvent.OnServerEvent:Connect(function(player, passId, currency)
+	if not lockPlayer(player, passId) then return end
+	local ok, err = pcall(processPassPurchase, player, passId, currency)
+	
+	unlockPlayer(player)
+	
+	if not ok then
+		warn("Pass request crached:", player.Name, err)
+		report(player, passId, false, "PURCHASE_FAILED")
+	end
+end)
+
+equipPassEvent.OnServerEvent:Connect(function(player, passId, shouldEquip)
+	if typeof(passId) ~= "string" or typeof(shouldEquip) ~= "boolean" then
+		report(player, passId, false, "INVALID_REQUEST")
+		return
+	end
+	
+	if not lockPlayer(player, passId) then return end
+	local ok, err = pcall(function()
+		if not ShopModule.GetPass(passId) then
+			report(player, passId, false, "UNKNOWN_PASS")
 			return
 		end
 		
-		srRobux.Value -= priceData.SRRobux
-		potionValue.Value += amount
-		
-		BetaPurchaseTracker.addPurchase(player, "Potions", potionId, amount)
-	end
-end)
-
-usePotionEvent.OnServerEvent:Connect(function(player, potionId, amountMode)
-	if player:GetAttribute("DataReady") ~= true then return end
-	if typeof(potionId) ~= "string" then return end
-	
-	local potionData = POTIONS[potionId]
-	if not potionData then return end
-	
-	local potionValue = getPotionValue(player, potionId)
-	if not potionValue or not potionValue:IsA("IntValue") then return end
-	
-	local useAmount
-	
-	if amountMode == "Max" then
-		useAmount = potionValue.Value
-	elseif amountMode == 1 or amountMode == 5 then
-		useAmount = amountMode
-	else
-		warn("INVALID POTION USE AMOUNT:", player.Name, tostring(amountMode))
-		return
-	end
-	
-	if useAmount <= 0 then return end 
-	if potionValue.Value < useAmount then return end
-	
-	local activated = BoostModule.ActivatePersonalPotion(player, potionData.BoostType, useAmount)
-	if not activated then return end
-	
-	potionValue.Value -= useAmount
-end)
-
-buyPassEvent.OnServerEvent:Connect(function(player, passId, payType)
-	local passData = PASSES[passId]
-	if not passData then return end
-	
-	local playerData = player:FindFirstChild("PlayerData")
-	if not playerData then return end
-	
-	local gamepasses = playerData:FindFirstChild("Gamepasses")
-	if not gamepasses then return end
-	
-	local passValue = gamepasses:FindFirstChild(passId)
-	if not passValue then return end
-	
-	if passValue.Value then
-		shopUpdateEvent:FireClient(player, passId, false, "Owned")
-		return
-	end
-	
-	if payType == "Robux" then
-		if not passData.GamePassId or passData.GamePassId == 0 then
+		local owned, equipped = getPassValues(player, passId)
+		if not owned or not equipped then
+			report(player, passId, false, "DATA_NOT_READY")
 			return
 		end
 		
-		MarketplaceService:PromptGamePassPurchase(player, passData.GamePassId)
-		return
-	end
-	
-	if payType == "SRRobux" then
-		local srRobux = playerData:FindFirstChild("SrRobux")
-		if not srRobux then return end
-		
-		if srRobux.Value < passData.SRobuxPrice then
-		    shopUpdateEvent:FireClient(player, passId, false, "Not Enough")
+		if not owned.Value then
+			report(player, passId, false, "NOT_OWNED")
 			return
 		end
 		
-		srRobux.Value -= passData.SRobuxPrice
-		passValue.Value = true
-
-		shopUpdateEvent:FireClient(player, passId, true, "Owned")
-		return
+		equipped.Value = shouldEquip
+		report(player, passId, true, shouldEquip and "EQUIPPED" or "UNEQUIPPED")
+	end)
+	
+	unlockPlayer(player)
+	if not ok then
+		warn("Pass equip failed:", player.Name, passId, err)
+		report(player, passId, false, "EQUIP_FAILED")
 	end
-	warn("INVALID PASS PAYMENT TYPE:", player.Name, passId, payType)
 end)
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
 	if not wasPurchased then return end
-	
-	for passId, passData in pairs(PASSES) do
-		if passData.GamePassId == gamePassId then
-			local playerData = player:FindFirstChild("PlayerData")
-			if not playerData then return end
+	for _, passId in ipairs(ShopModule.PassOrder) do
+		local data = ShopModule.GetPass(passId)
+		if data.GamePassId == gamePassId then
+			if not ensurePassValues(player) then
+				report(player, passId, false, "DATA_NOT_READY")
+				return
+			end
 			
-			local gamepasses = playerData:FindFirstChild("Gamepasses")
-			if not gamepasses then return end
+			local owned, equipped = getPassValues(player, passId)
+			if not owned then
+				report(player, passId, false, "PASS_DATA_MISSING")
+				return
+			end
 			
-			local passValue = gamepasses:FindFirstChild(passId)
-			if not passValue then return end
+			if not owned.Value then
+				owned.Value = true
+				equipped.Value = true
+			end
 			
-			passValue.Value = true
-			
-			shopUpdateEvent:FireClient(player, passId, true, "Owned")
-			break
+			report(player, passId, true, "PURCHASE_GRANTED")
+			return
 		end
+	end
+end)
+
+local function processPotionPurchase(player, potionId, amount, currency)
+	if typeof(potionId) ~= "string" or not ShopModule.Potion[potionId] then
+		report(player, potionId, false, "UNKNOWN_POTION")
+		return
+	end
+	
+	if amount ~= 1 and amount ~= 5 and amount ~= 10 then
+		report(player, potionId, false, "INVALID_AMOUNT")
+		return
+	end
+	
+	local price = ShopModule.GetPotionPrice(potionId, amount, currency)
+	if not price then
+		report(player, potionId, false, "DATA_NOT_READY")
+		return
+	end
+	
+	local potion = getPotionValue(player, potionId)
+	if not potion then
+		report(player, potionId, false, "POTION_DATA_MISSING")
+		return
+	end
+	
+	if currency == "Robux" then
+		local productId = ShopModule.Potion[potionId].Product[amount]
+		if not productId then
+			report(player, potionId, false, "NOT_CONFIGURED")
+			return
+		end
+		
+		local ok, err = pcall(MarketplaceService.PromptProductPurchase, MarketplaceService, player, productId)
+		if not ok then
+			warn("Potion prompt failed:", player.Name, potionId, err)
+			report(player, potionId, false, "PROMPT_FAILED")
+		else 
+			report(player, potionId, true, "PROMPT_OPENED")
+			return
+		end
+		
+		local balance = getCurrency(player)
+		if not balance then
+			report(player, potionId, false, "BALANCE_MISSING")
+			return
+		end
+		
+		if balance.Value < price then
+			report(player, potionId, false, "NOT_ENOUGH_SRROBUX")
+			return
+		end
+		
+		local invoked, granted, reason = pcall(grantSRPotionPurchase.Invoke, grantSRPotionPurchase, player, potionId, amount)
+		if not invoked then
+			warn("Potion grant failed:", player.Name, potionId, granted)
+			report(player, potionId, false, "PURCHASE_FAILED")
+			return
+		end
+		
+		if not granted then
+			report(player, potionId, false, reason or "PURCHASE_FAILED")
+			return
+		end
+		
+		local tracked, trackingError = pcall(BetaPurchaseTracker.addPurchase, player, "Potions", potionId, amount)
+		warn("Potion tracker failed:", player.Name, potionId, trackingError)
+	end
+	report(player, potionId, true, "PURCHASE_GRANTED")
+end
+
+buyPotionEvent.OnServerEvent(function(player, potionId, amount, currency)
+	if not lockPlayer(player, potionId) then return end
+	local ok, err = pcall(processPotionPurchase, player, potionId, amount, currency)
+	
+	unlockPlayer(player)
+	
+	if not ok then
+		warn("Potion request crashed:", player.Name, err)
+		report(player, potionId, false, "PURCHASE_FAILED")
+	end
+end)
+
+usePotionEvent.OnServerEvent(function(player, potionId, amountMode)
+	if typeof(potionId) ~= "string" or not ShopModule.Potion[potionId] then
+		report(player, potionId, false, "UNKNOWN_POTION")
+		return
+	end
+	
+	if not lockPlayer(player, potionId) then return end
+	local ok, err = pcall(function()
+		if not ensurePassValues(player) then
+			report(player, potionId, false, "DATA_NOT_READY")
+			return
+		end
+		
+		local potion = getPotionValue(player, potionId)
+		if not potion then
+			report(player, potionId, false, "POTION_DATA_MISSING")
+			return
+		end
+		
+		local amount = amountMode == "Max" and potion.Value or amountMode
+		if amountMode ~= "Max" and amountMode ~= 1 and amountMode ~= 5 then
+			report(player, potionId, false, "INVALID_AMOUNT")
+			return
+		end
+		
+		if amount <= 0 or potion.Value < amount then
+			report(player, potionId, false, "NOT_ENOUGH_POTIONS")
+			return
+		end
+		
+		local activated = BoostModule.ActivatePersonalPotion(player, ShopModule.Potion[potionId].BoostType, amount)
+		if not activated then
+			report(player, potionId, false, "POTION_USE_FAILED")
+			return
+		end
+		
+		potion.Value -= amount 
+		report(player, potionId, true, "POTION_USED")
+	end)
+	
+	unlockPlayer(player)
+	
+	if not ok then
+		warn("Potion use crashed:", player.Name, potionId, err)
+		report(player, potionId, false, "POTION_USE_FAILED")
 	end
 end)
 
 local productToPotion = {}
 
-for potionId, potionData in pairs(POTIONS) do 
-	if potionData.Products then 
-		for amount, productId in pairs(potionData.Products) do 
-			productToPotion[productId] = { 
-				PotionId = potionId,
-				Amount = amount,
-			}
-		end
+for potionId, potionData in pairs(ShopModule.Potions) do
+	for amount, productId in pairs(potionData.Products) do
+		productToPotion[productId] = {Potion = potionId, Amount = amount}
 	end
 end
 
-MarketplaceService.ProcessReceipt = function(receiptInfo)
-	local purchaseId = tostring(receiptInfo.PurchaseId)
-
-	local player = game.Players:GetPlayerByUserId(receiptInfo.PlayerId)
-
-	if not player then
+MarketplaceService.ProcessReceipt = function(receipt)
+	local player = Players:GetplayerByUserId(receipt.PlayerId)
+	if not player or player:GetAttribute("DataReady") ~= true then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-
-	if player:GetAttribute("DataReady") ~= true then
+	
+	local product = productToPotion[receipt.ProductId]
+	if not product then
+		warn("Unknown developer product:", receipt.ProductId, receipt.PurchaseId)
+		return Enum.ProductPurchaseDecision.NotPricessedYet 
+	end
+	
+	local ok, granted, reason = pcall(grantPotionPurchase.Invoke, grantPotionPurchase, player, tostring(receipt.PurchaseId), product.PotionId, product.Amount)
+	if not ok or not granted then
+		warn("Potion receipt grant failed:", player.Name, receipt.PurchaseId, ok and reason or granted)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
-
-	local productData = productToPotion[receiptInfo.ProductId]
-
-	if not productData then
-		warn(
-			"UNKNOWN DEVELOPER PRODUCT:",
-			receiptInfo.ProductId,
-			purchaseId
-		)
-
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-
-	-- Защищаем ProcessReceipt от ошибки внутри BindableFunction
-	local invokeSuccess, grantSuccess, reason = pcall(function()
-		return grantPotionPurchaseFunction:Invoke(
-			player,
-			purchaseId,
-			productData.PotionId,
-			productData.Amount
-		)
-	end)
-
-	if not invokeSuccess then
-		warn(
-			"PURCHASE FUNCTION ERROR:",
-			player.Name,
-			purchaseId,
-			tostring(grantSuccess)
-		)
-
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-
-	if not grantSuccess then
-		warn(
-			"PURCHASE GRANT FAILED:",
-			player.Name,
-			purchaseId,
-			tostring(reason)
-		)
-
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-
-	-- Записываем покупку в BetaPurchaseTracker только при первой выдаче.
-	-- При ALREADY_PROCESSED повторно статистику не увеличиваем.
+	
 	if reason == "PURCHASE_GRANTED" then
-		local trackerSuccess, trackerResult = pcall(function()
-			return BetaPurchaseTracker.addPurchase(
-				player,
-				"Potions",
-				productData.PotionId,
-				productData.Amount
-			)
-		end)
-
-		if not trackerSuccess then
-			warn(
-				"BETA PURCHASE TRACKER ERROR:",
-				player.Name,
-				purchaseId,
-				tostring(trackerResult)
-			)
-		elseif trackerResult ~= true then
-			warn(
-				"BETA PURCHASE TRACKER SAVE FAILED:",
-				player.Name,
-				purchaseId
-			)
+		local tracked, trackingResult = pcall(BetaPurchaseTracker.addPurchase, player, "Potion", product.PotionId, product.Amount)
+		if not tracked or trackingResult ~= true then
+			warn("Potion tracker failed:", player.Name, receipt.PurchaseId)
 		end
 	end
-
+	report(player, product.PotionId, true, "PURCHASE_GRANTED")
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
