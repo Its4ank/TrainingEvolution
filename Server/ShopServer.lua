@@ -2,7 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
 --// Modules
@@ -32,7 +32,7 @@ local function report(player, itemId, success, code)
 end
 
 local function getPlayerData(player)
-	if player:GetAttribute("DataReqdy") ~= true then return nil end
+	if player:GetAttribute("DataReady") ~= true then return nil end
 	local data = player:FindFirstChild("PlayerData")
 	if not data or not data:IsA("Folder") then return nil end
 	return data 
@@ -83,7 +83,7 @@ local function ensurePassValues(player)
 		equippedFolder.Parent = data
 	end
 	
-	for _, passId in ipairs(ShopModule.PassOwned) do
+	for _, passId in ipairs(ShopModule.PassOrder) do
 		if not ownedFolder:FindFirstChild(passId) then
 			local value = Instance.new("BoolValue")
 			value.Name = passId
@@ -107,7 +107,7 @@ local function syncRobloxPasses(player)
 	for _, passId in ipairs(ShopModule.PassOrder) do
 		local data = ShopModule.GetPass(passId)
 		if type(data.GamePassId) == "number" and data.GamePassId > 0 then
-			local ok, owns = pcall(MarketplaceService.UseOwnsGamePassAsync, MarketplaceService, player.UserId, data.GamePassId)
+			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, data.GamePassId)
 			if ok and owns and player.Parent == Players then
 				local owned = getPassValues(player, passId)
 				if owned then
@@ -153,7 +153,7 @@ local function processPassPurchase(player, passId, currency)
 		return
 	end
 	
-	if currency ~= "Roblox" and currency ~= "SRRobux" then
+	if currency ~= "Robux" and currency ~= "SRRobux" then
 		report(player, passId, false, "INVALID_CURRENCY")
 		return 
 	end
@@ -180,7 +180,7 @@ local function processPassPurchase(player, passId, currency)
 	end
 	
 	local passData = ShopModule.GetPass(passId)
-	local ok, robloxOwns = pcall(MarketplaceService.UseOwnsGamePassAsync, MarketplaceService, player.UserId, passData.GamePassId)
+	local ok, robloxOwns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, passData.GamePassId)
 	if not ok then
 		report(player, passId, false, "OWNERSHIP_CHECK_FAILED")
 		return
@@ -193,7 +193,7 @@ local function processPassPurchase(player, passId, currency)
 		return
 	end
 	
-	if currency == "Roblox" then
+	if currency == "Robux" then
 		local prompted, promptError = pcall(MarketplaceService.PromptGamePassPurchase, MarketplaceService, player, passData.GamePassId)
 		if not prompted then
 			warn("Pass prompt failed:", player.Name, passId, promptError)
@@ -312,8 +312,12 @@ local function processPotionPurchase(player, potionId, amount, currency)
 		return
 	end
 	
-	local price = ShopModule.GetPotionPrice(potionId, amount, currency)
-	if not price then
+	if currency ~= "Robux" and currency ~= "SRRobux" then
+		report(player, potionId, false, "INVALID_CURRENCY")
+		return
+	end
+	
+	if not getPlayerData(player) then
 		report(player, potionId, false, "DATA_NOT_READY")
 		return
 	end
@@ -321,6 +325,12 @@ local function processPotionPurchase(player, potionId, amount, currency)
 	local potion = getPotionValue(player, potionId)
 	if not potion then
 		report(player, potionId, false, "POTION_DATA_MISSING")
+		return
+	end
+	
+	local price = ShopModule.GetPotionPrice(potionId, amount, currency)
+	if not price then
+		report(player, potionId, false, "NOT_CONFIGURED")
 		return
 	end
 	
@@ -337,35 +347,39 @@ local function processPotionPurchase(player, potionId, amount, currency)
 			report(player, potionId, false, "PROMPT_FAILED")
 		else 
 			report(player, potionId, true, "PROMPT_OPENED")
-			return
 		end
 		
-		local balance = getCurrency(player)
-		if not balance then
-			report(player, potionId, false, "BALANCE_MISSING")
-			return
-		end
-		
-		if balance.Value < price then
-			report(player, potionId, false, "NOT_ENOUGH_SRROBUX")
-			return
-		end
-		
-		local invoked, granted, reason = pcall(grantSRPotionPurchase.Invoke, grantSRPotionPurchase, player, potionId, amount)
-		if not invoked then
-			warn("Potion grant failed:", player.Name, potionId, granted)
-			report(player, potionId, false, "PURCHASE_FAILED")
-			return
-		end
-		
-		if not granted then
-			report(player, potionId, false, reason or "PURCHASE_FAILED")
-			return
-		end
-		
-		local tracked, trackingError = pcall(BetaPurchaseTracker.addPurchase, player, "Potions", potionId, amount)
-		warn("Potion tracker failed:", player.Name, potionId, trackingError)
+		return
 	end
+	
+	local balance = getCurrency(player)
+	if not balance then
+		report(player, potionId, false, "BALANCE_MISSING")
+		return
+	end
+
+	if balance.Value < price then
+		report(player, potionId, false, "NOT_ENOUGH_SRROBUX")
+		return
+	end
+
+	local invoked, granted, reason = pcall(grantSRPotionPurchase.Invoke, grantSRPotionPurchase, player, potionId, amount)
+	if not invoked then
+		warn("Potion grant failed:", player.Name, potionId, granted)
+		report(player, potionId, false, "PURCHASE_FAILED")
+		return
+	end
+
+	if not granted then
+		report(player, potionId, false, reason or "PURCHASE_FAILED")
+		return
+	end
+
+	local tracked, trackingResult = pcall(BetaPurchaseTracker.addPurchase, player, "Potions", potionId, amount)
+	if not tracked or trackingResult ~= true then
+		warn("Potion tracker failed:", player.Name, potionId)
+	end
+	
 	report(player, potionId, true, "PURCHASE_GRANTED")
 end
 
@@ -433,7 +447,7 @@ local productToPotion = {}
 
 for potionId, potionData in pairs(ShopModule.Potions) do
 	for amount, productId in pairs(potionData.Products) do
-		productToPotion[productId] = {Potion = potionId, Amount = amount}
+		productToPotion[productId] = {PotionId = potionId, Amount = amount}
 	end
 end
 
@@ -456,7 +470,7 @@ MarketplaceService.ProcessReceipt = function(receipt)
 	end
 	
 	if reason == "PURCHASE_GRANTED" then
-		local tracked, trackingResult = pcall(BetaPurchaseTracker.addPurchase, player, "Potion", product.PotionId, product.Amount)
+		local tracked, trackingResult = pcall(BetaPurchaseTracker.addPurchase, player, "Potions", product.PotionId, product.Amount)
 		if not tracked or trackingResult ~= true then
 			warn("Potion tracker failed:", player.Name, receipt.PurchaseId)
 		end
