@@ -19,7 +19,7 @@ ShopModule.PassOrder = {
 }
 
 ShopModule.Passes = {
-	EnergyPass = pass("PassEnergyFrame", "Energy Pass", "2x Energy", "Info"),
+	EnergyPass = pass("PassEnergyFrame", "Energy Pass", "2x Energy", "Double your Energy bonus.", "rbxassetid://122391878019995", 1860533278, 49, 49, "Energy"),
 	RaceTouchPass = pass("PassRaceTouchFrame", "Race Touch Pass", "2x RaceTouch", "Info"),
 	MoneyPass = pass("PassMoneyFrame", "Money Pass", "2x Money", "Info"),
 	PetStatPass = pass("PassPetStatFrame", "Pet Stat Pass", "2x PetStats", "Info"),
@@ -27,12 +27,12 @@ ShopModule.Passes = {
 	GemsPass = pass("PassGemsFrame", "Gems Pass", "2x Gems", "Info"),
 	TripleHatchPass = pass("PassTripleHatchFrame", "Triple Pass", "Open 3", "Info"),
 	PetLuckPass = pass("PassPetLuckFrame", "Pet Luck Pass", "2x PetLuck", "info"),
-	RacePowerPass = pass("RassRacePowerFrame", "RacePower Pass", "2x RacePower", "Info"),
+	RacePowerPass = pass("PassRacePowerFrame", "RacePower Pass", "2x RacePower", "Info"),
 	AccelerationPass = pass("PassAccelerationFrame", "Acceleration Pass", "2x Acceleration", "Info"),
 	AutoTrainingPass = pass("PassAutoTrainingFrame", "AutoTraining", "Auto Training", "Info"),
 	EggHatchSpeedPass = pass("PassEggHatchSpeedFrame", "Egg Hatch Speed", "2x HatchSpeed", "Info"),
-	AutoRebirthPass = pass("PassAutoRebirthFrame", "Auto Rebirth", "Auto Rebireth", "Info"),
-	MaxRebirthPass = pass("PassMaxRebirthFrame", "Max Rebirth", "Max Rebirth", "Info"),
+	AutoRebirthPass = pass("PassAutoRebirthFrame", "Auto Rebirth", "Auto Rebireth", "Automatically perform Rebirth.", "rbxassetid://113494810568723", 1903338380, 99, 129, "AutoRebirth"),
+	MaxRebirthPass = pass("PassMaxRebirthFrame", "Max Rebirth", "Max Rebirth", "Perform the maximum available Rebirth.", "rbxassetid://70550586083463", 1902642397, 139, 169, "MaxRebirth"),
 	EggAutoHatchPass = pass("PassEggAutoHatchFrame", "Auto Open Egg", "Auto Open Egg", "Info"),
 	AutoRacePass = pass("PassAutoRaceFrame", "Auto Race", "Auto Race", "Info"),
 }
@@ -52,24 +52,31 @@ ShopModule.UIImages = {
 ShopModule.ErrorMessages = {
 	UNKNOWN_PASS = "This pass does not exist.",
 	UNKNOWN_POTION = "This potion does not exist.",
+	
 	INVALID_CURRENCY = "Choose a valid payment method.",
 	INVALID_AMOUNT = "Choose a valid quantity.",
 	INVALID_REQUEST = "The request was not valid.",
-	DATA_NOT_MISSING = "Your data is still loading. Try again.",
-	PASS_DATA_MISSING = "Potion data is unavailable. Try again.",
+	
+	DATA_NOT_READY = "Your data is still loading. Try again.",
+	PASS_DATA_MISSING = "Pass data is unavailable. Try again.",
 	POTION_DATA_MISSING = "Potion data is unailable. Try again.",
 	BALANCE_MISSING = "Your SRRobux balance is unavailable.",
+	
 	NOT_CONFIGURED = "This item is not available yet.",
 	ALREADY_OWNED = "You already own thus pass.",
 	NOT_OWNED = "You do not own this pass.",
+	
 	NOT_ENOUGH_SRROBUX = "Not enough SRRobux.",
 	NOT_ENOUGH_POSIONS = "Not enough potions.",
+	
 	OWNERSHIP_CHECK_FAILED = "Could not verify ownership. Try again.",
 	PROMPT_FAILED = "Could not open the purchase window.",
-	PURCHASE_FAILED = "Purchase failed. Your SRRobux was not charged.",
-	SAVE_FAILED = "Could not save the purchase. Your SRRobux was restored.",
+	PURCHASE_FAILED = "Purchase failed.",
+	SAVE_FAILED = "Could not save the purchase.",
+	
 	EQUIP_FAILED = "Could not changed this pass right now.",
 	POTION_USE_FAILED = "Could not use the potion right now.",
+	
 	BUSY = "Another shop request is still processing.",
 }
 
