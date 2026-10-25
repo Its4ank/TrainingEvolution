@@ -88,7 +88,7 @@ local potionFrames = {
 local passFrames = {}
 for _, passId in ipairs(ShopModule.PassOrder) do
 	local passData = ShopModule.GetPass(passId)
-	passFrame[passId] = gamePassBox:FindFirstChild(passData.FrameName)
+	passFrames[passId] = gamePassBox:FindFirstChild(passData.FrameName)
 end
 
 local priceMode = "Robux"
@@ -221,7 +221,7 @@ end
 
 local function connectPassFrame(passId, frame)
 	local button = frame:FindFirstChild("BuyPassButton") or frame:FindFirstChild("TapPassButton")
-	if button or not button:IsA("GuiButton") then
+	if not button or not button:IsA("GuiButton") then
 		warn("Shop pass button missing:", passId, frame:GetFullName())
 		return
 	end
@@ -371,7 +371,7 @@ shopUpdateEvent.OnClientEvent:Connect(function(itemId, success, code)
 	end
 	
 	if not success then
-		local message = ShopModule.ErrorMessage[code] or "Shop request failed."
+		local message = ShopModule.ErrorMessages[code] or "Shop request failed."
 		showWarning(message)
 		if code == "NOT_ENOUGH_SRROBUX" then showSRRobuxInfo(message) end
 	end
@@ -488,7 +488,7 @@ detailsFrame.Visible = false
 purchaseFrame.Visible = false
 purchaseBlurFrame.Visible = false
 srRobuxInfoLabel.Visible = false
-showWarningLabel.Visible = false
+shopWarningLabel.Visible = false
 closeShop()
 
 print("ShopUI loaded")
