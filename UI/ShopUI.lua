@@ -1,15 +1,15 @@
---// ShopUI
+--// ShopUI v1.3
 
 local Players = game:GetService("Players")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local MenuManager = require(game.ReplicatedStorage.Modules.MenuManager)
 local ClientDataModule = require(game.ReplicatedStorage.Modules.ClientDataModule)
 local FormatModule = require(game.ReplicatedStorage.Modules.FormatModule)
+local ShopModule = require(game.ReplicatedStorage.Modules.ShopModule)
 
 local raceGui = script.Parent
 local player = Players.LocalPlayer
@@ -19,8 +19,8 @@ MenuManager.init(raceGui)
 local guiFolder = raceGui:WaitForChild("GuiFolder")
 local shopFolder = guiFolder:WaitForChild("ShopFolder")
 local shopHost = shopFolder:WaitForChild("ShopHost")
-local uiBalance = guiFolder:WaitForChild("UIBalance")
 
+local uiBalance = guiFolder:WaitForChild("UIBalance")
 local uiValueFrame = uiBalance:WaitForChild("UIValueFrame")
 local shopOpenButton = uiBalance:WaitForChild("ShopOpen")
 
@@ -31,7 +31,6 @@ local purchaseBlurFrame = shopHost:WaitForChild("PurchaseBlurFrame")
 local backButton = shopHost:WaitForChild("BackShopButton")
 local leaderShopUI = shopHost:WaitForChild("LeaderstatsShopUI")
 local shopWarningLabel = shopHost:WaitForChild("ShopWarningLabel")
-
 local srRobuxLabel = leaderShopUI:WaitForChild("SRRobuxLabel")
 
 local music = SoundService:WaitForChild("BackgroundMusik")
@@ -40,6 +39,7 @@ local menuOpenSound = SoundService:WaitForChild("UISound"):WaitForChild("OpenSho
 --// Stats
 local srRobux = ClientDataModule.GetSrRobux(player)
 local gamepasses = ClientDataModule.GetGamepasses(player)
+local playerData = player:WaitForChild("PlayerData")
 
 --//RemoteEvents
 local shopEventFolder = ReplicatedStorage:WaitForChild("ShopEvent")
@@ -47,12 +47,12 @@ local buyPassEvent = shopEventFolder:WaitForChild("BuyPassEvent")
 local shopUpdateEvent = shopEventFolder:WaitForChild("ShopUpdateEvent")
 local buyPotionEvent = shopEventFolder:WaitForChild("BuyPotionEvent")
 local usePotionEvent = shopEventFolder:WaitForChild("UsePotionEvent")
+local equipPassEvent = shopEventFolder:WaitForChild("EquipPassEvent")
 
 --// shopRobuxFrame
 local ScrollingFrame = shopRobuxFrame:WaitForChild("ScrollingFrame")
 local potionPassBox = ScrollingFrame:WaitForChild("PotionPassBox")
 local gamePassBox = ScrollingFrame:WaitForChild("GamePassBox")
-
 local srRobuxInfoLabel = shopRobuxFrame:WaitForChild("SrRobuxInfoLabel")
 
 local srValueShopButton = shopRobuxFrame:WaitForChild("SRValueShopButton")
@@ -61,18 +61,6 @@ local passBoxButton = shopRobuxFrame:WaitForChild("PassBoxButton")
 local itemsBoxButton = shopRobuxFrame:WaitForChild("ItemsBoxButton")
 local currencyBoxButton = shopRobuxFrame:WaitForChild("CurrencyBoxButton")
 local codeBoxButton = shopRobuxFrame:WaitForChild("CodeBoxButton")
-
-srRobuxInfoLabel.Visible = false
-srRobuxInfoLabel.Text = ""
-
---// GamePassBox
-local passEnergyFrame = gamePassBox:WaitForChild("PassEnergyFrame")
-local passAutoRebirthFrame = gamePassBox:WaitForChild("PassAutoRebirthFrame")
-local passMaxRebirthFrame = gamePassBox:WaitForChild("PassMaxRebirthFrame")
-
-local energyTapPassButton = passEnergyFrame:WaitForChild("TapPassButton")
-local autoRebirthTapPassButton = passAutoRebirthFrame:WaitForChild("TapPassButton")
-local maxRebirthTapPassButton = passMaxRebirthFrame:WaitForChild("TapPassButton")
 
 --// Details
 local detailsPassNameLabel = detailsFrame:WaitForChild("PassNameLabel")
@@ -91,545 +79,414 @@ local buyRobuxStatusLabel = buyRobuxPassButton:WaitForChild("BuyRobuxStatusLabel
 local purchaseIconPass = purchaseFrame:WaitForChild("PurchaseIconPass")
 local closePurcFrame = purchaseFrame:WaitForChild("ClosePurcFrame")
 
-local selectedPass = nil 
-
-MenuManager.register("Shop", shopHost)
-
 local potionFrames = { 
 	EnergyPotion = potionPassBox:WaitForChild("EnergyPotionFrame"),
 	MoneyPotion = potionPassBox:WaitForChild("MoneyPotionFrame"),
 	LuckPotion = potionPassBox:WaitForChild("LuckPotionFrame")
 }
 
+local passFrames = {}
+for _, passId in ipairs(ShopModule.PassOrder) do
+	local passData = ShopModule.GetPass(passId)
+	passFrame[passId] = gamePassBox:FindFirstChild(passData.FrameName)
+end
+
 local priceMode = "Robux"
+local selectedPass = nil
+local selectedPotionUseAmount = {}
+local warningToken = 0
+local musicNormalVolume = music.Volume
 
-local passFrames = { 
-	EnergyPass = gamePassBox:WaitForChild("PassEnergyFrame"),
-	AutoRebirthPass = gamePassBox:WaitForChild("PassAutoRebirthFrame"),
-	MaxRebirthPass = gamePassBox:WaitForChild("PassMaxRebirthFrame"),
-}
+MenuManager.register("Shop", shopHost)
 
-local potionPrices = { 
-	[1] = { 
-		Robux = 19,
-		SRRobux = 9,
-	},
-
-	[5] = {
-		Robux = 79,
-		SRRobux = 49,
-	},
-
-	[10] = { 
-		Robux = 169,
-		SRRobux = 99,
-	},
-}
-
-local selectedPotionUseAmount = { 
-	EnergyPotion = 1,
-	MoneyPotion = 1,
-	LuckPotion = 1,
-}
-
-local UNSELECTED_IMAGE = "rbxassetid://88821350180635"
-local SELECTED_IMAGE = "rbxassetid://98055215682398"
-
-local passes = {
-	EnergyPass = {
-		Name = "Energy Pass",
-		Icon = "rbxassetid://122391878019995",
-		Boost = "x2 Energy",
-		RobuxPrice = 49,
-		SRobuxPrice = 39,
-		Info = "Increases your Energy gain by +100%. This bonus is added separately and does not multiply all other boosts.",
-		Owned = false,
-	},
-	
-	AutoRebirthPass = { 
-		Name = "Auto Rebirth",
-		Icon = "rbxassetid://113494810568723",
-		Boost = "Auto Rebirth",
-		RobuxPrice = 99,
-		SRobuxPrice = 129,
-		Info = "Automatically rebirths when you have enough Energy.",
-		Owned = false,
-	},
-	
-	MaxRebirthPass = { 
-		Name = "Max Rebirth",
-		Icon = "rbxassetid://70550586083463",
-		Boost = "Max Rebirth",
-		RobuxPrice = 139,
-		SRobuxPrice = 169,
-		Info = "Unlocks max rebirth purchase for faster progression.",
-		Owned = false,
-	},
-}
-
-local function setMusicVolume(volume)
-	local tween = TweenService:Create( 
-		music,
-		TweenInfo.new(0.3),
-		{
-			Volume = volume
-		}
-	)
-	tween:Play()
-end
-
-
-local function showSRRobuxInfo(text)
-	srRobuxInfoLabel.Visible = true
-	srRobuxInfoLabel.Text = text
-	
-	task.spawn(function()
-		task.wait(3)
-		
-		if srRobuxInfoLabel.Text == text then
-			srRobuxInfoLabel.Visible = false
-			srRobuxInfoLabel.Text = ""
-		end
-	end)
-end
-
-local function showShopWarning(text)
-	shopWarningLabel.Text = text
+--// Functions
+local function showWarning(message)
+	warningToken += 1
+	local token = warningToken
+	shopWarningLabel.Text = message
 	shopWarningLabel.Visible = true
 	
-	task.spawn(function()
-		task.wait(3)
-		
-		if shopWarningLabel.Text == text then
+	task.delay(3, function()
+		if warningToken == token then
 			shopWarningLabel.Visible = false
 			shopWarningLabel.Text = ""
 		end
 	end)
 end
 
-local function getPotionValue(potionId)
-	return ClientDataModule.GetPotion(player, potionId)
-end
-
-local function updatePotionAmount(potionId)
-	local frame = potionFrames[potionId]
-	if not frame then return end
+local function showSRRobuxInfo(message)
+	srRobuxInfoLabel.Text = message
+	srRobuxInfoLabel.Visible = true
 	
-	local numberLabel = frame:WaitForChild("NumberPotionLabel")
-	local potionValue = getPotionValue(potionId)
-	
-	numberLabel.Text = "x" .. FormatModule.FormatNumber(potionValue.Value)
-end
-
-local function updatePotionPrices()
-	for potionId, frame in pairs(potionFrames) do 
-		for amount, priceData in pairs(potionPrices) do 
-			local button = frame:FindFirstChild("Buy" .. amount .. "PotionButton")
-			if button then 
-				local valueLabel = button:FindFirstChild("ValuePotions")
-				if valueLabel then 
-					valueLabel.Text = FormatModule.FormatNumber(priceData[priceMode]) .. " " .. priceMode
-				end
-			end
-		end
-	end
-end
-
-local function setPotionUseSelection(potionId, amountMode)
-	selectedPotionUseAmount[potionId] = amountMode
-	
-	local frame = potionFrames[potionId]
-	if not frame then return end
-	
-	local button = { 
-		[1] = frame:WaitForChild("UseNumberPotions1"),
-		[5] = frame:WaitForChild("UseNumberPotions5"),
-		Max = frame:WaitForChild("UseNumberPotionsMax"),
-	}
-	
-	for mode, button in pairs(button) do 
-		if mode == amountMode then
-			button.Image = SELECTED_IMAGE
-		else 
-			button.Image = UNSELECTED_IMAGE
-		end
-	end
-end
-
-local function showPotionInfo(potionId, text)
-	local frame = potionFrames[potionId]
-	if not frame then return end 
-	
-	local infoLabel = frame:WaitForChild("InfoPotionLabel")
-	
-	infoLabel.Visible = true
-	infoLabel.Text = text 
-	
-	task.spawn(function()
-		task.wait(2)
-		
-		if infoLabel.Text == text then 
-			infoLabel.Visible = false
-			infoLabel.Text = ""
+	task.delay(3, function()
+		if srRobuxInfoLabel.Text == message then
+			srRobuxInfoLabel.Visible = false
+			srRobuxInfoLabel.Text = ""
 		end
 	end)
-end
-
-local function setupPotionFrame(potionId)
-	local frame = potionFrames[potionId]
-	if not frame then return end
-	
-	local potionValue = getPotionValue(potionId)
-	
-	potionValue.Changed:Connect(function()
-		updatePotionAmount(potionId)
-	end)
-	
-	updatePotionAmount(potionId)
-	setPotionUseSelection(potionId, 1)
-	
-	frame:WaitForChild("Buy1PotionButton").MouseButton1Click:Connect(function()
-		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
-			local price = potionPrices[1].SRRobux
-			local missing = price - srRobux.Value
-			
-			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
-				return
-			end
-		end
-		buyPotionEvent:FireServer(potionId, 1, priceMode)
-	end)
-	
-	frame:WaitForChild("Buy5PotionButton").MouseButton1Click:Connect(function()
-		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
-			local price = potionPrices[5].SRRobux
-			local missing = price - srRobux.Value
-
-			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
-				return
-			end
-		end
-		buyPotionEvent:FireServer(potionId, 5, priceMode)
-	end)
-	
-	frame:WaitForChild("Buy10PotionButton").MouseButton1Click:Connect(function()
-		if priceMode == "SRRobux" then
-			srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
-			local price = potionPrices[10].SRRobux
-			local missing = price - srRobux.Value
-
-			if missing > 0 then
-				showSRRobuxInfo("Not enough SRRobux. Need " .. FormatModule.FormatNumber(missing) .. " more.")
-				return
-			end
-		end
-		buyPotionEvent:FireServer(potionId, 10, priceMode)
-	end)
-	
-	frame:WaitForChild("UseNumberPotions1").MouseButton1Click:Connect(function()
-		if potionValue.Value < 1 then 
-			showPotionInfo(potionId, "Not enough potions")
-			return
-		end
-		
-		setPotionUseSelection(potionId, 1)
-	end)
-	
-	frame:WaitForChild("UseNumberPotions5").MouseButton1Click:Connect(function()
-		if potionValue.Value < 5 then 
-			showPotionInfo(potionId, "Not enough potions")
-			return
-		end
-		
-		setPotionUseSelection(potionId, 5)
-	end)
-	
-	frame:WaitForChild("UseNumberPotionsMax").MouseButton1Click:Connect(function()
-		setPotionUseSelection(potionId, "Max")
-	end)
-	
-	frame:WaitForChild("UsePotionButton").MouseButton1Click:Connect(function()
-		local selectedAmount = selectedPotionUseAmount[potionId]
-		
-		if potionValue.Value <= 0 then
-			showPotionInfo(potionId, "Not enough potions")
-			return
-		end
-		
-		if selectedAmount ~= "Max" and potionValue.Value < selectedAmount then
-			showPotionInfo(potionId, "Not enough potions")
-			return
-		end
-		
-		usePotionEvent:FireServer(potionId, selectedAmount)
-	end)
-end
-
-local function updatePassCard(passId)
-	local passData = passes[passId]
-	local frame = passFrames[passId]
-	if not passData or not frame then return end
-	
-	local statusLabel = frame:FindFirstChild("PassStatusLabel", true)
-	
-	if statusLabel then
-		statusLabel.Text = passData.Owned and "Owned" or "off"
-	end
-end
-
-local function openPassDetails(passId)
-	local passData = passes[passId]
-	if not passData then return end
-	
-	selectedPass = passId
-	
-	detailsPassNameLabel.Text = passData.Name
-	passIconDetails.Image = passData.Icon
-	detailsPassBoostLabel.Text = passData.Boost
-	detailsPassInfoLabel.Text = passData.Info
-	purchaseInfoLabel.Text = FormatModule.FormatNumber(passData.RobuxPrice) .. " Robux OR                   " .. FormatModule.FormatNumber(passData.SRobuxPrice) .. " SRRobux"
-	
-	if passData.Owned then
-		buyStatusLabel.Text = "Owned"
-		buyRobuxStatusLabel.Text = "Owned"
-	else
-		buyStatusLabel.Text = "Buy"
-		buyRobuxStatusLabel.Text = "Buy"
-	end
-	
-	detailsFrame.Visible = true
-end
-
-local function togglePassDetails(passId)
-	
-	if detailsFrame.Visible and selectedPass == passId then
-		detailsFrame.Visible = false
-		selectedPass = nil
-		return
-	end
-	
-	openPassDetails(passId)
 end
 
 local function updateSRRobuxLabel()
 	srRobuxLabel.Text = "SRRobux: " .. FormatModule.FormatNumber(srRobux.Value)
 end
 
-local blur = Lighting:FindFirstChild("ShopBlur")
-if not blur then
-	blur = Instance.new("BlurEffect")
-	blur.Name = "ShopBlur"
-	blur.Size = 0
-	blur.Parent = Lighting
+local function setMusicVolume(volume)
+	TweenService:Create(music, TweenInfo.new(0.3), {Volume = volume}):Play()
 end
 
-
-local oldWalkSpeed = 16
-local oldJumpPower = 50
-
-local function getHumanoid()
-	local character = player.Character or player.CharacterAdded:Wait()
-	return character:WaitForChild("Humanoid")
-end
-
-local function setPlayerLocked(isLocked)
-	local humanoid = getHumanoid()
+local function getPassState(passId)
+	local owned = gamepasses:FindFirstChild(passId)
+	local equippedFolder = playerData:FindFirstChild("EquippedGamepasses")
+	local equipped = equippedFolder and equippedFolder:FindFirstChild(passId)
 	
-	if isLocked then
-		oldWalkSpeed = humanoid.WalkSpeed
-		oldJumpPower = humanoid.JumpPower
-		humanoid.WalkSpeed = 0
-		humanoid.JumpPower = 0
-	else
-		humanoid.WalkSpeed = oldWalkSpeed
-		humanoid.JumpPower = oldJumpPower
+	return owned and owned.Value == true, equipped == nil or equipped.Value == true
+end
+
+local function updatePassCard(passId)
+	local frame = passFrames[passId]
+	if not frame then return end
+	
+	local button = frame:FindFirstChild("BuyPassButton") or frame:FindFirstChild("TapPassButton")
+	local status = button and button:FindFirstChild("PassStatusLabel", true) or frame:FindFirstChild("PassStatusLabel", true)
+	if status then
+		status.Text = ShopModule.GetPassStatus(player, passId, priceMode)
 	end
 end
 
-local function loadOwnedPasses()
-	for passId, passData in pairs(passes) do
-		local passValue = gamepasses:FindFirstChild(passId)
-
-		if passValue and passValue.Value == true then
-			passData.Owned = true
-		else
-			passData.Owned = false
-		end
-
+local function updateAllPassCards()
+	for _, passId in ipairs(ShopModule.PassOrder) do
 		updatePassCard(passId)
 	end
 end
 
-local function updateOwnedPass(passId)
-	local passData = passes[passId]
-	if not passData then return end
+local function priceText(passId)
+	if not ShopModule.IsPassConfigured(passId) then return "Coming soon" end
 	
-	local passValue = gamepasses:FindFirstChild(passId)
-	if not passValue then return end
+	local robux = ShopModule.GetPassPrice(passId, "Robux")
+	local sr = ShopModule.GetPassPrice(passId, "SRRobux")
 	
-	passData.Owned = passValue.Value == true
-	updatePassCard(passId)
+	return FormatModule.FormatNumber(robux) .. " Robux OR " .. FormatModule.FormatNumber(sr) .. " SRRobux"
+end
+
+local function setButtonCaption(button, caption)
+	if button:IsA("TextButton") then
+		button.Text = caption 
+		return
+	end
 	
-	if selectedPass == passId then
-		local status = passData.Owned and "Owned" or "Buy"
-		
-		buyStatusLabel.Text = status
-		buyRobuxStatusLabel.Text = status
+	local label = button:FindFirstChild("TextLabel", true)
+	if label then label.Text = caption end
+end
+
+local function updateSelectedPass()
+	if not selectedPass then return end
+	local data = ShopModule.GetPass(selectedPass)
+	if not data then return end
+	
+	local owned, equipped = getPassState(selectedPass)
+	detailsPassNameLabel.Text = data.Name
+	detailsPassBoostLabel.Text = data.Boost
+	detailsPassInfoLabel.Text = data.Info
+	purchaseInfoLabel.Text = priceText(selectedPass)
+	passIconDetails.Image = data.Icon
+	purchaseIconPass.Image = data.Icon
+	
+	if owned then
+		setButtonCaption(purchaseButton, equipped and "UNEQUIP" or "EQUIP")
+		buyStatusLabel.Text = "OWNED"
+		buyRobuxStatusLabel.Text = "OWNED"
+	else 
+		setButtonCaption(purchaseButton, "PURCHASE")
+		local label = ShopModule.IsPassConfigured(selectedPass) and "BUY" or "SOON"
+		buyStatusLabel.Text = label 
+		buyRobuxStatusLabel.Text = label 
 	end
 end
 
-for passId in pairs(passes) do
-	local passValue = gamepasses:FindFirstChild(passId)
+local function openPassDetails(passId)
+	if not ShopModule.GetPass(passId) then return end
 	
-	if passValue then
-		passValue.Changed:Connect(function()
-			updateOwnedPass(passId)
-		end)
+	if detailsFrame.Visible and selectedPass == passId then
+		detailsFrame.Visible = false
+		selectedPass = nil 
+		return
+	end
+	
+	selectedPass = passId
+	purchaseFrame.Visible = false 
+	purchaseBlurFrame.Visible = false 
+	updateSelectedPass()
+	detailsFrame.Visible = true
+end
+
+local function connectPassFrame(passId, frame)
+	local button = frame:FindFirstChild("BuyPassButton") or frame:FindFirstChild("TapPassButton")
+	if button or not button:IsA("GuiButton") then
+		warn("Shop pass button missing:", passId, frame:GetFullName())
+		return
+	end
+	
+	button.Activated:Connect(function()
+		openPassDetails(passId)
+	end)
+	
+	updatePassCard(passId)
+end
+
+for _, passId in ipairs(ShopModule.PassOrder) do
+	local frame = passFrames[passId]
+	if frame then
+		connectPassFrame(passId, frame)
+	else 
+		warn("Shop pass frame missing:", ShopModule.GetPass(passId).FrameName)
 	end
 end
+
+gamePassBox.ChildAdded:Connect(function(child)
+	for _, passId in ipairs(ShopModule.PassOrder) do
+		if child.Name == ShopModule.GetPass(passId).FrameName and not passFrames[passId] then
+			passFrames[passId] = child
+			connectPassFrame(passId, child)
+			break
+		end
+	end
+end)
+
+local function bindBoolValues(folder)
+	for _, value in ipairs(folder:GetChildren()) do
+		if value:IsA("BoolValue") then
+			value.Changed:Connect(function()
+				updatePassCard(value.Name)
+				if selectedPass == value.Name then updateSelectedPass() end
+			end)
+		end
+	end
+	
+	folder.ChildAdded:Connect(function(value)
+		if value:IsA("BoolValue") then
+			value.Changed:Connect(function()
+				updatePassCard(value.Name)
+				if selectedPass == value.Name then updateSelectedPass() end
+			end)
+			
+			updatePassCard(value.Name)
+		end
+	end)
+end
+
+bindBoolValues(gamepasses)
+
+local equippedFolder = playerData:FindFirstChild("EquippedGamepasses")
+if equippedFolder then bindBoolValues(equippedFolder) end
+playerData.ChildAdded:Connect(function(child)
+	if child.Name == "EquippedGamepasses" and child:IsA("Folder") then
+		bindBoolValues(child)
+		updateAllPassCards()
+	end
+end)
+
+purchaseButton.Activated:Connect(function()
+	if not selectedPass then return end
+	
+	local owned, equipped = getPassState(selectedPass)
+	if owned then
+		equipPassEvent:FireServer(selectedPass, not equipped)
+		return
+	end
+	
+	if not ShopModule.IsPassConfigured(selectedPass) then
+		showWarning(ShopModule.ErrorMessage.NOT_CONFIGURED)
+		return
+	end
+	
+	purchaseFrame.Visible = true
+	purchaseBlurFrame.Visible = true
+end)
+
+closePurcFrame.Activated:Connect(function()
+	purchaseFrame.Visible = false
+	purchaseBlurFrame.Visible = false
+end)
+
+local function buySelectedPass(currency)
+	if not selectedPass then return end
+	if getPassState(ShopModule.ErrorMessage.ALREADY_OWNED) then
+		return
+	end
+	
+	if not ShopModule.IsPassConfigured(selectedPass) then
+		showWarning(ShopModule.ErrorMessage.NOT_CONFIGURED)
+		return
+	end
+	
+	buyPassEvent:FireServer(selectedPass, currency)
+end
+
+buyPassButton.Activated:Connect(function()
+	buySelectedPass("SRRobux")
+end)
+
+buyRobuxPassButton.Activated:Connect(function()
+	buySelectedPass("Robux")
+end)
 
 local function openShop()
-	loadOwnedPasses()
+	updateAllPassCards()
+	updateSRRobuxLabel()
 	
 	menuOpenSound:Stop()
 	menuOpenSound.TimePosition = 0
 	menuOpenSound:Play()
 	
 	setMusicVolume(0.1)
-	
 	MenuManager.toggleBlur("Shop")
 end
 
 local function closeShop()
-	setMusicVolume(0.3)
+	purchaseFrame.Visible = false 
+	purchaseBlurFrame.Visible = false 
+	detailsFrame.Visible = false 
+	selectedPass = nil
+	
+	setMusicVolume(musicNormalVolume)
 	
 	MenuManager.close("Shop")
 end
 
-local function buySelectedPass()
-	if not selectedPass then return end
-
-	local passData = passes[selectedPass]
-	if not passData then return end
-
-	if passData.Owned then
-		buyStatusLabel.Text = "Owned"
-		buyRobuxStatusLabel.Text = "Owned"
-		
-	    showShopWarning("This pass is already owned.")
-		return
-	end
-	
-	local missing = passData.SRobuxPrice - srRobux.Value
-	
-	if missing > 0 then
-		showSRRobuxInfo("Not enoung SRRobux, Need " .. FormatModule.FormatNumber(missing) .. " more.")
-		return
-	end
-
-	buyPassEvent:FireServer(selectedPass, "SRRobux")
-end
-
-local function buySelectedPassRobux()
-	if not selectedPass then return end
-
-	local passData = passes[selectedPass]
-	if not passData then return end
-
-	if passData.Owned then
-		buyStatusLabel.Text = "Owned"
-		buyRobuxStatusLabel.Text = "Owned"
-		
-		showShopWarning("This pass is already owned.")
-		return
-	end
-	buyPassEvent:FireServer(selectedPass, "Robux")
-end
-
-purchaseButton.MouseButton1Click:Connect(function()
-	purchaseFrame.Visible = true
-	purchaseBlurFrame.Visible = true
-end)
-
-closePurcFrame.MouseButton1Click:Connect(function()
-	purchaseFrame.Visible = false
-	purchaseBlurFrame.Visible = false
-end)
-
-shopOpenButton.MouseButton1Click:Connect(openShop)
-backButton.MouseButton1Click:Connect(closeShop)
-buyPassButton.Activated:Connect(function()
-	print("SR")
-	buySelectedPass()
-end)
-buyRobuxPassButton.Activated:Connect(function()
-	print("Robux")
-	buySelectedPassRobux()
-end)
-
-energyTapPassButton.MouseButton1Click:Connect(function()
-	togglePassDetails("EnergyPass")
-end)
-
-autoRebirthTapPassButton.MouseButton1Click:Connect(function()
-	togglePassDetails("AutoRebirthPass")
-end)
-
-maxRebirthTapPassButton.MouseButton1Click:Connect(function()
-	togglePassDetails("MaxRebirthPass")
-end)
-
-loadOwnedPasses()
-detailsFrame.Visible = false
-
-closeShop()
-
-srRobuxLabel.Text = FormatModule.FormatNumber(srRobux.Value)
-
+shopOpenButton.Activated:Connect(openShop)
+backButton.Activated:Connect(closeShop)
 srRobux.Changed:Connect(updateSRRobuxLabel)
 updateSRRobuxLabel()
 
-shopUpdateEvent.OnClientEvent:Connect(function(passId, success, message)
-	local passData = passes[passId]
-	if not passData then return end
-	
-	if success then
-		passData.Owned = true
+shopUpdateEvent.OnClientEvent:Connect(function(itemId, success, code)
+	if ShopModule.GetPass(itemId) then
+		updatePassCard(itemId)
 		
-		buyStatusLabel.Text = "Owned"
-		buyRobuxStatusLabel.Text = "Owned"
-		
-		updatePassCard(passId)
-		updateSRRobuxLabel()
-	else
-		buyStatusLabel.Text = message or "Error"
-		
-		task.wait(1)
-		
-		if selectedPass == passId and not passData.Owned then
-			buyStatusLabel.Text = "Buy"
+		if success and code == "PURCHASE_GRANTED" then
+			purchaseFrame.Visible = false
+			purchaseBlurFrame.Visible = false 
 		end
+	end
+	
+	if not success then
+		local message = ShopModule.ErrorMessage[code] or "Shop request failed."
+		showWarning(message)
+		if code == "NOT_ENOUGH_SRROBUX" then showSRRobuxInfo(message) end
 	end
 end)
 
-for potionId in pairs(potionFrames) do 
+local function updatePotionAmount(potionId)
+	local frame = potionFrames[potionId]
+	local label = frame and frame:FindFirstChild("NumberPotionLabel")
+	local value = ClientDataModule.GetPotion(player, potionId)
+	
+	if label and value then
+		label.Text = "x" .. FormatModule.FormatNumber(value.Value)
+	end
+end
+
+local function updatePotionPrices()
+	for potionId, frame in pairs(potionFrames) do
+		for _, amount in ipairs({1, 5, 10}) do
+			local button = frame:FindFirstChild("Buy" .. amount .. "PotionButton")
+			local label = button and button:FindFirstChild("ValuePotions")
+			local price = ShopModule.GetPotionPrice(potionId, amount, priceMode)
+			
+			if label then
+				label.Text = price and (FormatModule.FormatNumber(price) .. " " .. priceMode) or "SOON"
+			end
+		end
+	end
+end
+
+local function selectedPotionAmount(potionId, amountMode)
+	selectedPotionUseAmount[potionId] = amountMode
+	
+	local frame = potionFrames[potionId]
+	
+	for _, option in ipairs({1, 5, "Max"}) do
+		local button = frame:FindFirstChild("UseNumberPotions" .. option)
+		if button then
+			button.Image = option == amountMode and ShopModule.UIImages.PotionUseSelected or ShopModule.UIImages.PotionUseUnselected
+		end
+	end
+end
+
+local function showPotionInfo(potionId, message)
+	local frame = potionFrames[potionId]
+	local label = frame and frame:FindFirstChild("InfoPotionLabel")
+	if not label then
+		showWarning(message)
+		return
+	end
+	
+	label.Text = message
+	label.Visible = true
+	
+	task.delay(2, function()
+		if label.Text == message then
+			label.Visible = false
+			label.Text = ""
+		end
+	end)
+end
+
+local function setupPotionFrame(potionId)
+	local frame = potionFrames[potionId]
+	local value = ClientDataModule.GetPotion(player, potionId)
+	
+	value.Changed:Connect(function() updatePotionAmount(potionId) end)
+	updatePotionAmount(potionId)
+	selectedPotionAmount(potionId, 1)
+	
+	for _, amount in ipairs({1, 5, 10}) do
+		local button = frame:FindFirstChild("Buy" .. amount .. "PotionButton")
+		
+		if button then
+			button.Activated:Connect(function()
+				buyPotionEvent:FireServer(potionId, amount, priceMode)
+			end)
+		end
+	end
+	
+	for _, option in ipairs({1, 5, "Max"}) do
+		local button = frame:FindFirstChild("UseNumberPotions" .. option)
+		if button then
+			button.Activated:Connect(function()
+				if value.Value <= 0 then
+					showPotionInfo(potionId, ShopModule.ErrorMessage.NOT_ENOUGH_POTIONS)
+				else 
+					selectedPotionAmount(potionId, option)
+				end
+			end)
+		end
+	end
+	
+	local useButton = frame:FindFirstChild("UsePotionButton")
+	if useButton then
+		useButton.Activated:Connect(function()
+			usePotionEvent:FireServer(potionId, selectedPotionUseAmount[potionId])
+		end)
+	end
+end
+
+for _, potionId in ipairs(ShopModule.PotionOrder) do
 	setupPotionFrame(potionId)
 end
 
-srValueShopButton.MouseButton1Click:Connect(function()
-	if priceMode == "Robux" then 
-		priceMode = "SRRobux"
-	else 
-		priceMode = "Robux"
-	end
-	
+srValueShopButton.Activated:Connect(function()
+	priceMode = priceMode == "Robux" and "SRRobux" or "Robux"
 	updatePotionPrices()
+	updateAllPassCards()
 end)
 
 updatePotionPrices()
+updateAllPassCards()
+detailsFrame.Visible = false
+purchaseFrame.Visible = false
+purchaseBlurFrame.Visible = false
+srRobuxInfoLabel.Visible = false
+showWarningLabel.Visible = false
+closeShop()
 
 print("ShopUI loaded")
