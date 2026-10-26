@@ -98,7 +98,7 @@ function PlayerDataSetupModule.setup(player)
 	local equippedGamepasses = getOrCreateFolder(playerData, "EquippedGamepasses")
 	for _, passId in ipairs(ShopModule.PassOrder) do
 		getOrCreateValue(gamepasses, "BoolValue", passId, false)
-		getOrCreateValue(equippedGamepasses, "BoolValue", passId, false)
+		getOrCreateValue(equippedGamepasses, "BoolValue", passId, true)
 	end
 	
 	--// Boosts
