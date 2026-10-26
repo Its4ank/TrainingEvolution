@@ -2,6 +2,8 @@
 
 local ShopModule = {}
 
+local MarketplaceService = game:GetService("MarketplaceService")
+
 local function pass(frame, name, boost, info, icon, gamePassId, robux, srRobux, effect)
 	return {
 		FrameName = frame, Name = name, Boost = boost, Info = info,
@@ -19,22 +21,22 @@ ShopModule.PassOrder = {
 }
 
 ShopModule.Passes = {
-	EnergyPass = pass("PassEnergyFrame", "Energy Pass", "2x Energy", "Double your Energy bonus.", "rbxassetid://122391878019995", 1860533278, 49, 49, "Energy"),
-	RaceTouchPass = pass("PassRaceTouchFrame", "Race Touch Pass", "2x RaceTouch", "Info"),
-	MoneyPass = pass("PassMoneyFrame", "Money Pass", "2x Money", "Info"),
-	PetStatPass = pass("PassPetStatFrame", "Pet Stat Pass", "2x PetStats", "Info"),
-	RebirthPass = pass("PassRebirthFrame", "Rebirth Pass", "2x Rebirth", "Info"),
-	GemsPass = pass("PassGemsFrame", "Gems Pass", "2x Gems", "Info"),
-	TripleHatchPass = pass("PassTripleHatchFrame", "Triple Pass", "Open 3", "Info"),
-	PetLuckPass = pass("PassPetLuckFrame", "Pet Luck Pass", "2x PetLuck", "info"),
-	RacePowerPass = pass("PassRacePowerFrame", "RacePower Pass", "2x RacePower", "Info"),
-	AccelerationPass = pass("PassAccelerationFrame", "Acceleration Pass", "2x Acceleration", "Info"),
-	AutoTrainingPass = pass("PassAutoTrainingFrame", "AutoTraining", "Auto Training", "Info"),
-	EggHatchSpeedPass = pass("PassEggHatchSpeedFrame", "Egg Hatch Speed", "2x HatchSpeed", "Info"),
-	AutoRebirthPass = pass("PassAutoRebirthFrame", "Auto Rebirth", "Auto Rebireth", "Automatically perform Rebirth.", "rbxassetid://113494810568723", 1903338380, 99, 129, "AutoRebirth"),
-	MaxRebirthPass = pass("PassMaxRebirthFrame", "Max Rebirth", "Max Rebirth", "Perform the maximum available Rebirth.", "rbxassetid://70550586083463", 1902642397, 139, 169, "MaxRebirth"),
-	EggAutoHatchPass = pass("PassEggAutoHatchFrame", "Auto Open Egg", "Auto Open Egg", "Info"),
-	AutoRacePass = pass("PassAutoRaceFrame", "Auto Race", "Auto Race", "Info"),
+	EnergyPass = pass("PassEnergyFrame", "Energy Pass", "2x Energy", "Gain an extra 100% base Energy from training and rewards!.", "rbxassetid://72931645765112", 1860533278, 49, 39, "Energy"),
+	RaceTouchPass = pass("PassRaceTouchFrame", "Race Touch Pass", "2x RaceTouch", "Earn an extra 100% base RaceTouch from races!", "rbxassetid://111988324538451", 2053548331, 49, 29, "RaceTouch"),
+	MoneyPass = pass("PassMoneyFrame", "Money Pass", "2x Money", "Gain an extra 100% base Money from all rewards!", "rbxassetid://90642449616683", 2053380238, 49, 29, "Money"),
+	PetStatPass = pass("PassPetStatFrame", "Pet Stat Pass", "2x PetStat", "Get an extra 100% of your pets' base stats!", "rbxassetid://101224774099593", 2053848263, 89, 69, "PetStat"),
+	RebirthPass = pass("PassRebirthFrame", "Rebirth Pass", "2x Rebirth", "Earn twice as many Rebirths every time you rebirth!", "rbxassetid://96014338468295", 2052012357, 110, 89, "Rebirth"),
+	GemsPass = pass("PassGemsFrame", "Gems Pass", "2x Gems", "Gain an extra 100% base Gems from all rewards!", "rbxassetid://130206347035457", 2053890231, 79, 59, "Gems"),
+	TripleHatchPass = pass("PassTripleHatchFrame", "Triple Pass", "Open 3", "Hatch up to 3 eggs at the same time!", "rbxassetid://123451228200379", 2052162337, 139, 119, "TripleHatch"),
+	PetLuckPass = pass("PassPetLuckFrame", "Pet Luck Pass", "2x PetLuck", "Get an extra 100% base Pet Luck when hatching eggs!", "rbxassetid://100026343618067" , 2052732252, 119, 99, "PetLuck"),
+	RacePowerPass = pass("PassRacePowerFrame", "RacePower Pass", "2x RacePower", "Gain an extra 100% base Race Power!", "rbxassetid://112235652483676", 2052138230, 99, 79, "RacePower"),
+	AccelerationPass = pass("PassAccelerationFrame", "Acceleration Pass", "2x Acceleration", "Gain an extra 100% base Acceleration in races!", "rbxassetid://86690693258798", 2052036337, 99, 79, "Acceleration"),
+	AutoTrainingPass = pass("PassAutoTrainingFrame", "AutoTraining", "Auto Training", "Automatically train on your best available treadmill!", "rbxassetid://79885813969656" , 2054124210, 69, 49, "AutoTraining"),
+	EggHatchSpeedPass = pass("PassEggHatchSpeedFrame", "Egg Hatch Speed", "2x HatchSpeed", "Hatch eggs twice as fast", "rbxassetid://124027859865924" , 2053440251, 59, 39, "EggHatchSpeed"),
+	AutoRebirthPass = pass("PassAutoRebirthFrame", "Auto Rebirth", "Auto Rebireth", "Automatically rebirth whenever you have enough Energy!", "rbxassetid://99219517475671", 1903338380, 99, 129, "AutoRebirth"),
+	MaxRebirthPass = pass("PassMaxRebirthFrame", "Max Rebirth", "Max Rebirth", "Perform the maximum available Rebirths with one ckick!", "rbxassetid://73622299266956", 1902642397, 139, 169, "MaxRebirth"),
+	EggAutoHatchPass = pass("PassEggAutoHatchFrame", "Auto Open Egg", "Auto Open Egg", "Automatically hatch eggs without clicking!", "rbxassetid://81605234487811", 2053854274, 89, 59, "AutoOpenEgg"),
+	AutoRacePass = pass("PassAutoRaceFrame", "Auto Race", "Auto Race", "Automatically join, tun and repeat races!", "rbxassetid://94993803080554", 2055468150, 69, 39, "AutoRace"),
 }
 
 for _, passId in ipairs({"EnergyPass", "AutoRebirthPass", "MaxRebirthPass"}) do
@@ -59,15 +61,15 @@ ShopModule.ErrorMessages = {
 	
 	DATA_NOT_READY = "Your data is still loading. Try again.",
 	PASS_DATA_MISSING = "Pass data is unavailable. Try again.",
-	POTION_DATA_MISSING = "Potion data is unailable. Try again.",
+	POTION_DATA_MISSING = "Potion data is unavailable. Try again.",
 	BALANCE_MISSING = "Your SRRobux balance is unavailable.",
 	
 	NOT_CONFIGURED = "This item is not available yet.",
-	ALREADY_OWNED = "You already own thus pass.",
+	ALREADY_OWNED = "You already own this pass.",
 	NOT_OWNED = "You do not own this pass.",
 	
 	NOT_ENOUGH_SRROBUX = "Not enough SRRobux.",
-	NOT_ENOUGH_POSIONS = "Not enough potions.",
+	NOT_ENOUGH_POTIONS = "Not enough potions.",
 	
 	OWNERSHIP_CHECK_FAILED = "Could not verify ownership. Try again.",
 	PROMPT_FAILED = "Could not open the purchase window.",
@@ -145,6 +147,41 @@ function ShopModule.GetPotionPrice(potionId, amount, currency)
 	
 	if type(price) ~= "number" or price <= 0 then return nil end
 	return price 
+end
+
+--// Regional Robux prices
+function ShopModule.GetRegionalRobuxPrice(itemId, infoType)
+	if typeof(itemId) ~= "number" or itemId <= 0 then return nil end
+	
+	local success, info = pcall(function()
+		return MarketplaceService:GetProductInfoAsync(itemId, infoType)
+	end)
+	
+	if not success then
+		warn("Regional price request failed:", itemId, info)
+		return nil
+	end
+	
+	local price = info and info.PriceInRobux
+	if typeof(price) ~= "number" or price <= 0 then return nil end
+	
+	return price
+end
+
+function ShopModule.GetRegionalPassRobuxPrice(passId)
+	local data = ShopModule.GetPass(passId)
+	if not data then return nil end
+	
+	return ShopModule.GetRegionalRobuxPrice(data.GamePassId, Enum.InfoType.GamePass)
+end
+
+function ShopModule.GetRegionalPotionRobuxPrice(potionId, amount)
+	local data = ShopModule.Potions[potionId]
+	if not data then return nil end
+	
+	local productId = data.Products[amount]
+	
+	return ShopModule.GetRegionalRobuxPrice(productId, Enum.InfoType.Product)
 end
 
 function ShopModule.IsGamepassTest(passId)
