@@ -109,9 +109,15 @@ local function syncRobloxPasses(player)
 		if type(data.GamePassId) == "number" and data.GamePassId > 0 then
 			local ok, owns = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, data.GamePassId)
 			if ok and owns and player.Parent == Players then
-				local owned = getPassValues(player, passId)
+				local owned, equipped = getPassValues(player, passId)
 				if owned then
-					owned.Value = true
+					if not owned.Value then
+						owned.Value = true
+						
+						if equipped then
+							equipped.Value = true
+						end
+					end
 					report(player, passId, true, "SYNC")
 				end
 			elseif not ok then
