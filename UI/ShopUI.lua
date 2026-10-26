@@ -97,6 +97,12 @@ local selectedPotionUseAmount = {}
 local warningToken = 0
 local musicNormalVolume = music.Volume
 
+--// Regional prices (client-side only)
+local regionalPassPrices = {}
+local regionalPotionPrices = {}
+
+local refreshRegionalPrices
+
 MenuManager.register("Shop", shopHost)
 
 --// Functions
@@ -142,15 +148,33 @@ local function getPassState(passId)
 	return owned and owned.Value == true, equipped == nil or equipped.Value == true
 end
 
+local function formatRegionalRobuxPrice(price)
+	if typeof(price) == "number" then
+		return FormatModule.FormatNumber(price) .. " Robux"
+	end
+	
+	if price == false then
+		return "PRICE UNAVAILABLE"
+	end
+	
+	return "LOADING..."
+end
+
 local function updatePassCard(passId)
 	local frame = passFrames[passId]
 	if not frame then return end
 	
 	local button = frame:FindFirstChild("BuyPassButton") or frame:FindFirstChild("TapPassButton")
 	local status = button and button:FindFirstChild("PassStatusLabel", true) or frame:FindFirstChild("PassStatusLabel", true)
-	if status then
-		status.Text = ShopModule.GetPassStatus(player, passId, priceMode)
+	if not status then return end
+	
+	local statusText = ShopModule.GetPassStatus(player, passId, priceMode)
+	
+	if priceMode == "Robux" and ShopModule.IsPassConfigured(passId) and not ShopModule.OwnsPass(player, passId) then
+		statusText = formatRegionalRobuxPrice(regionalPassPrices[passId])
 	end
+	
+	status.Text = statusText
 end
 
 local function updateAllPassCards()
@@ -162,10 +186,11 @@ end
 local function priceText(passId)
 	if not ShopModule.IsPassConfigured(passId) then return "Coming soon" end
 	
-	local robux = ShopModule.GetPassPrice(passId, "Robux")
-	local sr = ShopModule.GetPassPrice(passId, "SRRobux")
+	local robuxText = formatRegionalRobuxPrice(regionalPassPrices[passId])
+	local srPrice = ShopModule.GetPassPrice(passId, "SRRobux")
+	local srText = FormatModule.FormatNumber(srPrice) .. " SRRobux"
 	
-	return FormatModule.FormatNumber(robux) .. " Robux OR " .. FormatModule.FormatNumber(sr) .. " SRRobux"
+	return robuxText .. " OR " .. srText
 end
 
 local function setButtonCaption(button, caption)
@@ -188,8 +213,8 @@ local function updateSelectedPass()
 	detailsPassBoostLabel.Text = data.Boost
 	detailsPassInfoLabel.Text = data.Info
 	purchaseInfoLabel.Text = priceText(selectedPass)
-	passIconDetails.Image = data.Icon
-	purchaseIconPass.Image = data.Icon
+	passIconDetails.Image = data.Icon or ""
+	purchaseIconPass.Image = data.Icon or ""
 	
 	if owned then
 		setButtonCaption(purchaseButton, equipped and "UNEQUIP" or "EQUIP")
@@ -324,6 +349,26 @@ local function buySelectedPass(currency)
 	buyPassEvent:FireServer(selectedPass, currency)
 end
 
+local function updatePotionPrices()
+	for potionId, frame in pairs(potionFrames) do
+		for _, amount in ipairs({1, 5, 10}) do
+			local button = frame:FindFirstChild("Buy" .. amount .. "PotionButton")
+			local label = button and button:FindFirstChild("ValuePotions")
+
+			if label then
+				if priceMode == "Robux" then
+					local key = potionId .. "_" .. amount 
+
+					label.Text = formatRegionalRobuxPrice(regionalPotionPrices[key])
+				else 
+					local price = ShopModule.GetPotionPrice(potionId, amount, "SRRobux")
+					label.Text = price and (FormatModule.FormatNumber(price) .. " SRRobux") or "SOON"
+				end
+			end
+		end
+	end
+end
+
 buyPassButton.Activated:Connect(function()
 	buySelectedPass("SRRobux")
 end)
@@ -333,7 +378,11 @@ buyRobuxPassButton.Activated:Connect(function()
 end)
 
 local function openShop()
+	refreshRegionalPrices()
+	
+	
 	updateAllPassCards()
+	updatePotionPrices()
 	updateSRRobuxLabel()
 	
 	menuOpenSound:Stop()
@@ -387,17 +436,43 @@ local function updatePotionAmount(potionId)
 	end
 end
 
-local function updatePotionPrices()
-	for potionId, frame in pairs(potionFrames) do
-		for _, amount in ipairs({1, 5, 10}) do
-			local button = frame:FindFirstChild("Buy" .. amount .. "PotionButton")
-			local label = button and button:FindFirstChild("ValuePotions")
-			local price = ShopModule.GetPotionPrice(potionId, amount, priceMode)
+--// Load regional prices for the local player
+refreshRegionalPrices = function()
+	for _, passId in ipairs(ShopModule.PassOrder) do
+		if ShopModule.IsPassConfigured(passId) and (regionalPassPrices[passId] == nil or regionalPassPrices[passId] == false) then
+			local currentPassId = passId 
+			regionalPassPrices[currentPassId] = "loading"
 			
-			if label then
-				label.Text = price and (FormatModule.FormatNumber(price) .. " " .. priceMode) or "SOON"
-			end
+			task.spawn(function()
+				local price = ShopModule.GetRegionalPassRobuxPrice(currentPassId)
+				
+				regionalPassPrices[currentPassId] = price or false
+				updatePassCard(currentPassId)
+				
+				if selectedPass == currentPassId then
+					updateSelectedPass()
+				end
+			end)
 		end
+	end
+	
+	for _, potionId in ipairs(ShopModule.PotionOrder) do
+		for _, amount in ipairs({1, 5, 10}) do
+			local currentPotionId = potionId
+			local currentAmount = amount 
+			local key = currentPotionId .. "_" .. currentAmount
+			
+			if regionalPotionPrices[key] == nil or regionalPotionPrices[key] == false then
+				regionalPotionPrices[key] = "loading"
+				
+				task.spawn(function()
+					local price = ShopModule.GetRegionalPotionRobuxPrice(currentPotionId, currentAmount)
+					regionalPotionPrices[key] = price or false
+					
+					updatePotionPrices()
+				end)
+			end
+ 		end
 	end
 end
 
@@ -484,6 +559,8 @@ end)
 
 updatePotionPrices()
 updateAllPassCards()
+refreshRegionalPrices()
+
 detailsFrame.Visible = false
 purchaseFrame.Visible = false
 purchaseBlurFrame.Visible = false
