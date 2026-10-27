@@ -232,6 +232,9 @@ local rebirthMaxStatusLabel =
 
 --// Helpers
 local function promptPass(passName)
+	if ShopModule.IsPassTestActive() then return end
+	if not ShopModule.IsPassConfigured(passName) then return end
+	
 	local passData = ShopModule.Passes[passName]
 
 	if not passData then
@@ -251,11 +254,11 @@ local function promptPass(passName)
 end
 
 local function hasAutoRebirthPass()
-	return autoRebirthPass.Value == true
+	return ShopModule.HasAutoRebirth(player)
 end
 
 local function hasMaxRebirthPass()
-	return maxRebirthPass.Value == true
+	return ShopModule.HasMaxRebirth(player)
 end
 
 local function getOneRebirthCost(currentRebirths)
@@ -290,6 +293,10 @@ local function getSelectedAmount()
 	end
 
 	return selectedAmount
+end
+
+local function getAwardedAmount(amount)
+	return ShopModule.GetRebirthAward(player, amount)
 end
 
 local function getEnergyMultiplier(rebirths)
@@ -418,8 +425,7 @@ local function updateButtonPrices()
 			currentEnergy
 		)
 
-	rebirthMaxStatusLabel.Text =
-		"+" .. maxAmount .. " Rebirths"
+	rebirthMaxStatusLabel.Text = "+" .. FormatModule.FormatNumber(getAwardedAmount(maxAmount)) .. " Rebirths"
 
 	-- Цена всех доступных Max Rebirth.
 	-- Если пока недоступно ни одного,
@@ -476,8 +482,7 @@ local function updateDetails()
 			getXpMultiplier(currentRebirths)
 		)
 
-	detailsPerformRebirthLabel.Text =
-		"+" .. amount .. " Rebirths"
+	detailsPerformRebirthLabel.Text = "+" .. FormatModule.FormatNumber(getAwardedAmount(amount)) .. " Rebirths"
 
 	setEnergyText(
 		detailsPriceLabel,
@@ -492,8 +497,8 @@ local function updateInfoFrame()
 	local currentEnergy =
 		energyValue.Value
 
-	local amount =
-		getSelectedAmount()
+	local amount = getSelectedAmount()
+	local awardedAmount = getAwardedAmount(amount)
 
 	local selectedPrice =
 		getRebirthCost(
@@ -501,8 +506,7 @@ local function updateInfoFrame()
 			amount
 		)
 
-	rebirthNumberInfoLabel.Text =
-		"+" .. amount .. " Rebirths"
+	rebirthNumberInfoLabel.Text = "+" .. FormatModule.FormatNumber(awardedAmount) .. " Rebirths"
 
 	energyCurrentMult.Text =
 		"x"
@@ -527,20 +531,18 @@ local function updateInfoFrame()
 
 	-- Показываем, сколько добавит выбранное
 	-- количество Rebirth.
-	local addedEnergyMult =
-		amount
-		* RebirthModule.EnergyBonusPerRebirth
+	local addedEnergyMult = awardedAmount * RebirthModule.EnergyBonusPerRebirth
 
 	local addedMoneyMult = 0
 
 	if UpgradeModule.IsMoneyMultiplierUnlocked(player) then
 		addedMoneyMult =
-			amount
+			awardedAmount
 			* RebirthModule.MoneyBonusPerRebirth
 	end
 
 	local addedXpMult =
-		amount
+		awardedAmount
 		* RebirthModule.XpBonusPerRebirth
 
 	energyNextMult.Text =
@@ -614,29 +616,14 @@ local function updateInfoFrame()
 end
 
 local function updatePerformButtons()
-	local amount =
-		getSelectedAmount()
+	local amount = getSelectedAmount()
 
-	local currentRebirths =
-		rebirthValue.Value
+	local currentRebirths = rebirthValue.Value
 
-	local price =
-		getRebirthCost(
-			currentRebirths,
-			amount
-		)
+	local price = getRebirthCost(currentRebirths, amount)
 
-	local text
-
-	if amount == 1 then
-		text = "+1 Rebirth"
-	else
-		text = "+" .. amount .. " Rebirths"
-	end
-
-	if amount <= 0 then
-		text = "+0 Rebirths"
-	end
+	local awardedAmount = getAwardedAmount(amount)
+	local text = "+" .. FormatModule.FormatNumber(awardedAmount) .. (awardedAmount == 1 and " Rebirth" or " Rebirths")
 
 	detailsPerformRebirthLabel.Text = text
 	infoPerformNumberLabel.Text = text
