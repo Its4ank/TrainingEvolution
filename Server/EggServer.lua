@@ -9,6 +9,8 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local EggModule = require(ReplicatedStorage.Modules.EggModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
+local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 
 local PetServiceModule = require(ServerScriptService.Modules.PetServiceModule)
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
@@ -95,6 +97,10 @@ local function getEffectiveLuckMultiplier(player, openings)
 	local luck = EggModule.GetLuckMultiplier(openings)
 	
 	luck *= BoostModule.GetLuckMultiplier(player)
+	luck *= TrainerModule.getPetLuckMultiplier(player)
+	
+	local upgradeBonus = UpgradeModule.GetPetLuckBonus(player)
+	luck *= 1 + math.max(0, upgradeBonus)
 	
 	return ShopModule.ApplyPetLuck(player, 1, luck)
 end
