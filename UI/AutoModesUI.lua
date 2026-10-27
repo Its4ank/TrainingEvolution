@@ -41,7 +41,12 @@ local function updateButtons()
 	updateButton(autoTrainingButton, mode == "AutoTraining")
 end
 
+local modeRequestBusy = false
+
 local function toggleMode(mode)
+	if modeRequestBusy then return end
+	modeRequestBusy = true
+	
 	local currentMode = player:GetAttribute("AutomaticMode")
 	local enable = currentMode ~= mode 
 	
@@ -49,7 +54,14 @@ local function toggleMode(mode)
 		return automaticModeFunction:InvokeServer(mode, enable)
 	end)
 	
+	modeRequestBusy = false
+	
 	if not success then
+		warn("Automatic mode request failed:", accepted)
+		return
+	end
+	
+	if not accepted then
 		warn("Automatic mode denied:", mode, reason)
 		return
 	end
