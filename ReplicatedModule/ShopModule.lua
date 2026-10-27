@@ -27,7 +27,7 @@ ShopModule.Passes = {
 	EnergyPass = pass("PassEnergyFrame", "Energy Pass", "2x Energy", "Gain an extra 100% base Energy from training and rewards!.", "rbxassetid://72931645765112", 1860533278, 49, 39, "Energy"),
 	RaceTouchPass = pass("PassRaceTouchFrame", "Race Touch Pass", "2x RaceTouch", "Earn an extra 100% base RaceTouch from races!", "rbxassetid://111988324538451", 2053548331, 49, 29, "RaceTouch"),
 	MoneyPass = pass("PassMoneyFrame", "Money Pass", "2x Money", "Gain an extra 100% base Money from all rewards!", "rbxassetid://90642449616683", 2053380238, 49, 29, "Money"),
-	PetStatPass = pass("PassPetStatFrame", "Pet Stat Pass", "2x PetStat", "Get an extra 100% of your pets' base stats!", "rbxassetid://101224774099593", 2053848263, 89, 69, "PetStat"),
+	PetStatPass = pass("PassPetStatFrame", "Pet Stat Pass", "2x PetStat", "Double all final pet stats, including level and tier bonuses!", "rbxassetid://101224774099593", 2053848263, 89, 69, "PetStat"),
 	RebirthPass = pass("PassRebirthFrame", "Rebirth Pass", "2x Rebirth", "Earn twice as many Rebirths every time you rebirth!", "rbxassetid://96014338468295", 2052012357, 110, 89, "Rebirth"),
 	GemsPass = pass("PassGemsFrame", "Gems Pass", "2x Gems", "Gain an extra 100% base Gems from all rewards!", "rbxassetid://130206347035457", 2053890231, 79, 59, "Gems"),
 	TripleHatchPass = pass("PassTripleHatchFrame", "Triple Pass", "Open 3", "Hatch up to 3 eggs at the same time!", "rbxassetid://123451228200379", 2052162337, 139, 119, "TripleHatch"),
@@ -42,11 +42,7 @@ ShopModule.Passes = {
 	AutoRacePass = pass("PassAutoRaceFrame", "Auto Race", "Auto Race", "Automatically join, tun and repeat races!", "rbxassetid://94993803080554", 2055468150, 69, 39, "AutoRace"),
 }
 
-for _, passId in ipairs({
-	"EnergyPass",
-	"AutoRebirthPass",
-	"MaxRebirthPass"
-	}) do
+for _, passId in ipairs(ShopModule.PassOrder) do
 	ShopModule.Passes[passId].EffectReady = true
 end
 
@@ -217,17 +213,17 @@ function ShopModule.GetRegionalPotionRobuxPrice(potionId, amount)
 	return ShopModule.GetRegionalRobuxPrice(productId, Enum.InfoType.Product)
 end
 
-function ShopModule.IsPassTestActivate()
+function ShopModule.IsPassTestActive()
 	return ShopModule.PassTest == true and RunService:IsStudio()
 end
 
 function ShopModule.IsGamepassTest(passId)
-	return ShopModule.IsPassTestActivate() and ShopModule.TestPasses[passId] == true
+	return ShopModule.IsPassTestActive() and ShopModule.TestPasses[passId] == true
 end
 
 function ShopModule.OwnsPass(player, passId)
 	if not ShopModule.GetPass(passId) then return false end 
-	if ShopModule.IsPassTestActivate() then return ShopModule.TestPasses[passId] == true end
+	if ShopModule.IsPassTestActive() then return ShopModule.TestPasses[passId] == true end
 	
 	local data = player and player:FindFirstChild("PlayerData")
 	local folder = data and data:FindFirstChild("Gamepasses")
@@ -238,7 +234,7 @@ end
 
 function ShopModule.IsEquipped(player, passId)
 	if not ShopModule.GetPass(passId) then return false end
-	if ShopModule.IsPassTestActivate() then return ShopModule.TestPasses[passId] == true end
+	if ShopModule.IsPassTestActive() then return ShopModule.TestPasses[passId] == true end
 	if not ShopModule.OwnsPass(player, passId) then return false end
 	
 	local data = player and player:FindFirstChild("PlayerData")
