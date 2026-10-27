@@ -189,6 +189,11 @@ local function processPassPurchase(player, passId, currency)
 		return 
 	end
 	
+	if ShopModule.IsPassTestActive() then
+		report(player, passId, false, "NOT_CONFIGURED")
+		return
+	end
+	
 	if not ensurePassValues(player) then
 		report(player, passId, false, "DATA_NOT_READY")
 		return
