@@ -228,7 +228,7 @@ end
 local function updatePassSelection()
 	local images = ShopModule.UIImages.PassFrame
 	
-	for passId, frame in ipairs(passFrames) do
+	for passId, frame in pairs(passFrames) do
 		if frame:IsA("ImageLabel") then
 			local isSelected = selectedPass == passId 
 			local imageId = isSelected and images.Selected or images.Default
@@ -332,14 +332,14 @@ end)
 purchaseButton.Activated:Connect(function()
 	if not selectedPass then return end
 	
-	local owned, equipped = getPassState(selectedPass)
-	if owned then
-		equipPassEvent:FireServer(selectedPass, not equipped)
+	if ShopModule.IsPassTestActive() then
+		showWarning("GamePass testing is enabled in Studio.")
 		return
 	end
 	
-	if ShopModule.IsPassTestActive() then
-		showWarning("GamePass tistring is enabled in Studio.")
+	local owned, equipped = getPassState(selectedPass)
+	if owned then
+		equipPassEvent:FireServer(selectedPass, not equipped)
 		return
 	end
 	
