@@ -132,20 +132,6 @@ local function getLeaderstats(player, name)
 	return leaderstats:FindFirstChild(name)
 end
 
-local function getGamepassEnergyMultiplier(player)
-	local bonus = 0
-	
-	local success, result = pcall(function()
-		return ShopModule.GetEnergyBonus(player)
-	end)
-	
-	if success and typeof(result) == "number" then 
-		bonus = result
-	end
-	
-	return 1 + bonus
-end
-
 function TreadmillModule.SetupPlayer(player)
 	local treadmillsFolder = getOrCreateFolder(player, "Treadmills")
 	
@@ -325,7 +311,7 @@ function TreadmillModule.GetPlayerEnergyMultiplier(player)
 	multiplier *= boostEnergyMultiplier 
 	
 	--// Gamepass 2x Energy
-	multiplier *= getGamepassEnergyMultiplier(player)
+	multiplier = ShopModule.ApplyResourcePass(player, "Energy", 1, multiplier)
 	
 	return multiplier
 end
