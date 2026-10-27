@@ -1,3 +1,5 @@
+--// EggModule v1.3
+
 local EggModule = {}
 
 --// General settings
@@ -12,13 +14,6 @@ EggModule.Luck = {
 
 EggModule.AutoHatch = {
 	ResultDisplayTime = 2,
-}
-
-EggModule.TestGamepasses = {
-	Enabled = true,
-	
-	TripleHatch = true,
-	AutoHatch = true,
 }
 
 --// UI images
