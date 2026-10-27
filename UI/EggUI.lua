@@ -118,6 +118,7 @@ local function getErrorMessage(errorCode)
 		PetRollFailed = "Could not open egg.",
 		PetCreateFailed = "Could not create pet.",
 		ServerError = "Egg server error.",
+		HatchCooldown = "Please wait defore opening another egg.",
 	}
 
 	return messages[errorCode] or tostring(errorCode or "Unknown error.")
