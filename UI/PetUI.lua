@@ -8,6 +8,7 @@ local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local ClientDataModule = require(ReplicatedStorage.Modules.ClientDataModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 --// Player
 local player = Players.LocalPlayer
@@ -222,17 +223,21 @@ local function setupViewport(viewport, petName, distanceMultiplier)
 	local cf = previewModel:GetBoundingBox()
 	local offset = cf.Position
 	
+	local rotation = CFrame.Angles(0, math.rad(180), 0)
 	for _, part in ipairs(copiedParts) do
-		part.CFrame = part.CFrame - offset
+		part.CFrame = rotation * (part.CFrame - offset)
 	end
 	
 	local _, size = previewModel:GetBoundingBox()
 	local biggest = math.max(size.X, size.Y, size.Z)
 	local distace = math.max(biggest * (distanceMultiplier or 2.2), 3)
-	local camera = Instance.new("Camera")
 	
+	local camera = Instance.new("Camera")
 	camera.Parent = viewport
 	viewport.CurrentCamera = camera
+	
+	local zoomMultiplier = 2
+	camera.FieldOfView = math.deg(2 * math.atan(math.tan(math.rad(camera.FieldOfView / 2)) / zoomMultiplier))
 	
 	viewport.Ambient = Color3.fromRGB(255, 255, 255)
 	viewport.LightColor = Color3.fromRGB(255, 255, 255)
@@ -404,13 +409,15 @@ local function updateSelectedPetUI()
 	if not data then return end
 	
 	local displayData = PetModule.GetPetDisplayData(data.PetName, data.Pattern, data.Tier, data.Level)
+	local stats = ShopModule.GetPetStats(player, data.PetName, data.Pattern, data.Tier, data.Level)
 	if not displayData then return end
+	if not stats then return end
 	
 	petName.Text = displayData.Name
 	petSelectLevel.Text = tostring(data.Level)
-	petEnergyBoost.Text = "+" .. FormatModule.FormatNumber(displayData.Energy)
-	petMoneyBoost.Text = "+" .. FormatModule.FormatNumber(displayData.Money)
-	petPowerBoost.Text = "+" .. FormatModule.FormatNumber(displayData.RacePower)
+	petEnergyBoost.Text = "+" .. FormatModule.FormatNumber(stats.Energy)
+	petMoneyBoost.Text = "+" .. FormatModule.FormatNumber(stats.Money)
+	petPowerBoost.Text = "+" .. FormatModule.FormatNumber(stats.RacePower)
 	petRarityLabel.Text = string.upper(displayData.Rarity)
 	petRarityIcon.Image = displayData.RarityIcon or ""
 	petPatternLabel.Text = "PATTERN " .. tostring(data.Pattern)
@@ -440,7 +447,7 @@ local function getPetPower(petFolder)
 	local data = getPetData(petFolder)
 	if not data then return 0 end
 	
-	local stats = PetModule.CalculatePetStats(data.PetName, data.Pattern, data.Tier, data.Level)
+	local stats = ShopModule.GetPetStats(player, data.PetName, data.Pattern, data.Tier, data.Level)
 	
 	return PetModule.GetPowerScore(stats)
 end
@@ -720,6 +727,14 @@ refreshUI = function()
 	
 	refreshInventory()
 end
+
+local playerData = player:WaitForChild("PlayerData")
+
+local petStatOwned = playerData:WaitForChild("Gamepasses"):WaitForChild("PetStatPass")
+local petStatEquipped = playerData:WaitForChild("EquippedGamepasses"):WaitForChild("PetStatPass")
+
+petStatOwned.Changed:Connect(refreshUI)
+petStatEquipped.Changed:Connect(refreshUI)
 
 --// Equipped slot clicks
 for _, slotInfo in ipairs(equipSlotButtons) do
