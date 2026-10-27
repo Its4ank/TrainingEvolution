@@ -949,10 +949,11 @@ local function runAutoHatch()
 				break
 			end
 			
-			pcall(function()
-				automaticModeFunction:InvokeServer("AutoOpenEgg", false)
-			end)
 		end
+		
+		pcall(function()
+			automaticModeFunction:InvokeServer("AutoOpenEgg", false)
+		end)
 
 		autoHatching = false
 		autoStopRequested = false
