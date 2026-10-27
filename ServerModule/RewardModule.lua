@@ -513,8 +513,9 @@ function RewardModule.BuildRewardData(player, config, previousMaxValue)
 	local amount = RewardModule.CalculateAmount(player, config, previousMaxValue)
 
 	local displayAmount = amount
+	
 	if config.Type == "Energy" or config.Type == "Money" or config.Type == "Gems" then
-		displayAmount = ShopModule.ApplyResourcesPass(player, config.Type, amount, amount)
+		displayAmount = ShopModule.ApplyResourcePass(player, config.Type, amount, amount)
 	end
 	
 	local displayName = typeData.Name
