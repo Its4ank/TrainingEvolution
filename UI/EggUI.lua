@@ -13,6 +13,7 @@ local EggModule = require(ReplicatedStorage.Modules.EggModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 local MenuManager = require(ReplicatedStorage.Modules.MenuManager)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 --// Root
 local raceGui = script.Parent
@@ -49,6 +50,7 @@ local specificAutoDeleteEvent = eggEvent:WaitForChild("SpecificAutoDeleteEvent")
 local globalAutoDeleteEvent = eggEvent:WaitForChild("GlobalAutoDeleteEvent")
 local eggDataChangedEvent = eggEvent:WaitForChild("EggDataChangedEvent")
 local eggWarningEvent = eggEvent:WaitForChild("EggWarningEvent")
+local automaticModeFunction = ReplicatedStorage:WaitForChild("ShopEvent"):WaitForChild("AutomaticModeFunction")
 
 --// Current egg
 local currentEggName = "Egg1"
@@ -79,6 +81,10 @@ local FLASH_OUT_TIME = 0.35
 local AUTO_STAGE_PAUSE = 0.45
 
 local AUTO_RESULT_TIME = (EggModule.AutoHatch and EggModule.AutoHatch.ResultDisplayTime) or 2
+
+local function hatchDuration(duration)
+	return ShopModule.GetEggHatchDuration(player, duration)
+end
 
 --// Helpers
 local function showWarning(message, duration)
@@ -202,6 +208,9 @@ local function setupViewport(viewport, petName)
 	local camera = Instance.new("Camera")
 	camera.Name = "PetCamera"
 	camera.Parent = viewport 
+	
+	local zoomMultiplier = 3
+	camera.FieldOfView = math.deg(2 * math.atan(math.tan(math.rad(camera.FieldOfView / 2)) / zoomMultiplier))
 
 	viewport.CurrentCamera = camera
 	
@@ -214,12 +223,12 @@ local function setupViewport(viewport, petName)
 		local pivot = clone:GetPivot()
 		local relativePivot = boundingCFrame:ToObjectSpace(pivot)
 		
-		clone:PivotTo(CFrame.new(0, 0, 0) * relativePivot)
+		clone:PivotTo(CFrame.new(0, math.rad(180), 0) * relativePivot)
 	elseif clone:IsA("BasePart") then
 		boundingCFrame = clone.CFrame
 		boundingSize = clone.Size
 		
-		clone.CFrame = CFrame.new(0, 0, 0)
+		clone.CFrame = CFrame.new(0, math.rad(180), 0)
 	else 
 		warn("EGG VARNING: Unsupported pet object:", clone.ClassName, petName)
 		
@@ -240,7 +249,7 @@ local function setupViewport(viewport, petName)
 	local center = boundingCFrame.Position
 	local distance = maxSize * 2.1
 
-	camera.CFrame = CFrame.lookAt(center + Vector3.new(0, boundingSize.Y * 0.05, distance), center)
+	camera.CFrame = CFrame.lookAt(center + Vector3.new(0, boundingSize.Y * 0.05, -distance), center)
 end
 
 --// EggHost object
@@ -397,7 +406,7 @@ local function refreshEggUI()
 
 	-- Luck
 	luckBar.Position = EggModule.GetLuckBarPosition(state.LuckOpenings or 0)
-	luckLabel.Text = EggModule.GetLuckLabel(state.LuckOpenings or 0)
+	luckLabel.Text = string.format("%d/%.2fx", state.LuckOpenings or 0, state.LuckMultiplier or 1)
 	
 	print(
 		"[EGG UI LUCK]",
@@ -578,10 +587,10 @@ end
 local function shakeEgg(object, rotation)
 	if not object then return end 
 
-	local first = tweenRotation(object, rotation, SHAKE_TIME)
+	local first = tweenRotation(object, rotation, hatchDuration(SHAKE_TIME))
 	first.Completed:Wait()
 
-	local second = tweenRotation(object, 0, SHAKE_TIME)
+	local second = tweenRotation(object, 0, hatchDuration(SHAKE_TIME))
 	second.Completed:Wait()
 end
 
@@ -618,7 +627,7 @@ local function playStage(eggObjects, stage)
 		task.wait()
 	end 
 
-	task.wait(STAGE_PAUSE)
+	task.wait(hatchDuration(STAGE_PAUSE))
 end
 
 --// Fragment animation
@@ -710,12 +719,12 @@ local function flashEggFrame(host)
 
 	eggFrame[transparencyProperty] = 1
 
-	local flashIn = TweenService:Create(eggFrame, TweenInfo.new(FLASH_IN_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {[transparencyProperty] = 0,})
+	local flashIn = TweenService:Create(eggFrame, TweenInfo.new(hatchDuration(FLASH_IN_TIME), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {[transparencyProperty] = 0,})
 
 	flashIn:Play()
 	flashIn.Completed:Wait()
 
-	local flashOut = TweenService:Create(eggFrame, TweenInfo.new(FLASH_OUT_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {[transparencyProperty] = 1,})
+	local flashOut = TweenService:Create(eggFrame, TweenInfo.new(hatchDuration(FLASH_OUT_TIME), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {[transparencyProperty] = 1,})
 
 	flashOut:Play()
 	flashOut.Completed:Wait()
@@ -742,26 +751,26 @@ local function breakOneEgg(host, objects, result)
 		local fragment = objects.Fragments[index]
 
 		if fragment then 
-			local tween = TweenService:Create(fragment, TweenInfo.new(FRAGMENT_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = target,})
+			local tween = TweenService:Create(fragment, TweenInfo.new(hatchDuration(FRAGMENT_TIME), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = target,})
 			tween:Play()
 		end 
 	end 
 
 	-- Start Fragment2 at ~70%
-	task.wait(FRAGMENT_TIME * 0.70)
+	task.wait(hatchDuration(FRAGMENT_TIME * 0.70))
 
 	if fragment2 then 
-		local growTween = TweenService:Create(fragment2, TweenInfo.new(FRAGMENT2_GROW_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(6.409, 0, 5.492, 0),})
+		local growTween = TweenService:Create(fragment2, TweenInfo.new(hatchDuration(FRAGMENT2_GROW_TIME), Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(6.409, 0, 5.492, 0),})
 		growTween:Play()
 
 		-- At ~70% growth:
-		task.wait(FRAGMENT2_GROW_TIME * 0.70)
+		task.wait(hatchDuration(FRAGMENT2_GROW_TIME * 0.70))
 		revealPet(objects, result)
 		task.spawn(function()
 			flashEggFrame(host)
 		end)
 
-		task.wait(FRAGMENT2_GROW_TIME * 0.30)
+		task.wait(hatchDuration(FRAGMENT2_GROW_TIME * 0.30))
 	end 
 
 	shakeToken.Running = false 
@@ -897,13 +906,13 @@ local function playAutoBatch(response)
 		playStage(eggObjects, stage)
 
 		if stage < 4 then 
-			task.wait(AUTO_STAGE_PAUSE)
+			task.wait(hatchDuration(AUTO_STAGE_PAUSE))
 		end
 	end
 
 	playFinalBreak(host, eggObjects, response.Results)
 
-	task.wait(AUTO_RESULT_TIME)
+	task.wait(hatchDuration(AUTO_RESULT_TIME))
 end
 
 local function runAutoHatch()
@@ -916,7 +925,7 @@ local function runAutoHatch()
 	eggHost.Visible = false
 
 	task.spawn(function()
-		while autoHatching and not autoStopRequested do
+		while autoHatching and not autoStopRequested and player:GetAttribute("AutomaticMode") == "AutoOpenEgg" and ShopModule.CanUseAutomaticMode(player, "AutoOpenEgg") do
 			local success, response = pcall(function()
 				return hatchRequestFunction:InvokeServer(currentEggName, EggModule.MAX_MULTI_HATCH)
 			end)
@@ -939,6 +948,10 @@ local function runAutoHatch()
 			if autoStopRequested then
 				break
 			end
+			
+			pcall(function()
+				automaticModeFunction:InvokeServer("AutoOpenEgg", false)
+			end)
 		end
 
 		autoHatching = false
@@ -1004,6 +1017,16 @@ local function requestAuto()
 	if currentState and currentState.HasAutoHatch ~= true then 
 		showWarning("Auto Hatch gamepass required!")
 		return 
+	end
+	
+	local success, accepted, reason = pcall(function()
+		return automaticModeFunction:InvokeServer("AutoOpenEgg", true)
+	end)
+	
+	if not success or not accepted then
+		showWarning("Could not start Auto Hatch.")
+		warn("Auto Hatch mode failed.", reason)
+		return
 	end
 
 	runAutoHatch()
