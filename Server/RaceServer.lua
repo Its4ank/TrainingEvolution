@@ -127,7 +127,7 @@ end
 
 local trackOffset = raceMaxEndPoint.Position - raceStartPoint.Position
 
-if trackOffset.Magnitude <- 0 then
+if trackOffset.Magnitude <= 0 then
 	error("RaceServer: RaceStartPoint and " .. "RaceMaxEndPoint have the same position")
 end
 
@@ -347,11 +347,6 @@ local function getPetMoneyMultiplier(player)
 		
 		if equipped and equipped.Value and petName and pattern and tier and level then
 			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
-			local config = PetModule.GetPetConfig(petName.Value)
-
-			if stats and config and config.BaseStats then
-				stats = ShopModule.ApplyPetStats(player, config.BaseStats, stats)
-			end
 			
 			if stats then 
 				local petMultiplier = tonumber(stats.Money) or 1
@@ -431,14 +426,9 @@ local function getPetRacePowerMultiplier(player)
 		
 		if equipped and equipped.Value and petName and pattern and tier and level then
 			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
-			local config = PetModule.GetPetConfig(petName.Value)
-			
-			if stats and config and config.BaseStats then
-				stats = ShopModule.ApplyPetStata(player, config.BaseStats, stats)
-			end
 			
 			if stats then
-				local petPower = tonumber(stats.RacePowe) or 1
+				local petPower = tonumber(stats.RacePower) or 1
 				multiplier *= math.max(1, petPower)
 			end
 		end
@@ -628,6 +618,9 @@ local leaveRace
 local function startRace(player)
 	if not raceOpen or player:GetAttribute("DataReady") ~= true then return end 
 	if activeRacers[player] then return end
+	
+	local currentTreadmill = player:FindFirstChild("CurrentTreadmill")
+	if currentTreadmill and currentTreadmill.Value > 0 then return end
 	
 	local data = getPlayerRaceData(player)
 	local resources = getPlayerResources(player)
