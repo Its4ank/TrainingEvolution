@@ -8,8 +8,10 @@ local MarketplaceService = game:GetService("MarketplaceService")
 --// Modules
 local EggModule = require(ReplicatedStorage.Modules.EggModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 local PetServiceModule = require(ServerScriptService.Modules.PetServiceModule)
+local BoostModule = require(ServerScriptService.Modules.BoostModule)
 
 --// EggEvent
 local eggEvent = ReplicatedStorage:WaitForChild("EggEvent")
@@ -76,31 +78,25 @@ local function fireWarning(player, message)
 	eggWarningEvent:FireClient(player, message)
 end
 
---// Gamepasses
-local function hasTestGamepass(passName)
-	local testConfig = EggModule.TestGamepasses
-	if not testConfig then return false end
+--// All gamepass check are handled by ShopModule
+local function hasGamepass(player, passName)
+	if passName == "TripleHatch" then
+		return ShopModule.HasPass(player, "TripleHatchPass")
+	end
 	
-	if testConfig.Enabled ~= true then return false end
+	if passName == "AutoHatch" then
+		return ShopModule.HasPass(player, "EggAutoHatchPass")
+	end
 	
-	return testConfig[passName] == true
+	return false
 end
 
-local function hasGamepass(player, passName)
-	if hasTestGamepass(passName) then return true end
+local function getEffectiveLuckMultiplier(player, openings)
+	local luck = EggModule.GetLuckMultiplier(openings)
 	
-	local passId = EggModule.Gamepasses[passName]
-	if not passId or passId <= 0 then return false end
+	luck *= BoostModule.GetLuckMultiplier(player)
 	
-	local success, ownsPass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
-	end)
-	
-	if not success then
-		warn("GAMEPASS CHECK FAILED:", player.Name, passName)
-		return false
-	end
-	return ownsPass == true
+	return ShopModule.ApplyPetLuck(player, 1, luck)
 end
 
 --// Pattern roll
@@ -360,7 +356,7 @@ local function hatchEgg(player, eggName, requestedAmount)
 		local results = {}
 		
 		for _ = 1, amount do
-			local luckMultiplier = EggModule.GetLuckMultiplier(luckOpenings.Value)
+			local luckMultiplier = getEffectiveLuckMultiplier(player, luckOpenings.Value)
 			local result, hatchError = createHatchResult(player, eggName, luckMultiplier)
 			if not result then
 				for _, oldResult in ipairs(results) do
@@ -404,7 +400,7 @@ local function hatchEgg(player, eggName, requestedAmount)
 			
 			LuckOpenings = luckOpenings.Value,
 			
-			LuckMultiplier = EggModule.GetLuckMultiplier(luckOpenings.Value),
+			LuckMultiplier = getEffectiveLuckMultiplier(player, luckOpenings.Value),
 		}
 	end)
 	
@@ -442,7 +438,7 @@ local function getEggState(player, eggName)
 	
 	local pets = {}
 	
-	local luckMultiplier = EggModule.GetLuckMultiplier(luckOpenings.Value)
+	local luckMultiplier = getEffectiveLuckMultiplier(player, luckOpenings.Value)
 	local adjustedWeights, totalWeight = getAdjustedPetWeights(eggName, luckMultiplier)
 	
 	local chanceByPet = {}
