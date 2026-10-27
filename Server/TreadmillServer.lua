@@ -473,7 +473,9 @@ task.spawn(function()
 			end
 			
 			if not wantsAuto then
-				if current and current.IsAuto then
+				local mode = player:GetAttribute("AutomaticMode")
+				
+				if current and (current.IsAuto or mode == "AutoRace") then
 					cleanupTraining(player)
 				end
 				
