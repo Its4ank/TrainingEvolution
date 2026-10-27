@@ -8,6 +8,7 @@ local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
+local PetServiceModule = require(ServerScriptService.Modules.PetServiceModule)
 
 
 
@@ -511,8 +512,14 @@ function RewardModule.BuildRewardData(player, config, previousMaxValue)
 
 	local amount = RewardModule.CalculateAmount(player, config, previousMaxValue)
 
+	local displayAmount = amount
+	if config.Type == "Energy" or config.Type == "Money" or config.Type == "Gems" then
+		displayAmount = ShopModule.ApplyResourcesPass(player, config.Type, amount, amount)
+	end
+	
 	local displayName = typeData.Name
-	local formattedAmount = FormatModule.FormatNumber(amount)
+	local formattedAmount = ShopModule.FormatNumber(displayAmount)
+	
 	local displayText
 
 	if config.Type == "Pet" then
@@ -723,23 +730,43 @@ function RewardModule.GiveReward(player, rewardData)
 			and luckGiven
 
 	elseif rewardType == "Pet" then
-		if not rewardData.PetName then
+		local petName = rewardData.PetName
+		if typeof(petName) ~= "string" or petName == "" then
 			return false, "PetNameMissing"
 		end
+		
+		if not PetModule.GetPetConfig(petName) then
+			return false, "PetConfigNotFound"
+		end
+		
+		if PetServiceModule.IsStorageFull(player) then
+			return false, "StorageFull"
+		end
+		
+		local pattern = PetModule.RollPattern()
+		local tier = PetModule.RollTier()
 
 		local petFolder
-		petFolder, reason = PetModule.givePet(
-			player,
-			rewardData.PetName
-		)
+		petFolder, reason = PetServiceModule.CreatePet(player, petName, pattern, tier)
 
 		success = petFolder ~= nil
 
 	elseif rewardType == "PetStorage" then
-		success = PetModule.addPetStorage(
-			player,
-			amount
-		) ~= nil
+		local playerData = player:FindFirstChild("PlayerData")
+		local maxStorage = playerData and playerData:FindFirstChild("MaxPetStorage")
+		
+		if not maxStorage or not maxStorage:IsA("IntValue") then
+			return false, "PetStorageMissing"
+		end
+		
+		local storageIncrease = math.floor(amount)
+		
+		if storageIncrease <= 0 then
+			return false, "InvalidAmount"
+		end
+		
+		maxStorage.Value += storageIncrease
+		success = true
 
 	elseif rewardType == "EquippedPetSlot" then
 		local playerData = getOrCreateFolder(
