@@ -17,6 +17,7 @@ local shopUpdateEvent = shopEvent:WaitForChild("ShopUpdateEvent")
 local buyPotionEvent = shopEvent:WaitForChild("BuyPotionEvent")
 local usePotionEvent = shopEvent:WaitForChild("UsePotionEvent")
 local equipPassEvent = shopEvent:WaitForChild("EquipPassEvent")
+local automaticModeFunction = shopEvent:WaitForChild("AutomaticModeFunction")
 
 local dataLoadedEvent = ReplicatedStorage:WaitForChild("TrainerEvent"):WaitForChild("PlayerDataLoadedEvent")
 local grantPotionPurchase = ServerScriptService:WaitForChild("GrantPotionPurchaseFunction")
@@ -152,6 +153,30 @@ local function unlockPlayer(player)
 end
 
 Players.PlayerRemoving:Connect(unlockPlayer)
+
+automaticModeFunction.OnServerInvoke = function(player, mode, enabled)
+	if player:GetAttribute("DataReady") ~= true then
+		return false, "DATA_NOT_READY"
+	end
+	
+	if typeof(mode) ~= "string" or ShopModule.AutomaticModes[mode] == nil or typeof(enabled) ~= "boolean" then
+		return false, "INVALID_REQUEST"
+	end
+	
+	if enabled and not ShopModule.CanUseAutomaticMode(player, mode) then
+		return false, "NOT_OWNED"
+	end
+	
+	local currentMode = player:GetAttribute("AutomaticMode")
+	
+	if enabled then
+		player:SetAttribute("AutomaticMode", mode)
+	elseif currentMode == mode then
+		player:SetAttribute("AutomaticMode", "None")
+	end
+	
+	return true, player:GetAttribute("AutomaticMode") or "None"
+end
 
 local function processPassPurchase(player, passId, currency)
 	if typeof(passId) ~= "string" or not ShopModule.GetPass(passId) then
