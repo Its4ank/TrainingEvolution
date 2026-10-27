@@ -12,6 +12,7 @@ local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ItemModule = require(ServerScriptService.Modules.ItemModule)
@@ -425,7 +426,7 @@ local function getPetRacePowerMultiplier(player)
 		local level = petFolder:FindFirstChild("Level")
 		
 		if equipped and equipped.Value and petName and pattern and tier and level then
-			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
+			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
 			
 			if stats then
 				local petPower = tonumber(stats.RacePower) or 1
@@ -437,11 +438,48 @@ local function getPetRacePowerMultiplier(player)
 	return multiplier
 end
 
+local function getEquippedTransportBoost(player)
+	local transports = player:FindFirstChild("Transports")
+	if not transports then return nil end
+	
+	for locationId, config in pairs(TransportModule.Locations) do
+		local locationFolder = transports:FindFirstChild(locationId)
+		
+		if locationFolder then
+			for _, transportId in ipairs(config.TransportOrder or {}) do
+				local folder = locationFolder:FindFirstChild(transportId)
+				
+				if folder then
+					local equipped = folder:FindFirstChild("Equipped")
+					local owned = folder:FindFirstChild("Owned")
+					local unlocked = folder:FindFirstChild("Unlocked")
+					local level = folder:FindFirstChild("Level")
+					local stage = folder:FindFirstChild("Stage")
+					
+					if equipped and equipped.Value and owned and owned.Value and unlocked and unlocked.Value and level and stage then
+						return TransportModule.GetBoost(locationId, transportId, level.Value, stage.Value)
+					end
+				end
+			end
+		end
+	end
+	return nil
+end 
+
 local function getTargetSpeed(player, resources)
 	local targetSpeed = RaceModule.GetTargetSpeedFromEnergy(getEffectiveEnergy(player, resources))
+	
+	local transportBoost = getEquippedTransportBoost(player)
+	
+	local transportMultiplier = 1
+	if transportBoost then
+		transportMultiplier += (transportBoost.RacePower or 0) / 100
+	end
+	
 	local racePowerMultiplier = TrainerModule.getRacePowerMultiplier(player)
 		* getTrailRacePowerMultiplier(player)
 		* getPetRacePowerMultiplier(player)
+		* transportMultiplier
 	
 	racePowerMultiplier = ShopModule.ApplyRacePower(player, 1, racePowerMultiplier)
 	
@@ -452,6 +490,11 @@ local function getAccelerationMultiplier(player)
 	local multiplier = UpgradeModule.GetAccelerationMultiplier(player)
 		* TrainerModule.getAccelerationMultiplier(player)
 		* getTrailAccelerationMultiplier(player)
+	
+	local transportBoost = getEquippedTransportBoost(player)
+	if transportBoost then
+		multiplier *= 1 + (transportBoost.Acceleration or 0) / 100
+	end
 	
 	return ShopModule.ApplyAcceleration(player, 1, multiplier)
 end
