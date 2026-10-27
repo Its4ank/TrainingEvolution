@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 
@@ -590,6 +591,11 @@ function RewardModule.GiveReward(player, rewardData)
 
 	if amount <= 0 and rewardType ~= "Pet" then
 		return false, "InvalidAmount"
+	end
+	
+	--// Extra 100% base reward from GamePass
+	if rewardType == "Energy" or rewardType == "Money" or rewardType == "Gems" then
+		amount = ShopModule.ApplyResourcePass(player, rewardType, amount, amount)
 	end
 
 	-- Защита от повторного получения конкретной награды
