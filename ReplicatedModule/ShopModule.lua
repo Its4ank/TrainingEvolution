@@ -3,6 +3,9 @@
 local ShopModule = {}
 
 local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
+
+local PetModule = require(script.Parent.PetModule)
 
 local function pass(frame, name, boost, info, icon, gamePassId, robux, srRobux, effect)
 	return {
@@ -39,16 +42,46 @@ ShopModule.Passes = {
 	AutoRacePass = pass("PassAutoRaceFrame", "Auto Race", "Auto Race", "Automatically join, tun and repeat races!", "rbxassetid://94993803080554", 2055468150, 69, 39, "AutoRace"),
 }
 
-for _, passId in ipairs({"EnergyPass", "AutoRebirthPass", "MaxRebirthPass"}) do
+for _, passId in ipairs({
+	"EnergyPass",
+	"AutoRebirthPass",
+	"MaxRebirthPass"
+	}) do
 	ShopModule.Passes[passId].EffectReady = true
 end
 
 ShopModule.PassCount = #ShopModule.PassOrder
-ShopModule.TestGamepasses = {Enabled = false, All = false}
+
+--// TEST PASS
+ShopModule.PassTest = false
+
+ShopModule.TestPasses = {
+	EnergyPass = false,
+	RaceTouchPass = false,
+	MoneyPass = false,
+	PetStatPass = false,
+	RebirthPass = false,
+	GemsPass = false,
+	TripleHatchPass = false,
+	PetLuckPass = false,
+	RacePowerPass = false,
+	AccelerationPass = false,
+	AutoTrainingPass = false,
+	EggHatchSpeedPass = false,
+	AutoRebirthPass = false,
+	MaxRebirthPass = false,
+	EggAutoHatchPass = false,
+	AutoRacePass = false,
+}
 
 ShopModule.UIImages = {
 	PotionUseUnselected = "rbxassetid://88821350180635",
 	PotionUseSelected = "rbxassetid://98055215682398",
+	
+	PassFrame = {
+		Default = "rbxassetid://139954531126914",
+		Selected = "rbxassetid://139236025897762",
+	},
 }
 
 ShopModule.ErrorMessages = {
@@ -184,15 +217,17 @@ function ShopModule.GetRegionalPotionRobuxPrice(potionId, amount)
 	return ShopModule.GetRegionalRobuxPrice(productId, Enum.InfoType.Product)
 end
 
+function ShopModule.IsPassTestActivate()
+	return ShopModule.PassTest == true and RunService:IsStudio()
+end
+
 function ShopModule.IsGamepassTest(passId)
-	local config = ShopModule.TestGamepasses
-	
-	return config.Enabled == true and (config.All == true or config[passId] == true)
+	return ShopModule.IsPassTestActivate() and ShopModule.TestPasses[passId] == true
 end
 
 function ShopModule.OwnsPass(player, passId)
 	if not ShopModule.GetPass(passId) then return false end 
-	if ShopModule.IsGamepassTest(passId) then return true end
+	if ShopModule.IsPassTestActivate() then return ShopModule.TestPasses[passId] == true end
 	
 	local data = player and player:FindFirstChild("PlayerData")
 	local folder = data and data:FindFirstChild("Gamepasses")
@@ -202,6 +237,8 @@ function ShopModule.OwnsPass(player, passId)
 end
 
 function ShopModule.IsEquipped(player, passId)
+	if not ShopModule.GetPass(passId) then return false end
+	if ShopModule.IsPassTestActivate() then return ShopModule.TestPasses[passId] == true end
 	if not ShopModule.OwnsPass(player, passId) then return false end
 	
 	local data = player and player:FindFirstChild("PlayerData")
@@ -250,8 +287,27 @@ function ShopModule.ApplyResourcePass(player, resourceName, baseAmount, currentA
 	return ShopModule.AddBaseBonus(player, passId, baseAmount, currentAmount)
 end
 
-function ShopModule.ApplyPetStat(player, baseStat, currentStat)
-	return ShopModule.AddBaseBonus(player, "PetStatPass", baseStat, currentStat)
+--// 2x PetStat
+function ShopModule.GetPetStatMultiplier(player)
+	return ShopModule.HasPass(player, "PetStatPass") and 2 or 1
+end
+
+function ShopModule.ApplyPetStats(player, stats)
+	if type(stats) ~= "table" then return nil end
+	
+	local multiplier = ShopModule.GetPetStatMultiplier(player)
+	
+	return {
+		Energy = (tonumber(stats.Energy) or 0) * multiplier,
+		Money = (tonumber(stats.Money) or 0) * multiplier,
+		RacePower = (tonumber(stats.RacePower) or 0) * multiplier,
+	}
+end
+
+function ShopModule.GetPetStats(player, petName, pattern, tier, level, externalBoosts)
+	local calculatedStats = PetModule.CalculateFinalPetStats(petName, pattern, tier, level, externalBoosts)
+	
+	return ShopModule.ApplyPetStats(player, calculatedStats)
 end
 
 function ShopModule.ApplyPetLuck(player, baseLuck, currentLuck)
