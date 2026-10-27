@@ -7,6 +7,8 @@ local ServerStorage = game:GetService("ServerStorage")
 
 --// Modules
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+
 local XPModule = require(ServerScriptService.Modules.XPModule)
 local PetServiceModule = require(ServerScriptService.Modules.PetServiceModule)
 
@@ -127,7 +129,7 @@ local function isStorageFull(player)
 end
 
 local function fireWarning(player, message)
-	petWarningEvent:FierClient(player, message)
+	petWarningEvent:FireClient(player, message)
 end
 
 --// Pet data
@@ -149,15 +151,15 @@ local function readPetData(petFolder)
 	}
 end
 
-local function getPetOwnStats(petFolder)
+local function getPetOwnStats(player, petFolder)
 	local data = readPetData(petFolder)
 	if not data then return nil end
 	
-	return PetModule.CalculatePetStats(data.PetName, data.Pattern, data.Tier, data.Level)
+	return ShopModule.GetPetStats(player, data.PetName, data.Pattern, data.Tier, data.Level)
 end
 
-local function getPetPowerScore(petFolder)
-	local stats = getPetOwnStats(petFolder)
+local function getPetPowerScore(player, petFolder)
+	local stats = getPetOwnStats(player, petFolder)
 	return PetModule.GetPowerScore(stats)
 end
 
@@ -214,7 +216,7 @@ local function equipBestPets(player)
 	
 	for _, petFolder in ipairs(petsFolder:GetChildren()) do
 		if petFolder:IsA("Folder") then
-			local powerScore = getPetPowerScore(petFolder)
+			local powerScore = getPetPowerScore(player, petFolder)
 			
 			table.insert(petList, {Folder = petFolder, Power = powerScore,})
 		end
@@ -247,7 +249,7 @@ local function isBestSetEquipped(player)
 	
 	for _, petFolder in ipairs(petsFolder:GetChildren()) do
 		if petFolder:IsA("Folder") then
-			table.insert(allPets, {Folder = petFolder, Power = getPetPowerScore(petFolder),})
+			table.insert(allPets, {Folder = petFolder, Power = getPetPowerScore(player, petFolder),})
 		end
 	end
 	
@@ -468,14 +470,14 @@ local function updatePetVisuals(player)
 						object.Anchored = true	
 						object.CanCollide = false
 						object.CanTouch = false
-						object.CanQuerty = false
+						object.CanQuery = false
 						object.Massless = true
 					end
 				end
 				
 				local offset = offset[index] or Vector3.new(0, -1.5, 4)
 				
-				clone:PivotTo(hrp.CFrame * CFrame.new(offset))
+				clone:PivotTo(hrp.CFrame * CFrame.new(offset) * CFrame.Angles(0, math.rad(180), 0))
 			end
 		end
 	end
@@ -519,7 +521,7 @@ local function startFolloming(player)
 					local currentPosition = visual:GetPivot().Position
 					local newPosition = currentPosition:Lerp(targetPosition, 0.1)
 					
-					visual:PivotTo(CFrame.new(newPosition, hrp.Position) * CFrame.Angles(0, math.rad(180), 0))
+					visual:PivotTo(CFrame.new(newPosition, hrp.Position))
 				end
 			end
 			task.wait(0.03)
