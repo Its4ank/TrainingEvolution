@@ -11,6 +11,7 @@ local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local TrailModule = require(ReplicatedStorage.Modules.TrailModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
 local FormatModule = require(ReplicatedStorage.Modules.FormatModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
 local ItemModule = require(ServerScriptService.Modules.ItemModule)
@@ -345,7 +346,12 @@ local function getPetMoneyMultiplier(player)
 		local level = petFolder:FindFirstChild("Level")
 		
 		if equipped and equipped.Value and petName and pattern and tier and level then
-			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
+			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
+			local config = PetModule.GetPetConfig(petName.Value)
+
+			if stats and config and config.BaseStats then
+				stats = ShopModule.ApplyPetStats(player, config.BaseStats, stats)
+			end
 			
 			if stats then 
 				local petMultiplier = tonumber(stats.Money) or 1
@@ -408,17 +414,56 @@ local function getEffectiveEnergy(player, resources)
 	return UpgradeModule.GetRaceEnergy(player, resources.Energy.Value)
 end
 
+local function getPetRacePowerMultiplier(player)
+	local petsFolder = player:FindFirstChild("Pets")
+	if not petsFolder then return 1 end
+	
+	local multiplier = 1
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if not petFolder:IsA("Folder") then continue end
+		
+		local equipped = petFolder:FindFirstChild("Equipped")
+		local petName = petFolder:FindFirstChild("PetName")
+		local pattern = petFolder:FindFirstChild("Pattern")
+		local tier = petFolder:FindFirstChild("Tier")
+		local level = petFolder:FindFirstChild("Level")
+		
+		if equipped and equipped.Value and petName and pattern and tier and level then
+			local stats = PetModule.CalculatePetStats(petName.Value, pattern.Value, tier.Value, level.Value)
+			local config = PetModule.GetPetConfig(petName.Value)
+			
+			if stats and config and config.BaseStats then
+				stats = ShopModule.ApplyPetStata(player, config.BaseStats, stats)
+			end
+			
+			if stats then
+				local petPower = tonumber(stats.RacePowe) or 1
+				multiplier *= math.max(1, petPower)
+			end
+		end
+	end
+	
+	return multiplier
+end
+
 local function getTargetSpeed(player, resources)
 	local targetSpeed = RaceModule.GetTargetSpeedFromEnergy(getEffectiveEnergy(player, resources))
+	local racePowerMultiplier = TrainerModule.getRacePowerMultiplier(player)
+		* getTrailRacePowerMultiplier(player)
+		* getPetRacePowerMultiplier(player)
 	
-	return targetSpeed 
-		* TrainerModule.getRacePowerMultiplier(player) * getTrailRacePowerMultiplier(player)
+	racePowerMultiplier = ShopModule.ApplyRacePower(player, 1, racePowerMultiplier)
+	
+	return targetSpeed * racePowerMultiplier
 end
 
 local function getAccelerationMultiplier(player)
-	return UpgradeModule.GetAccelerationMultiplier(player) 
-		* TrainerModule.getAccelerationMultiplier(player) 
+	local multiplier = UpgradeModule.GetAccelerationMultiplier(player)
+		* TrainerModule.getAccelerationMultiplier(player)
 		* getTrailAccelerationMultiplier(player)
+	
+	return ShopModule.ApplyAcceleration(player, 1, multiplier)
 end
 
 --// Reward calculations and granting
@@ -430,8 +475,8 @@ local function getRewardModifiers(player)
 		* BoostModule.GetMoneyMultiplier(player)
 		* RebirthModule.GetMoneyMultiplier(player)
 	
-	local xpMultiplier = RebirthModule.GetXpMultiplier(player) 
-		* TrainerModule.getRaceXPMultiplier(player)
+	moneyMultiplier = ShopModule.ApplyResourcePass(player, "Money", 1, moneyMultiplier)
+	local xpMultiplier = RebirthModule.GetXpMultiplier(player) * TrainerModule.getRaceXPMultiplier(player)
 	local baseGemChance = settings.BaseGemChance
 	local finalGemChance = UpgradeModule.GetFinalGemChance(player, baseGemChance)
 	local gemChanceBonus = finalGemChance - baseGemChance
@@ -440,8 +485,8 @@ local function getRewardModifiers(player)
 	return {
 		MoneyMultiplier = moneyMultiplier,
 		XPMultiplier = xpMultiplier,
-		GemsMultiplier = 1,
-		RaceTouchMultiplier = 1,
+		GemsMultiplier = ShopModule.ApplyResourcePass(player, "Gems", 1, 1),
+		RaceTouchMultiplier = ShopModule.ApplyResourcePass(player, "RaceTouch", 1, 1),
 		GemFlatBonus = gemFlatBonus,
 		GemChanceBonus = gemChanceBonus,
 	}
@@ -605,7 +650,7 @@ local function startRace(player)
 	
 	teleportToRaceStart(player)
 	
-	local activeData = {}
+	local activeData = {Auto = player:GetAttribute("AutomaticMode") == "AutoRace",}
 	activeRacers[player] = activeData
 	
 	activeData.DiedConnection = humanoid.Died:Connect(function()
@@ -964,6 +1009,10 @@ local raceActions = {
 
 --// Remote connections
 leaveRaceEvent.OnServerEvent:Connect(function(player)
+	if player:GetAttribute("AutomaticMode") == "AutoRace" then
+		player:SetAttribute("AutomaticMode", "None")
+	end
+	
 	if activeRacers[player] then
 		leaveRace(player, true, true)
 	end
@@ -1060,6 +1109,24 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	if topUpdateAccumulator >= 0.2 then
 		topUpdateAccumulator = 0
 		updateRaceTop()
+		
+		for _, player in ipairs(Players:GetPlayers()) do
+			local mode = player:GetAttribute("AutomaticMode")
+			
+			if mode == "AutoRace" then
+				if not ShopModule.CanUseAutomaticMode(player, "AutoRace") then
+					player:SetAttribute("AutomaticMode", "None")
+				elseif raceOpen and not activeRacers[player] then
+					startRace(player)
+				end
+			end
+		end
+		
+		for player, data in pairs(activeRacers) do
+			if data.Auto and player:GetAttribute("AutomaticMode") ~= "AutoRace" then
+				leaveRace(player, true, true)
+			end
+		end
 	end
 end)
 
