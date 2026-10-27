@@ -275,11 +275,6 @@ local function getPetEnergyMultiplier(player)
 		
 		if equipped and equipped.Value and petName and pattern and tier and level then
 			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
-			local config = PetModule.GetPetConfig(petName.Value)
-			
-			if stats and config and config.BaseStats then
-				stats = ShopModule.ApplyPetStats(player, config.BaseStats, stats)
-			end
 			
 			if stats then
 				local petMultiplier = tonumber(stats.Energy) or 1
