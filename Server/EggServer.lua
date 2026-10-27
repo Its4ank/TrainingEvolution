@@ -28,6 +28,9 @@ local eggWarningEvent = eggEvent:WaitForChild("EggWarningEvent")
 --// Runtime protection
 local hatchLocks = {}
 
+local lastHatchTime = {}
+local BASE_HATCH_COOLDOWN = 2
+
 --// Basic data
 local function getPlayerData(player)
 	return player:FindFirstChild("PlayerData")
@@ -344,6 +347,19 @@ local function hatchEgg(player, eggName, requestedAmount)
 			}
 		end
 		
+		local now = os.clock()
+		local cooldown = ShopModule.GetEggHatchDuration(player, BASE_HATCH_COOLDOWN)
+		local lastTime = lastHatchTime[player] or -math.huge
+		
+		if now - lastTime < cooldown then
+			return {
+				Success = false,
+				Error = "HatchCooldown"
+			}
+		end
+		
+		lastHatchTime[player] = now
+		
 		local money = getMoney(player)
 		local eggHatched = getEggHatched(player)
 		
@@ -356,6 +372,10 @@ local function hatchEgg(player, eggName, requestedAmount)
 				Error = "EggDataMissing",
 			}
 		end
+		
+		local oldOpened = openedValue.Value 
+		local oldHatched = eggHatched.Value
+		local oldLuck = luckOpenings.Value
 		
 		money.Value -= totalPrice
 		
@@ -375,6 +395,10 @@ local function hatchEgg(player, eggName, requestedAmount)
 					end
 				end
 				money.Value += totalPrice
+				
+				openedValue.Value = oldOpened
+				eggHatched.Value = oldHatched
+				luckOpenings.Value = oldLuck
 				
 				return {
 					Success = false,
@@ -586,6 +610,7 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 	
 	hatchLocks[player] = nil
+	lastHatchTime[player] = nil
 end)
 
 game:BindToClose(function()
