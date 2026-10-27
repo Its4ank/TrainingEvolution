@@ -141,11 +141,7 @@ local function setMusicVolume(volume)
 end
 
 local function getPassState(passId)
-	local owned = gamepasses:FindFirstChild(passId)
-	local equippedFolder = playerData:FindFirstChild("EquippedGamepasses")
-	local equipped = equippedFolder and equippedFolder:FindFirstChild(passId)
-	
-	return owned and owned.Value == true, equipped == nil or equipped.Value == true
+	return ShopModule.OwnsPass(player, passId), ShopModule.IsEquipped(player, passId)
 end
 
 local function formatRegionalRobuxPrice(price)
@@ -228,19 +224,41 @@ local function updateSelectedPass()
 	end
 end
 
+--// GamePass Frame Selected
+local function updatePassSelection()
+	local images = ShopModule.UIImages.PassFrame
+	
+	for passId, frame in ipairs(passFrames) do
+		if frame:IsA("ImageLabel") then
+			local isSelected = selectedPass == passId 
+			local imageId = isSelected and images.Selected or images.Default
+			
+			if typeof(imageId) == "string" and imageId ~= "" then
+				frame.Image = imageId
+			end
+		end
+	end
+end
+
 local function openPassDetails(passId)
 	if not ShopModule.GetPass(passId) then return end
 	
 	if detailsFrame.Visible and selectedPass == passId then
 		detailsFrame.Visible = false
 		selectedPass = nil 
+		
+		updatePassSelection()
 		return
 	end
 	
 	selectedPass = passId
+	
 	purchaseFrame.Visible = false 
 	purchaseBlurFrame.Visible = false 
+	
 	updateSelectedPass()
+	updatePassSelection()
+	
 	detailsFrame.Visible = true
 end
 
@@ -272,6 +290,7 @@ gamePassBox.ChildAdded:Connect(function(child)
 		if child.Name == ShopModule.GetPass(passId).FrameName and not passFrames[passId] then
 			passFrames[passId] = child
 			connectPassFrame(passId, child)
+			updatePassSelection()
 			break
 		end
 	end
@@ -319,6 +338,11 @@ purchaseButton.Activated:Connect(function()
 		return
 	end
 	
+	if ShopModule.IsPassTestActive() then
+		showWarning("GamePass tistring is enabled in Studio.")
+		return
+	end
+	
 	if not ShopModule.IsPassConfigured(selectedPass) then
 		showWarning(ShopModule.ErrorMessages.NOT_CONFIGURED)
 		return
@@ -334,6 +358,11 @@ closePurcFrame.Activated:Connect(function()
 end)
 
 local function buySelectedPass(currency)
+	if ShopModule.IsPassTestActive() then
+		showWarning("GamePass tistring is enabled in Studio.")
+		return
+	end
+	
 	if not selectedPass then return end
 	local owned = getPassState(selectedPass)
 	if owned then
@@ -398,6 +427,7 @@ local function closeShop()
 	purchaseBlurFrame.Visible = false 
 	detailsFrame.Visible = false 
 	selectedPass = nil
+	updatePassSelection()
 	
 	setMusicVolume(musicNormalVolume)
 	
