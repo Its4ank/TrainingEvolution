@@ -160,10 +160,13 @@ local function doRebirth(player, amount)
 
 	-- В твоей системе после Rebirth
 	-- вся энергия полностью сбрасывается.
-	energy.Value = 0
-	rebirth.Value += amount
+	local awardedRebirths = ShopModule.GetRebirthAward(player, amount)
+	if awardedRebirths <= 0 then return false end
 	
-	TrainerModule.addEquippedTrainerProgress(player, "Rebirth", amount)
+	energy.Value = 0
+	rebirth.Value += awardedRebirths
+	
+	TrainerModule.addEquippedTrainerProgress(player, "Rebirth", awardedRebirths)
 
 	return true
 end
