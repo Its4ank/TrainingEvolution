@@ -1,4 +1,4 @@
---// DataSaveServer v1.3
+--// DataSaveServer
 -- Сохраняет прогресс игрока
 
 local Players = game:GetService("Players")
@@ -453,7 +453,7 @@ local ALLOWED_POTION_PRODUCTS = {
 
 grantPotionPurchaseFunction.OnInvoke = function(player, purchaseId, potionId, amount)
 	if not player or not player:IsA("Player") then
-		return false, "IMVALID_PLAYER"
+		return false, "INVALID_PLAYER"
 	end
 	
 	if player:GetAttribute("DataReady") ~= true then
