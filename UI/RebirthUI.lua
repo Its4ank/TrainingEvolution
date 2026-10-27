@@ -848,6 +848,25 @@ maxRebirthPass.Changed:Connect(
 	updateRebirthUI
 )
 
+local equippedPasses = player:WaitForChild("PlayerData"):WaitForChild("EquippedGamepasses")
+local autoEquipped = equippedPasses:WaitForChild("AutoRebirthPass")
+local maxEquipped = equippedPasses:WaitForChild("MaxRebirthPass")
+
+local function onRebirthPassChanged()
+	local autoAllowed = hasAutoRebirthPass()
+	local maxAllowed = autoButtonName ~= "RebirthMaxButton" or hasMaxRebirthPass()
+	
+	if autoRebirthEnabled and (not autoAllowed or not maxAllowed) then
+		autoRebirthEnabled = false
+		autoButtonName = nil
+	end
+	
+	updateRebirthUI()
+end
+
+autoEquipped.Changed:Connect(onRebirthPassChanged)
+maxEquipped.Changed:Connect(onRebirthPassChanged)
+
 -- Max Rebirth необходимо обновлять постоянно,
 -- потому что доступное количество зависит от Energy.
 task.spawn(function()
