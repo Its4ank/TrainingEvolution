@@ -7,7 +7,6 @@ local DataStoreService = game:GetService("DataStoreService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemModule = require(game.ServerScriptService.Modules.ItemModule)
 local XPModule = require(game.ServerScriptService.Modules.XPModule)
 local PlayerDataSetupModule = require(game.ServerScriptService.Modules.PlayerDataSetupModule)
 local BoostModule = require(game.ServerScriptService.Modules.BoostModule)
@@ -711,7 +710,6 @@ Players.PlayerAdded:Connect(function(player)
 	
 	PlayerDataSetupModule.setup(player)
 	XPModule.setupPlayer(player)
-	ItemModule.setupItems(player)
 	
 	setupPotions(player)
 	setupPotionTimers(player)
@@ -748,7 +746,6 @@ Players.PlayerAdded:Connect(function(player)
 	migrateLegacyPetNames(player)
 	PlayerDataSetupModule.setup(player)
 	XPModule.setupPlayer(player)
-	ItemModule.setupItems(player)
 	
 	setupPotions(player)
 	setupPotionTimers(player)
