@@ -203,10 +203,14 @@ local function lockPlayerSave(player)
 		task.wait()
 	end
 	playerSaveLocks[userId] = true
+	
+	player:SetAttribute("ProfileSaveInProgress", true)
 end
 
 local function unlockPlayerSave(player)
 	playerSaveLocks[player.UserId] = nil
+	
+	player:SetAttribute("ProfileSaveInProgress", false)
 end
 
 local function savePlayerUnlocked(player)
@@ -609,7 +613,7 @@ grantPassPurchaseFunction.OnInvoke = function(player, passId)
 		local oldEquipped = equipped.Value
 		
 		registerUndo(function()
-			balance.Value = oldBalance
+			balance.Value += price
 			owned.Value = oldOwned
 			equipped.Value = oldEquipped
 		end)
@@ -658,8 +662,8 @@ grantSRPotionPurchaseFunction.OnInvoke = function(player, potionId, amount)
 		local oldAmount = potion.Value
 		
 		registerUndo(function()
-			balance.Value = oldBalance
-			potion.Value = oldAmount
+			balance.Value += price
+			potion.Value -= amount
 		end)
 		
 		balance.Value = oldBalance - price
