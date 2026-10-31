@@ -18,13 +18,6 @@ TrainerModule.Data = {
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
-		
-		EnergyMultiplier = 1,
-		MoneyMultiplier = 1,
-		PetLuckMultiplier = 1,
-		RacePowerMultiplier = 1,
-		AccelerationMultiplier = 1,
-		RaceXPMultiplier = 1,
 	},
 	
 	JoeTrainer = {
@@ -40,19 +33,10 @@ TrainerModule.Data = {
 		
 		UnlockType = "Currency",
 		Currency = "Rebirth",
-		Price = 100,
+		Price = 15,
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
-		
-		EnergyMultiplier = 1,
-		MoneyMultiplier = 1,
-		PetLuckMultiplier = 1,
-		
-		RacePowerMultiplier = 1.15,
-		AccelerationMultiplier = 1.15,
-		
-		RaceXPMultiplier = 1,
 	},
 	
 	MonikaTrainer = {
@@ -72,14 +56,6 @@ TrainerModule.Data = {
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
-		
-		EnergyMultiplier = 1,
-		MoneyMultiplier = 1,
-		PetLuckMultiplier = 1.20,
-		RacePowerMultiplier = 1,
-		AccelerationMultiplier = 1,
-		
-		RaceXPMultiplier = 1.10,
 	},
 	
 	LedyTrainer = {
@@ -95,17 +71,10 @@ TrainerModule.Data = {
 		
 		UnlockType = "Currency",
 		Currency = "Energy",
-		Price = 5000,
+		Price = 1000,
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
-		
-		EnergyMultiplier = 1.20,
-		MoneyMultiplier = 1,
-		PetLuckMultiplier = 1,
-		RacePowerMultiplier = 1,
-		AccelerationMultiplier = 1,
-		RaceXPMultiplier = 1,
 	},
 	
 	BellaTrainer = {
@@ -125,14 +94,41 @@ TrainerModule.Data = {
 		
 		MaxLevel = 25,
 		MaxEvolution = 10,
-		
-		EnergyMultiplier = 1,
-		MoneyMultiplier = 1.20,
-		PetLuckMultiplier = 1,
-		RacePowerMultiplier = 1,
-		AccelerationMultiplier = 1,
-		RaceXPMultiplier = 1,
 	},
+}
+
+TrainerModule.LevelBoost = {
+	LedyTrainer = {
+		{FromLevel = 1, ToLevel = 5, StartEnergy = 20, EndEnergy = 24,},
+		{FromLevel = 6, ToLevel = 10, StartEnergy = 26, EndEnergy = 32,},
+		{FromLevel = 11, ToLevel = 15, StartEnergy = 34, EndEnergy = 42,},
+		{FromLevel = 16, ToLevel = 20, StartEnergy = 44, EndEnergy = 52,},
+		{FromLevel = 21, ToLevel = 25, StartEnergy = 54, EndEnergy = 62,},
+	},
+	
+	BellaTrainer = {
+		{FromLevel = 1, ToLevel = 5, StartMoney = 20, EndMode = 24,},
+		{FromLevel = 6, ToLevel = 10, StartMoney = 26, EndMode = 32,},
+		{FromLevel = 11, ToLevel = 15, StartMoney = 34, EndMode = 42,},
+		{FromLevel = 16, ToLevel = 20, StartMoney = 44, EndMode = 52,},
+		{FromLevel = 21, ToLevel = 25, StartMoney = 54, EndMode = 62,},
+	},
+	
+	JoeTrainer = {
+		{FromLevel = 1, ToLevel = 5, StartRacePower = 15, EndRacePower = 18, StartAcceleration = 15, EndAcceleration = 18,},
+		{FromLevel = 6, ToLevel = 10, StartRacePower = 19, EndRacePower = 23, StartAcceleration = 19, EndAcceleration = 23,},
+		{FromLevel = 11, ToLevel = 15, StartRacePower = 24.5, EndRacePower = 30.5, StartAcceleration = 24.5, EndAcceleration = 30.5,},
+		{FromLevel = 16, ToLevel = 20, StartRacePower = 32, EndRacePower = 38, StartAcceleration = 32, EndAcceleration = 38,},
+		{FromLevel = 21, ToLevel = 25, StartRacePower = 39.5, EndRacePower = 45.5, StartAcceleration = 39.5, EndAcceleration = 45.5,},
+	},
+	
+	MonikaTrainer = {
+		{FromLevel = 1, ToLevel = 5, StartPetLuck = 20, EndPetLuck = 24, StartRaceXP = 15, EndRaceXP = 18},
+		{FromLevel = 6, ToLevel = 10, StartPetLuck = 26, EndPetLuck = 32, StartRaceXP = 19, EndRaceXP = 23,},
+		{FromLevel = 11, ToLevel = 15, StartPetLuck = 34, EndPetLuck = 42, StartRaceXP = 24.5, EndRaceXP = 30.5,},
+		{FromLevel = 16, ToLevel = 20, StartPetLuck = 44, EndPetLuck = 52, StartRaceXP = 32, EndRaceXP = 38,},
+		{FromLevel = 21, ToLevel = 25, StartPetLuck = 54, EndPetLuck = 62, StartRaceXP = 39.5, EndRaceXP = 45.5,},
+	}
 }
 
 TrainerModule.Stage = {
@@ -172,11 +168,11 @@ TrainerModule.LevelCostRanges = {
 		FromLevel = 1,
 		ToLevel = 5,
 
-		StartPrice = 50,
-		EndPrice = 250,
+		StartPrice = 15,
+		EndPrice = 75,
 
-		StartXP = 5,
-		EndXP = 25,
+		StartXP = 2,
+		EndXP = 10,
 
 		Curve = 1,
 		RoundTo = 1,
@@ -186,56 +182,56 @@ TrainerModule.LevelCostRanges = {
 		FromLevel = 6,
 		ToLevel = 10,
 
-		StartPrice = 300,
-		EndPrice = 600,
+		StartPrice = 100,
+		EndPrice = 220,
 
-		StartXP = 30,
-		EndXP = 60,
+		StartXP = 12,
+		EndXP = 28,
 
-		Curve = 1.15,
-		RoundTo = 5,
+		Curve = 1,
+		RoundTo = 1,
 	},
 
 	{
 		FromLevel = 11,
 		ToLevel = 15,
 
-		StartPrice = 800,
-		EndPrice = 1600,
+		StartPrice = 280,
+		EndPrice = 560,
 
-		StartXP = 100,
-		EndXP = 175,
+		StartXP = 36,
+		EndXP = 68,
 
-		Curve = 1.2,
-		RoundTo = 5,
+		Curve = 1,
+		RoundTo = 1,
 	},
 
 	{
 		FromLevel = 16,
 		ToLevel = 20,
 
-		StartPrice = 2000,
-		EndPrice = 4500,
+		StartPrice = 700,
+		EndPrice = 1100,
 
-		StartXP = 200,
-		EndXP = 350,
+		StartXP = 80,
+		EndXP = 120,
 
-		Curve = 1.25,
-		RoundTo = 10,
+		Curve = 1,
+		RoundTo = 1,
 	},
 
 	{
 		FromLevel = 21,
 		ToLevel = 24,
 
-		StartPrice = 5000,
-		EndPrice = 7500,
+		StartPrice = 1300,
+		EndPrice = 1900,
 
-		StartXP = 400,
-		EndXP = 750,
+		StartXP = 140,
+		EndXP = 200,
 
-		Curve = 1.3,
-		RoundTo = 50,
+		Curve = 1,
+		RoundTo = 1,
 	},
 }
 
@@ -288,295 +284,103 @@ TrainerModule.ProgressValues = {
 	
 	JoeTrainer = { 
 		Rebirth = "IntValue",
-		RaceTouch = "IntValue",
+		RaceTouch = "NumberValue",
 	},
 }
 
 TrainerModule.StageRequirements = {
 	LedyTrainer = {
 		[1] = {
-			{ 
-				Type = "Level",
-				Need = 5,
-			},
-			{
-				Type = "Energy",
-				Need = 1000,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 300,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 5,},
+			{Type = "Energy", Need = 500, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 90, ResetOnRankUp = true,},
 		},
 		
 		[2] = {
-			{ 
-				Type = "Level",
-				Need = 10,
-			},
-			{ 
-				Type = "Energy",
-				Need = 5000,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 500,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 10,},
+			{Type = "Energy", Need = 2500, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 150, ResetOnRankUp = true,},
 		},
 		
 		[3] = {
-			{
-				Type = "Level",
-				Need = 15,
-			},
-			{
-				Type = "Energy",
-				Need = 15000,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 900,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 15,},
+			{Type = "Energy", Need = 10000, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 240, ResetOnRankUp = true,},
 		},
 		
 		[4] = {
-			{
-				Type = "Level",
-				Need = 20,
-			},
-			{
-				Type = "Energy",
-				Need = 25000,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 1500,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 20,},
+			{Type = "Energy", Need = 30000, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 360, ResetOnRankUp = true,},
 		},
 	},
 	
 	BellaTrainer = {
 		[1] = {
-			{
-				Type = "Level",
-				Need = 5,
-			},
-			{
-				Type = "Money",
-				Need = 100,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 300,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 5,},
+			{Type = "Money", Need = 250, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 60, ResetOnRankUp = true,},
 		},
 		[2] = {
-			{
-				Type = "Level",
-				Need = 10,
-			},
-			{
-				Type = "Money",
-				Need = 750,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 500,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 10,},
+			{Type = "Money", Need = 1000, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 120, ResetOnRankUp = true,},
 		},
 		[3] = {
-			{ 
-				Type = "Level",
-				Need = 15,
-			},
-			{
-				Type = "Money",
-				Need = 1500,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 900,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 15,},
+			{Type = "Money", Need = 3500, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 180, ResetOnRankUp = true,},
 		},
 		[4] = {
-			{
-				Type = "Level",
-				Need = 20,
-			},
-			{
-				Type = "Money",
-				Need = 2500,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "TrainerTreadmillTime",
-				Need = 1500,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 20,},
+			{Type = "Money", Need = 9000, Spend = true, ResetOnRankUp = true,},
+			{Type = "TrainerTreadmillTime", Need = 240, ResetOnRankUp = true,},
 		},
 	},
 	
 	MonikaTrainer = {
 		[1] = {
-			{
-				Type = "Level",
-				Need = 5,
-			},
-			{
-				Type = "EggHatched",
-				Need = 20,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "PetRarity",
-				Rarity = "Rare",
-				Need = 10,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 5,},
+			{Type = "EggHatched", Need = 15, ResetOnRankUp = true,},
+			{Type = "PetRarity", Rarity = "Rare", Need = 3, ResetOnRankUp = true,},
 		},
 		[2] = {
-			{
-				Type = "Level",
-				Need = 10,
-			},
-			{
-				Type = "EggHatched",
-				Need = 50,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "PetRarity",
-				Rarity = "Epic",
-				Need = 10,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 10,},
+			{Type = "EggHatched", Need = 25, ResetOnRankUp = true,},
+			{Type = "PetRarity", Rarity = "Epic", Need = 3, ResetOnRankUp = true,},
 		},
 		[3] = {
-			{
-				Type = "Level",
-				Need = 15,
-			},
-			{
-				Type = "EggHatched",
-				Need = 75,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "PetRarity",
-				Rarity = "Epic",
-				Need = 15,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 15,},
+			{Type = "EggHatched", Need = 40, ResetOnRankUp = true,},
+			{Type = "PetRarity", Rarity = "Epic", Need = 5, ResetOnRankUp = true,},
 		},
 		[4] = {
-			{
-				Type = "Level",
-				Need = 20,
-			},
-			{
-				Type = "EggHatched",
-				Need = 150,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "PetRarity",
-				Rarity = "Legendary",
-				Need = 10,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 20,},
+			{Type = "EggHatched", Need = 60, ResetOnRankUp = true,},
+			{Type = "PetRarity", Rarity = "Legendary", Need = 2,ResetOnRankUp = true,},
 		},
 	},
 	
 	JoeTrainer = {
 		[1] = {
-			{
-				Type = "Level",
-				Need = 5,
-			},
-			{
-				Type = "Rebirth",
-				Need = 100,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "RaceTouch",
-				Need = 10,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 5,},
+			{Type = "Rebirth", Need = 10, Spend = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 15, Spend = true, ResetOnRankUp = true,},
 		},
 		[2] = {
-			{
-				Type = "Level",
-				Need = 10,
-			},
-			{
-				Type = "Rebirth",
-				Need = 250,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "RaceTouch",
-				Need = 25,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 10,},
+			{Type = "Rebirth", Need = 25, Spend = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 40, Spen = true, ResetOnRankUp = true,},
 		},	
 		[3] = {
-			{
-				Type = "Level",
-				Need = 15,
-			},
-			{
-				Type = "Rebirth",
-				Need = 750,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "RaceTouch",
-				Need = 50,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 15,},
+			{Type = "Rebirth", Need = 50, Spend = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 100, Spen = true, ResetOnRankUp = true,},
 		},
 		[4] = {
-			{
-				Type = "Level",
-				Need = 20,
-			},
-			{
-				Type = "Rebirth",
-				Need = 1500,
-				Spend = true,
-				ResetOnRankUp = true,
-			},
-			{
-				Type = "RaceTouch",
-				Need = 100,
-				ResetOnRankUp = true,
-			},
+			{Type = "Level", Need = 20,},
+			{Type = "Rebirth", Need = 90, Spend = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 250, Spent = true, ResetOnRankUp = true,},
 		},
 	},
 }
@@ -930,41 +734,91 @@ function TrainerModule.isTrainerEquipped(player, trainerName)
 	return TrainerModule.getEquippedTrainerName(player) == trainerName
 end
 
+local TRAINER_BOOST_STATS = {
+	"Energy",
+	"Money",
+	"PetLuck",
+	"RacePower",
+	"Acceleration",
+	"RaceXP",
+}
+
+local TRAINER_MULTIPLIER_STATS = {
+	EnergyMultiplier = "Energy",
+	MoneyMultiplier = "Money",
+	PetLuckMultiplier = "PetLuck",
+	RacePowerMultiplier = "RacePower",
+	AccelerationMultiplier = "Acceleration",
+	RaceXPMultiplier = "RaceXP",
+}
+
+function TrainerModule.getBaseBoost(trainerName, level)
+	local boosts = {}
+	
+	for _, statName in ipairs(TRAINER_BOOST_STATS) do
+		boosts[statName] = 0
+	end
+	
+	local data = TrainerModule.Data[trainerName]
+	local ranges = TrainerModule.LevelBoost[trainerName]
+	
+	if not data or not ranges then return boosts end
+	
+	level = math.clamp(math.floor(tonumber(level) or 1), 1, data.MaxLevel or 25)
+	
+	for _, range in ipairs(ranges) do
+		if level >= range.FromLevel and level <= range.ToLevel then
+			local span = range.ToLevel - range.FromLevel
+			local alpha = 0
+			
+			if span > 0 then
+				alpha = (level - range.FromLevel) / span 
+			end
+			
+			for _, statName in ipairs(TRAINER_BOOST_STATS) do
+				local startValue = tonumber(range["Start" .. statName]) or 0
+				local endValue = tonumber(range["End" .. statName]) or startValue
+				
+				boosts[statName] = startValue + (endValue - startValue) * alpha
+			end
+			return boosts
+		end
+	end
+	return boosts
+end
+
+function TrainerModule.getBoost(trainerName, level, stage)
+	local boosts = TrainerModule.getBaseBoost(trainerName, level)
+	
+	stage = math.clamp(math.floor(tonumber(stage) or 1), 1, #TrainerModule.Stage)
+	
+	local stageMultiplier = TrainerModule.getStageMultiplier(stage)
+	
+	for _, statName in ipairs(TRAINER_BOOST_STATS) do
+		boosts[statName] = boosts[statName] * stageMultiplier
+	end
+	return boosts
+end
+
+function TrainerModule.getTrainerMultiplier(player, trainerName, multiplierName)
+	local statName = TRAINER_MULTIPLIER_STATS[multiplierName]
+	
+	if not statName or not TrainerModule.Data[trainerName] then return 1 end
+	
+	local folder = TrainerModule.getTrainerPlayerFolder(player, trainerName)
+	local levelValue = folder and folder:FindFirstChild("Level")
+	local stageValue = folder and folder:FindFirstChild("Stage")
+	
+	local boosts = TrainerModule.getBoost(trainerName, levelValue and levelValue.Value or 1, stageValue and stageValue.Value or 1)
+	
+	return 1 + (boosts[statName] or 0) / 100
+end
+
 local function getMultiplier(player, multiplierName)
 	local trainerName = TrainerModule.getEquippedTrainerName(player)
+	if not trainerName then return 1 end
 	
-	if not trainerName then
-		return 1
-	end
-
-	local data = TrainerModule.Data[trainerName]
-	
-	if not data then
-		return 1
-	end
-
-	local baseMultiplier = data[multiplierName] or 1
-	
-	local trainerDataFolder = TrainerModule.getTrainerPlayerFolder( 
-		player,
-		trainerName
-	)
-
-	local stageValue = trainerDataFolder and trainerDataFolder:FindFirstChild("Stage")
-	
-	local levelValue = trainerDataFolder and trainerDataFolder:FindFirstChild("Level")
-	
-	local stage = stageValue and stageValue.Value or 1
-	local level = levelValue and levelValue.Value or 1
-	
-	local stagePower = TrainerModule.getStageMultiplier(stage)
-	local levelPower = 1 + ((level - 1) * 0.02)
-
-	return 1 + (
-		(baseMultiplier - 1)
-		* stagePower 
-		* levelPower
-	)
+	return TrainerModule.getTrainerMultiplier(player, trainerName, multiplierName)
 end
 
 function TrainerModule.getEnergyMultiplier(player)
@@ -989,41 +843,6 @@ end
 
 function TrainerModule.getRaceXPMultiplier(player)
 	return getMultiplier(player, "RaceXPMultiplier")
-end
-
-function TrainerModule.getTrainerMultiplier( 
-	player, 
-	trainerName,
-	multiplierName
-)
-	local data = TrainerModule.Data[trainerName]
-	
-	if not data then 
-		return 1
-	end
-	
-	local baseMultiplier = data[multiplierName] or 1
-	
-	local trainerDataFolder = TrainerModule.getTrainerPlayerFolder( 
-		player,
-		trainerName
-	)
-	
-	local stageValue = trainerDataFolder and trainerDataFolder:FindFirstChild("Stage")
-	
-	local levelValue = trainerDataFolder and trainerDataFolder:FindFirstChild("Level")
-	
-	local stage = stageValue and stageValue.Value or 1
-	local level = levelValue and levelValue.Value or 1
-	
-	local stagePower = TrainerModule.getStageMultiplier(stage)
-	local levelPower = 1 + ((level - 1) * 0.02)
-	
-	return 1 + (
-		(baseMultiplier - 1)
-		* stagePower 
-		* levelPower
-	)
 end
 
 function TrainerModule.multiplierToPercent(multiplier)
