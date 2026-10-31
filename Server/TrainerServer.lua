@@ -95,6 +95,8 @@ local function runWithPlayerLock(
 	player,
 	callback
 )
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if lockTable[player] then
 		return
 	end
