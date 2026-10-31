@@ -310,6 +310,27 @@ local function createHatchResult(player, eggName, luckMultiplier)
 	}
 end
 
+local function addTrainerHatchProgress(player, results)
+	local trainerName = TrainerModule.getEquippedTrainerName(player)
+	
+	if trainerName ~= "MonikaTrainer" then return end 
+	
+	local requirement = TrainerModule.getCurrentRequirement(player, trainerName, "PetRarity")
+	
+	for _, result in ipairs(results) do
+		TrainerModule.addEquippedProgress(player, "EggHatched", 1)
+		
+		if requirement then
+			local actualOrder = PetModule.GetRarityOrder(result.Rarity)
+			local requiredOrder = PetModule.GetRarityOrder(requirement.Rarity)
+			
+			if requiredOrder > 0 and actualOrder >= requiredOrder then
+				TrainerModule.addEquippedTrainerProgress(player, "PetRarity", 1)
+			end
+		end
+	end
+end
+
 --// Hatch request
 local function hatchEgg(player, eggName, requestedAmount)
 	if player:GetAttribute("DataReady") ~= true then
@@ -416,6 +437,8 @@ local function hatchEgg(player, eggName, requestedAmount)
 				luckOpenings.Value += 1
 			end
 		end
+		
+		addTrainerHatchProgress(player, results)
 		
 		return {
 			Success = true,
