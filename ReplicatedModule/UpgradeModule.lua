@@ -151,7 +151,7 @@ UpgradeModule.Upgrades = {
 		Currency = "Gems",
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
-		EffectType = "IntegerBonus",
+		EffectType = "FlatBonus",
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
