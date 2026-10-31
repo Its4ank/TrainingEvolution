@@ -107,6 +107,8 @@ end
 --// Main Rebirth function
 
 local function doRebirth(player, amount)
+	if player:GetAttribute("DataReady") ~= true then return false end
+	
 	if typeof(amount) ~= "number" then
 		return false
 	end
