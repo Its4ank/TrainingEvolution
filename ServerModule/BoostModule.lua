@@ -55,9 +55,6 @@ local serverPotionBoosts = {
 	},
 }
 
-local MAX_TIME_PERCENT = 100
-local TIME_BOOST_PER_MINUTE = 1
-
 --// Top Boost
 local TOP_BOOST = {
 	[1] = 1.30,
