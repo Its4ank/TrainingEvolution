@@ -12,15 +12,15 @@ TransportModule.DEFAULT_TRANSPORT = "Feet"
 --// STAGES
 TransportModule.Stages = {
 	[1] = {Name = "Stage 1", MinLevel = 0, MaxLevel = 5, BoostMultiplier = 1.00,
-	    Icons = {Default = "", Selected = "",},},
+		Icons = {Default = "rbxassetid://87139458757578", Selected = "rbxassetid://87139458757578",},},
 	[2] = {Name = "Stage 2", MinLevel = 5, MaxLevel = 10, BoostMultiplier = 1.10,
-		Icons = {Default = "", Selected = "",},},
+		Icons = {Default = "rbxassetid://110310920691251", Selected = "rbxassetid://110310920691251",},},
 	[3] = {Name = "Stage 3", MinLevel = 10, MaxLevel = 15, BoostMultiplier = 1.20,
-		Icons = {Default = "", Selected = "",},},
+		Icons = {Default = "rbxassetid://88623548542839", Selected = "rbxassetid://88623548542839",},},
 	[4] = {Name = "Stage 4", MinLevel = 15, MaxLevel = 20, BoostMultiplier = 1.30,
-		Icons = {Default = "", Selected = "",},},
+		Icons = {Default = "rbxassetid://109917341068577", Selected = "rbxassetid://109917341068577",},},
 	[5] = {Name = "Stage 5", MinLevel = 20, MaxLevel = 25, BoostMultiplier = 1.40,
-		Icons = {Default = "", Selected = "",},},
+		Icons = {Default = "rbxassetid://78682759728641", Selected = "rbxassetid://78682759728641",},},
 }
 
 --// TRANSPORT CONFIG
@@ -30,8 +30,8 @@ TransportModule.Locations = {
 		Name = "Stone Age",
 		
 		Icons = {
-			Default = "",
-			Selected = "",
+			Default = "rbxassetid://124941711393996",
+			Selected = "rbxassetid://124941711393996",
 		},
 		
 		TransportOrder = {
@@ -63,59 +63,59 @@ TransportModule.Locations = {
 				},
 				
 				Icons = {
-					Default = "",
-					Selected = "",
-					Locked = "",
+					Default = "rbxassetid://70809158914076",
+					Selected = "rbxassetid://79799819605066",
+					Locked = "rbxassetid://70809158914076",
 				},
 				
 				PurchasePrice = {},
 				
 				LevelPrice = {
-					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 50, RaceTouch = 5, XP = 25,}, EndPrice = {Money = 100, RaceTouch = 20, XP = 75,},},
-					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 100, RaceTouch = 20, XP = 100}, EndPrice = {Money = 200, RaceTouch = 40, XP = 200},},
-					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 200, RaceTouch = 40, XP = 200}, EndPrice = {Money = 300, RaceTouch = 60, XP = 300},},
-					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 300, RaceTouch = 60, XP = 300}, EndPrice = {Money = 400, RaceTouch = 80, XP = 400},},
-					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 400, RaceTouch = 80, XP = 400}, EndPrice = {Money = 500, RaceTouch = 100, XP = 500},},
+					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 20, RaceTouch = 1, XP = 3,}, EndPrice = {Money = 60, RaceTouch = 5, XP = 7,},},
+					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 75, RaceTouch = 6, XP = 10}, EndPrice = {Money = 135, RaceTouch = 10, XP = 18},},
+					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 160, RaceTouch = 12, XP = 24}, EndPrice = {Money = 280, RaceTouch = 20, XP = 40},},
+					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 320, RaceTouch = 24, XP = 45}, EndPrice = {Money = 500, RaceTouch = 36, XP = 65},},
+					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 560, RaceTouch = 40, XP = 76}, EndPrice = {Money = 800, RaceTouch = 56, XP = 108},},
 				},
 				
 				LevelBoost = {
-					{FromLevel = 0, ToLevel = 5, StartRacePower = 1, EndRacePower = 5, StartAcceleration = 2, EndAcceleration = 10,},
-					{FromLevel = 5, ToLevel = 10, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 10, EndAcceleration = 20,},
-					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 20, StartAcceleration = 20, EndAcceleration = 30,},
-					{FromLevel = 15, ToLevel = 20, StartRacePower = 20, EndRacePower = 30, StartAcceleration = 30, EndAcceleration = 40,},
-					{FromLevel = 20, ToLevel = 25, StartRacePower = 30, EndRacePower = 40, StartAcceleration = 40, EndAcceleration = 50,},	
+					{FromLevel = 0, ToLevel = 5, StartRacePower = 1, EndRacePower = 5, StartAcceleration = 2, EndAcceleration = 8,},
+					{FromLevel = 5, ToLevel = 10, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 8, EndAcceleration = 16,},
+					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 15, StartAcceleration = 16, EndAcceleration = 24,},
+					{FromLevel = 15, ToLevel = 20, StartRacePower = 16, EndRacePower = 23, StartAcceleration = 24, EndAcceleration = 32,},
+					{FromLevel = 20, ToLevel = 25, StartRacePower = 23, EndRacePower = 30, StartAcceleration = 32, EndAcceleration = 40,},	
 				},
 
 				StageUp = {
 					[1] = {RequiredLevel = 5,
 						Cost = {
-							Money = 500,
-							RaceTouch = 50,
+							Money = 100,
+							RaceTouch = 10,
 							Distance = 1000,
 						},
 					},
 
 					[2] = {RequiredLevel = 10,
 						Cost = { 
-							Money = 1000,
-							RaceTouch = 100,
+							Money = 250,
+							RaceTouch = 20,
 							Distance = 2000,
 						},
 					},
 
 					[3] = {RequiredLevel = 15,
 						Cost = {
-							Money = 1500,
-							RaceTouch = 150,
-							Distance = 3000,
+							Money = 500,
+							RaceTouch = 40,
+							Distance = 3500,
 						},
 					},
 
 					[4] = {RequiredLevel = 20,
 						Cost = {
-							Money = 2000,
-							RaceTouch = 200,
-							Distance = 4000,
+							Money = 900,
+							RaceTouch = 70,
+							Distance = 5500,
 						},
 					},
 				},
@@ -149,59 +149,59 @@ TransportModule.Locations = {
 				},
 
 				Icons = {
-					Default = "",
-					Selected = "",
-					Locked = "",
+					Default = "rbxassetid://132708099839732",
+					Selected = "rbxassetid://98481251877943",
+					Locked = "rbxassetid://132708099839732",
 				},
 
-				PurchasePrice = {Money = 5000, RaceTouch = 500,},
+				PurchasePrice = {Money = 3000, RaceTouch = 150,},
 
 				LevelPrice = {
-					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 500, RaceTouch = 50, XP = 50,}, EndPrice = {Money = 1000, RaceTouch = 100, XP = 100,},},
-					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 1000, RaceTouch = 100, XP = 100,}, EndPrice = {Money = 2000, RaceTouch = 200, XP = 200,},},
-					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 2000, RaceTouch = 200, XP = 200,}, EndPrice = {Money = 3000, RaceTouch = 300, XP = 300,},},
-					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 3000, RaceTouch = 300, XP = 300,}, EndPrice = {Money = 4000, RaceTouch = 400, XP = 400,},},
-					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 4000, RaceTouch = 400, XP = 400,}, EndPrice = {Money = 5000, RaceTouch = 500, XP = 500,},},
+					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 200, RaceTouch = 16, XP = 20,}, EndPrice = {Money = 360, RaceTouch = 28, XP = 36,},},
+					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 420, RaceTouch = 32, XP = 40,}, EndPrice = {Money = 660, RaceTouch =48, XP = 64,},},
+					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 750, RaceTouch = 55, XP = 75,}, EndPrice = {Money = 1150, RaceTouch = 75, XP = 115,},},
+					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 1300, RaceTouch = 84, XP = 130,}, EndPrice = {Money = 1900, RaceTouch = 116, XP = 190,},},
+					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 2100, RaceTouch = 130, XP = 210,}, EndPrice = {Money = 2900, RaceTouch = 170, XP = 290,},},
 				},
 
 				LevelBoost = {
-					{FromLevel = 0, ToLevel = 5, StartRacePower = 1, EndRacePower = 5, StartAcceleration = 2, EndAcceleration = 10,},
-					{FromLevel = 5, ToLevel = 10, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 10, EndAcceleration = 20,},
-					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 15, StartAcceleration = 20, EndAcceleration = 30,},
-					{FromLevel = 15, ToLevel = 20, StartRacePower = 15, EndRacePower = 20, StartAcceleration = 30, EndAcceleration = 40,},
-					{FromLevel = 20, ToLevel = 25, StartRacePower = 20, EndRacePower = 25, StartAcceleration = 40, EndAcceleration = 50,},
+					{FromLevel = 0, ToLevel = 5, StartRacePower = 60, EndRacePower = 64, StartAcceleration = 75, EndAcceleration = 80,},
+					{FromLevel = 5, ToLevel = 10, StartRacePower = 64, EndRacePower = 68, StartAcceleration = 80, EndAcceleration = 85,},
+					{FromLevel = 10, ToLevel = 15, StartRacePower = 68, EndRacePower = 72, StartAcceleration = 85, EndAcceleration = 90,},
+					{FromLevel = 15, ToLevel = 20, StartRacePower = 72, EndRacePower = 76, StartAcceleration = 90, EndAcceleration = 95,},
+					{FromLevel = 20, ToLevel = 25, StartRacePower = 76, EndRacePower = 80, StartAcceleration = 95, EndAcceleration = 100,},
 				},
 
 				StageUp = {
 					[1] = {RequiredLevel = 5,
 						Cost = {
-							Money = 500,
+							Money = 600,
 							RaceTouch = 50,
-							Distance = 1000,
+							Distance = 3000,
 						},
 					},
 
 					[2] = {RequiredLevel = 10,
 						Cost = { 
-							Money = 1000,
-							RaceTouch = 100,
-							Distance = 2000,
+							Money = 1200,
+							RaceTouch = 90,
+							Distance = 5000,
 						},
 					},
 
 					[3] = {RequiredLevel = 15,
 						Cost = {
-							Money = 1500,
+							Money = 2200,
 							RaceTouch = 150,
-							Distance = 3000,
+							Distance = 8000,
 						},
 					},
 
 					[4] = {RequiredLevel = 20,
 						Cost = {
-							Money = 2000,
-							RaceTouch = 200,
-							Distance = 4000,
+							Money = 3600,
+							RaceTouch = 230,
+							Distance = 12000,
 						},
 					},
 				},
@@ -235,59 +235,59 @@ TransportModule.Locations = {
 				},
 
 				Icons = {
-					Default = "",
-					Selected = "",
-					Locked = "",
+					Default = "rbxassetid://113086680080388",
+					Selected = "rbxassetid://82741222960655",
+					Locked = "rbxassetid://113086680080388",
 				},
 
-				PurchasePrice = {Money = 25000, RaceTouch = 2500,},
+				PurchasePrice = {Money = 15000, RaceTouch = 700,},
 
 				LevelPrice = {
-					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 500, RaceTouch = 50, XP = 250,}, EndPrice = {Money = 1000, RaceTouch = 100, XP = 500},},
-					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 1000, RaceTouch = 100, XP = 500,}, EndPrice = {Money = 2000, RaceTouch = 200, XP = 1000},},
-					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 2000, RaceTouch = 200, XP = 1000,}, EndPrice = {Money = 3000, RaceTouch = 300, XP = 1500},},
-					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 3000, RaceTouch = 300, XP = 1500,}, EndPrice = {Money = 4000, RaceTouch = 400, XP = 2000},},
-					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 4000, RaceTouch = 400, XP = 2000,}, EndPrice = {Money = 5000, RaceTouch = 500, XP = 2500},},
+					{FromLevel = 1, ToLevel = 5, StartPrice = {Money = 900, RaceTouch = 60, XP = 80,}, EndPrice = {Money = 1500, RaceTouch = 100, XP = 140},},
+					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 1700, RaceTouch = 115, XP = 160,}, EndPrice = {Money = 2500, RaceTouch = 155, XP = 240},},
+					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 2800, RaceTouch = 175, XP = 270,}, EndPrice = {Money = 4000, RaceTouch = 235, XP = 390},},
+					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 4400, RaceTouch = 260, XP = 430,}, EndPrice = {Money = 6000, RaceTouch = 340, XP = 590},},
+					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 6600, RaceTouch = 380, XP = 650,}, EndPrice = {Money = 8600, RaceTouch = 480, XP = 8500},},
 				},
 
 				LevelBoost = {
-					{FromLevel = 0, ToLevel = 5, StartRacePower = 1, EndRacePower = 5, StartAcceleration = 2, EndAcceleration = 10,},
-					{FromLevel = 5, ToLevel = 10, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 10, EndAcceleration = 20,},
-					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 15, StartAcceleration = 20, EndAcceleration = 30,},
-					{FromLevel = 15, ToLevel = 20, StartRacePower = 15, EndRacePower = 20, StartAcceleration = 30, EndAcceleration = 40,},
-					{FromLevel = 20, ToLevel = 25, StartRacePower = 20, EndRacePower = 25, StartAcceleration = 40, EndAcceleration = 50,},
+					{FromLevel = 0, ToLevel = 5, StartRacePower = 135, EndRacePower = 141, StartAcceleration = 165, EndAcceleration = 174,},
+					{FromLevel = 5, ToLevel = 10, StartRacePower = 141, EndRacePower = 147, StartAcceleration = 174, EndAcceleration = 183,},
+					{FromLevel = 10, ToLevel = 15, StartRacePower = 147, EndRacePower = 153, StartAcceleration = 183, EndAcceleration = 192,},
+					{FromLevel = 15, ToLevel = 20, StartRacePower = 153, EndRacePower = 159, StartAcceleration = 192, EndAcceleration = 201,},
+					{FromLevel = 20, ToLevel = 25, StartRacePower = 159, EndRacePower = 165, StartAcceleration = 201, EndAcceleration = 210,},
 				},
 
 				StageUp = {
 					[1] = {RequiredLevel = 5,
 						Cost = {
-							Money = 500,
-							RaceTouch = 50,
-							Distance = 1000,
+							Money = 2500,
+							RaceTouch = 180,
+							Distance = 7000,
 						},
 					},
 
 					[2] = {RequiredLevel = 10,
 						Cost = { 
-							Money = 1000,
-							RaceTouch = 100,
-							Distance = 2000,
+							Money = 4500,
+							RaceTouch = 300,
+							Distance = 11000,
 						},
 					},
 
 					[3] = {RequiredLevel = 15,
 						Cost = {
-							Money = 1500,
-							RaceTouch = 150,
-							Distance = 3000,
+							Money = 7500,
+							RaceTouch = 480,
+							Distance = 17000,
 						},
 					},
 
 					[4] = {RequiredLevel = 20,
 						Cost = {
-							Money = 2000,
-							RaceTouch = 200,
-							Distance = 4000,
+							Money = 12000,
+							RaceTouch = 720,
+							Distance = 25000,
 						},
 					},
 				},
