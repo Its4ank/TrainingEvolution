@@ -674,23 +674,10 @@ local previewCache = {}
 local previewRequestsInProgress = false
 
 local function getFallbackRewardPreview(rewardIndex, rewardLevel)
-	local success, reward = pcall( 
-		RaceModule.calculateFinalReward, rewardIndex, stageValue.Value, rewardLevel, {}
-	)
+	local cappedLevel = math.min(rewardLevel, RaceModule.GetRewardLevelUp(stageValue.Value))
 	
-	if success and reward then return reward end
-	
-	local baseReward = RaceModule.GetBaseReward(rewardIndex) or {}
-	local multiplier = RaceModule.GetStageRewardMultiplier(stageValue.Value) 
-		* RaceModule.GetRewardBonus(rewardLevel)
-	
-	return {
-		Money = math.floor((tonumber(baseReward.Money) or 0) * multiplier),
-		Gems = math.floor((tonumber(baseReward.Gems) or 0) * multiplier),
-		XP = (tonumber(baseReward.XP) or 0) * multiplier,
-		RaceTouch = tonumber(baseReward.RaceTouch) or 1,
-		GemChance = RaceModule.Settings.BaseGemChance,
-	}
+	return RaceModule.calculateFinalReward(rewardIndex, stageValue.Value, cappedLevel, {}, roadLevelValue.Value)
+		or {Money = 0, Gems = 0, XP = 0, RaceTouch = 0, GemChance = 0,}
 end
 
 local function getRewardPreview(rewardIndex)
@@ -729,6 +716,7 @@ local function requestServerPreview()
 end
 
 local function clearRewardPreviewCache()
+	previewCache = {}
 	requestServerPreview()
 end
 
