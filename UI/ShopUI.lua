@@ -53,6 +53,7 @@ local equipPassEvent = shopEventFolder:WaitForChild("EquipPassEvent")
 local ScrollingFrame = shopRobuxFrame:WaitForChild("ScrollingFrame")
 local potionPassBox = ScrollingFrame:WaitForChild("PotionPassBox")
 local gamePassBox = ScrollingFrame:WaitForChild("GamePassBox")
+local gamePassBox2 = ScrollingFrame:WaitForChild("GamePassBox2")
 local srRobuxInfoLabel = shopRobuxFrame:WaitForChild("SrRobuxInfoLabel")
 
 local srValueShopButton = shopRobuxFrame:WaitForChild("SRValueShopButton")
@@ -88,7 +89,8 @@ local potionFrames = {
 local passFrames = {}
 for _, passId in ipairs(ShopModule.PassOrder) do
 	local passData = ShopModule.GetPass(passId)
-	passFrames[passId] = gamePassBox:FindFirstChild(passData.FrameName)
+	
+	passFrames[passId] = gamePassBox:FindFirstChild(passData.FrameName) or gamePassBox2:FindFirstChild(passData.FrameName)
 end
 
 local priceMode = "Robux"
@@ -285,16 +287,23 @@ for _, passId in ipairs(ShopModule.PassOrder) do
 	end
 end
 
-gamePassBox.ChildAdded:Connect(function(child)
+local function onPassFrameAdded(child)
 	for _, passId in ipairs(ShopModule.PassOrder) do
-		if child.Name == ShopModule.GetPass(passId).FrameName and not passFrames[passId] then
+		local passData = ShopModule.GetPass(passId)
+		
+		if child.Name == passData.FrameName and not passFrames[passId] then
 			passFrames[passId] = child
+			
 			connectPassFrame(passId, child)
 			updatePassSelection()
+			
 			break
 		end
 	end
-end)
+end
+
+gamePassBox.ChildAdded:Connect(onPassFrameAdded)
+gamePassBox2.ChildAdded:Connect(onPassFrameAdded)
 
 local function bindBoolValues(folder)
 	for _, value in ipairs(folder:GetChildren()) do
