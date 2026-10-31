@@ -130,16 +130,6 @@ local function buildHourlyData(player)
 			)
 
 		if rewardData then
-			if rewardData.Amount
-				> maxValueObj.Value
-			then
-				maxValueObj.Value =
-					rewardData.Amount
-			else
-				rewardData.Amount =
-					maxValueObj.Value
-			end
-
 			local unlockTime =
 				RewardModule
 				.GetHourlyUnlockTime(slot)
@@ -191,11 +181,15 @@ local function buildHourlyData(player)
 end
 
 local function sendHourlyUpdate(player)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	local data = buildHourlyData(player)
 	hourlyUpdateEvent:FireClient(player, data)
 end
 
 claimHourlyRewardEvent.OnServerEvent:Connect(function(player, slot)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if typeof(slot) ~= "number" then
 		return
 	end
@@ -253,12 +247,6 @@ claimHourlyRewardEvent.OnServerEvent:Connect(function(player, slot)
 		return
 	end
 
-	if rewardData.Amount > maxValueObj.Value then
-		maxValueObj.Value = rewardData.Amount
-	else
-		rewardData.Amount = maxValueObj.Value
-	end
-
 	local success, giveReason =
 		RewardModule.GiveReward(
 			player,
@@ -304,28 +292,34 @@ requestHourlyRewardUpdateEvent.OnServerEvent:Connect(function(player)
 end)
 
 local function onPlayerAdded(player)
-	task.wait(4)
+	while player.Parent and player:GetAttribute("DataReady") ~= true do task.wait(0.1) end
+	if not player.Parent then return end
 	
 	local rewardsFolder = setupHourlyRewards(player)
+	
 	checkHourlyReset(player)
 	sendHourlyUpdate(player)
 	
 	task.spawn(function()
-		while player.Parent do 
+		local previousTick = os.clock()
+		
+		while player.Parent do
 			task.wait(1)
 			
-			checkHourlyReset(player)
+			if not player.Parent then break end
 			
-			if rewardsFolder and rewardsFolder.Parent then
-				rewardsFolder.HourlySessionSeconds.Value += 1
+			local now = os.clock()
+			local elapsed = math.max(0, now - previousTick)
+			
+			previousTick = now
+			
+			if player:GetAttribute("DataReady") == true then
+				checkHourlyReset(player)
+				
+				rewardsFolder.HourlySessionSaeconds.Value += elapsed
+				
+				sendHourlyUpdate(player)
 			end
-		end
-	end)
-	
-	task.spawn(function()
-		while player.Parent do 
-			task.wait(1)
-			sendHourlyUpdate(player)
 		end
 	end)
 end
