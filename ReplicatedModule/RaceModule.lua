@@ -32,9 +32,9 @@ RaceModule.EnergySpeedPoints = {
 	{Energy = 300000, Speed = 72},
 	{Energy = 1000000, Speed = 90},
 	{Energy = 10000000, Speed = 120},
-	{Energy = 100000000, Speed = 180},
-	{Energy = 10000000000, Speed = 260},
-	{Energy = 10000000000000, Speed = 400},
+	{Energy = 1000000000, Speed = 180},
+	{Energy = 1000000000000, Speed = 260},
+	{Energy = 1000000000000000, Speed = 400},
 }
 
 RaceModule.WorldNames = {
@@ -196,7 +196,7 @@ RaceModule.Stages = {
 	[2] = {
 		Name = "STONE RACER",
 		
-		RewardMultiplier = 2.00,
+		RewardMultiplier = 1.60,
 
 		Distance = 400,
 
@@ -221,7 +221,7 @@ RaceModule.Stages = {
 	[3] = {
 		Name = "FLINT SPRINTER",
 		
-		RewardMultiplier = 3.00,
+		RewardMultiplier = 2.60,
 
 		Distance = 600,
 
@@ -246,7 +246,7 @@ RaceModule.Stages = {
 	[4] = {
 		Name = "PRIMAL CHAMPION",
 		
-		RewardMultiplier = 4.00,
+		RewardMultiplier = 4.20,
 
 		Distance = 800,
 
@@ -261,27 +261,27 @@ RaceModule.Stages = {
 
 		NextStageRequirements = {
 			Level = 5,
-			Money = 100000,
-			RaceTouch = 1000,
-			Rebirth = 500000,
-			Energy = 1000000000,
+			Money = 15000,
+			RaceTouch = 600,
+			Rebirth = 230,
+			Energy = 100000,
 		},
 	},
 	
 	[5] = {
 		Name = "ANCIENT LEGEND",
 		
-		RewardMultiplier = 5.00,
+		RewardMultiplier = 6.80,
 
 		Distance = 1000,
 
 		Icon = "rbxassetid://99609767140625",
 
 		LevelUpgradePrices = {
-			[2] = 15000,
-			[3] = 600,
-			[4] = 230,
-			[5] = 10000,
+			[2] = 9000,
+			[3] = 11500,
+			[4] = 14500,
+			[5] = 18000,
 		},
 		
 		NextStageRequirements = nil,
