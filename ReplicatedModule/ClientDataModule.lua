@@ -46,6 +46,10 @@ function ClientDataModule.GetEggHatched(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("EggHatched")
 end
 
+function ClientDataModule.GetMaxPetStorage(player)
+	return ClientDataModule.GetPlayerData(player):WaitForChild("MaxPetStorage")
+end
+
 function ClientDataModule.GetGamepasses(player)
 	return ClientDataModule.GetPlayerData(player):WaitForChild("Gamepasses")
 end
@@ -56,10 +60,6 @@ end
 
 function ClientDataModule.GetPotion(player, potionName)
 	return ClientDataModule.GetPotions(player):WaitForChild(potionName)
-end
-
-function ClientDataModule.GetItems(player)
-	return player:WaitForChild("Items")
 end
 
 function ClientDataModule.GetPets(player)
