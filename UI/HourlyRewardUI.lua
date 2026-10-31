@@ -61,7 +61,7 @@ local function showInfoText(text)
 end
 
 local function openMenu()
-	MenuManager.open("HourlyRewards")
+	MenuManager.openBlur("HourlyRewards")
 	requestHourlyRewardUpdateEvent:FireServer()
 end
 
@@ -165,6 +165,7 @@ end
 
 openHourlyButton.MouseButton1Click:Connect(function()
 	MenuManager.toggleBlur("HourlyRewards")
+	requestHourlyRewardUpdateEvent:FireServer()
 end)
 
 closeHourlyButton.MouseButton1Click:Connect(function()
