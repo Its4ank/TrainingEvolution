@@ -142,6 +142,8 @@ local function cleanupTraining(player)
 end
 
 local function startTraining(player, treadmillId, isAuto)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	treadmillId = tonumber(treadmillId)
 	if not treadmillId then 
 		fireResponse(player, "StartTraining", false, "BAD_TREADMILL_ID")
@@ -306,7 +308,7 @@ local function startTraining(player, treadmillId, isAuto)
 				
 				if energy then
 					local energyPerTick = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
-					local accumulated = energyPerTick + (data.EnergyRemaining or 0)
+					local accumulated = energyPerTick + (data.EnergyRemainder or 0)
 					local gainedEnergy = math.floor(accumulated + 1e-9)
 					
 					data.EnergyRemainder = math.max(0, accumulated - gainedEnergy)
@@ -447,6 +449,8 @@ local function getTreadmillInfo(player, treadmillId)
 end
 
 treadmillInfoFunction.OnServerInvoke = function(player, treadmillId)
+	if player:GetAttribute("DataReady") ~= true then return nil end
+	
 	return getTreadmillInfo(player, treadmillId)
 end
 
