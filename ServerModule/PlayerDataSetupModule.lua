@@ -105,7 +105,6 @@ function PlayerDataSetupModule.setup(player)
 	
 	--// Main folder
 	getOrCreateFolder(player, "Upgrades")
-	getOrCreateFolder(player, "Items")
 	getOrCreateFolder(player, "Pets")
 	getOrCreateFolder(player, "Trails")
 	getOrCreateFolder(player, "Trainer")
