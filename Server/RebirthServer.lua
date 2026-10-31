@@ -117,9 +117,7 @@ local function doRebirth(player, amount)
 		return false
 	end
 
-	local maxPerOperation =
-		RebirthModule.MaxRebirthPerOperation
-		or 1_000_000
+	local maxPerOperation = RebirthModule.MaxRebirthPerOperation or 1_000_000
 
 	if amount > maxPerOperation then
 		return false
@@ -139,12 +137,9 @@ local function doRebirth(player, amount)
 	if rebirth.Value < 0 then
 		return false
 	end
-
-	local cost =
-		RebirthModule.GetRebirthCost(
-			rebirth.Value,
-			amount
-		)
+	
+	local rebirthPerPurchase = ShopModule.GetRebirthAward(player, 1)
+	local cost = RebirthModule.GetRebirthCost(rebirth.Value, amount, rebirthPerPurchase)
 
 	if typeof(cost) ~= "number" then
 		return false
@@ -185,11 +180,7 @@ local function performMaxRebirth(player)
 		return false
 	end
 
-	local maxAmount =
-		RebirthModule.GetMaxRebirthAmount(
-			rebirth.Value,
-			energy.Value
-		)
+	local maxAmount = RebirthModule.GetMaxRebirthAmount(rebirth.Value, energy.Value, ShopModule.GetRebirthAward(player, 1))
 
 	if typeof(maxAmount) ~= "number" then
 		return false
@@ -344,11 +335,7 @@ task.spawn(function()
 					continue
 				end
 
-				local maxAmount =
-					RebirthModule.GetMaxRebirthAmount(
-						rebirth.Value,
-						energy.Value
-					)
+				local maxAmount = RebirthModule.GetMaxRebirthAmount(rebirth.Value, energy.Value, ShopModule.GetRebirthAward(player, 1))
 
 				if maxAmount > 0 then
 					doRebirth(player, maxAmount)
