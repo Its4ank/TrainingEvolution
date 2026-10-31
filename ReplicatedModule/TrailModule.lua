@@ -115,12 +115,12 @@ TrailModule.Trails = {
 			Price = 100,
 		},
 		
-		Boosts = {
-			BasePowerPercent = 5,
-			BaseAccelerationPercent = 3,
-			
-			PowerPercentPerLevel = 1,
-			AccelerationPercentPerLevel = 0.5,
+		LevelBoosts = {
+			{FromLevel = 0, ToLevel = 5, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 3, EndAcceleration = 5.5,},
+			{FromLevel = 6, ToLevel = 10, StartRacePower = 11, EndRacePower = 15, StartAcceleration = 6, EndAcceleration = 8,},
+			{FromLevel = 11, ToLevel = 15, StartRacePower = 16.5, EndRacePower = 21.5, StartAcceleration = 9, EndAcceleration = 11,},
+			{FromLevel = 16, ToLevel = 20, StartRacePower = 23, EndRacePower = 28, StartAcceleration = 12, EndAcceleration = 15,},
+			{FromLevel = 21, ToLevel = 25, StartRacePower = 30, EndRacePower = 36, StartAcceleration = 16, EndAcceleration = 20,},	
 		},
 		
 		LevelCostRanges = {
@@ -128,74 +128,79 @@ TrailModule.Trails = {
 				FromLevel = 1,
 				ToLevel = 5,
 				
-				StartPrice = 50,
-				EndPrice = 250,
+				StartPrice = 20,
+				EndPrice = 80,
 				
-				StartXP = 5,
-				EndXP = 25,
+				StartXP = 2,
+				EndXP = 10,
 				
 				Curve = 1,
 				RoundTo = 1,
+				RoundXPTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
 
-				StartPrice = 300,
-				EndPrice = 600,
+				StartPrice = 100,
+				EndPrice = 220,
 
-				StartXP = 30,
-				EndXP = 100,
+				StartXP = 12,
+				EndXP = 28,
 
 				Curve = 1,
-				RoundTo = 5,
+				RoundTo = 1,
+				RoundXPTo = 1,
 			},
 			{
 				FromLevel = 11,
 				ToLevel = 15,
 
-				StartPrice = 750,
-				EndPrice = 1500,
+				StartPrice = 280,
+				EndPrice = 560,
 
-				StartXP = 125,
-				EndXP = 200,
+				StartXP = 36,
+				EndXP = 68,
 
-				Curve = 1.10,
-				RoundTo = 10,
+				Curve = 1,
+				RoundTo = 1,
+				RoundXPTo = 1,
 			},
 			{
 				FromLevel = 16,
 				ToLevel = 20,
 
-				StartPrice = 1750,
-				EndPrice = 2250,
+				StartPrice = 700,
+				EndPrice = 1100,
 
-				StartXP = 250,
-				EndXP = 400,
+				StartXP = 80,
+				EndXP = 120,
 
-				Curve = 1.15,
-				RoundTo = 50,
+				Curve = 1,
+				RoundTo = 1,
+				RoundXPTo = 1,
 			},
 			{
 				FromLevel = 21,
 				ToLevel = 25,
 
-				StartPrice = 3000,
-				EndPrice = 5500,
+				StartPrice = 1300,
+				EndPrice = 2100,
 
-				StartXP = 500,
-				EndXP = 750,
+				StartXP = 140,
+				EndXP = 220,
 
-				Curve = 1.20,
-				RoundTo = 100,
+				Curve = 1,
+				RoundTo = 1,
+				RoundXPTo = 1,
 			},
 		},
 		
 		StageRequirements = {
 			[1] = {
 				Level = 5,
-				Money = 500,
-				Rebirth = 100,
+				Money = 250,
+				Rebirth = 5,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -203,8 +208,8 @@ TrailModule.Trails = {
 			
 			[2] = {
 				Level = 10,
-				Money = 1000,
-				Rebirth = 250,
+				Money = 750,
+				Rebirth = 15,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -212,8 +217,8 @@ TrailModule.Trails = {
 			
 			[3] = {
 				Level = 15,
-				Money = 2500,
-				Rebirth = 500,
+				Money = 2000,
+				Rebirth = 35,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -221,8 +226,8 @@ TrailModule.Trails = {
 			
 			[4] = {
 				Level = 20,
-				Money = 5000,
-				Rebirth = 100,
+				Money = 4500,
+				Rebirth = 70,
 				
 				SpendMoney = true,
 				SpendRebirth = true,
@@ -512,12 +517,31 @@ function TrailModule.GetStageProgress(trailId, currentStage, level, money, rebir
 end
 
 --// BOOST CALCULATIONS
-function TrailModule.GetBoostData(trailId, level, stageId)
+function TrailModule.GetBaseBost(trailId, level)
 	local config = TrailModule.GetTrailConfig(trailId)
 	
-	if not config then
+	if config then
+		level = math.clamp(math.floor(tonumber(level) or 0), TrailModule.MIN_LEVEL, TrailModule.MAX_LEVEL)
+		
+		for _, range in ipairs(config.LevelBoosts or {}) do
+			if level >= range.FromLevel and level <= range.ToLevel then
+				local alpha = getRangeAlpha(level, range.FromLevel, range.ToLevel)
+				
+				return {
+					RacePower = interpolateRange(range.StartRacePower, range.EndRacePower, alpha, 1),
+					Acceleration = interpolateRange(range.StartAcceleration, range.EndAcceleration, alpha, 1),
+				}
+			end
+		end
+	end
+	
+	return {RacePower = 0, Acceleration = 0,}
+end
+
+function TrailModule.GetBoostData(trailId, level, stageId)
+	if not TrailModule.GetTrailConfig(trailId) then
 		return {
-			PowerPercent = 0,
+			RacePercent = 0,
 			AccelerationPercent = 0,
 			
 			PowerMultiplier = 1,
@@ -527,28 +551,22 @@ function TrailModule.GetBoostData(trailId, level, stageId)
 		}
 	end
 	
-	level = math.clamp(tonumber(level) or 0, TrailModule.MIN_LEVEL, TrailModule.MAX_LEVEL)
+	stageId = math.clamp(math.floor(tonumber(stageId) or 1), 1, TrailModule.GetMaxStage())
 	
-	stageId = tonumber(stageId) or 1
+	local base = TrailModule.GetBaseBoost(trailId, level)
 	
-	
-	local stageConfig = TrailModule.GetStageConfig(stageId) or TrailModule.Stages[1]
-	
-	local boostConfig = config.Boosts or {}
-	
-	local rawPowerPercent = (boostConfig.BasePowerPercent or 0) + (level * (boostConfig.PowerPercentPerLevel or 0))
-	local rawAccelerationPercent = (boostConfig.BaseAccelerationPercent or 0) + (level * (boostConfig.AccelerationPercentPerLevel or 0))
-	
+	local stageConfig = TrailModule.GetStageConfig(stageId)
 	local stageMultiplier = stageConfig.Multiplier or 1
-	local finalPowerPercent = rawPowerPercent * stageMultiplier
-	local finalAccelerationPercent = rawAccelerationPercent * stageMultiplier
+	
+	local powerPercent = base.RacePower * stageMultiplier
+	local accelerationPercent = base.Acceleration * stageMultiplier
 	
 	return {
-		PowerPercent = finalPowerPercent,
-		AccelerationPercent = finalAccelerationPercent,
+		PowerPercent = powerPercent,
+		AccelerationPercent = accelerationPercent,
 		
-		PowerMultiplier = 1 + (finalPowerPercent / 100),
-		AccelerationMultiplier = 1 + (finalAccelerationPercent / 100),
+		PowerMultiplier = 1 + powerPercent / 100,
+		AccelerationMultiplier = 1 + accelerationPercent / 100,
 		
 		StageMultiplier = stageMultiplier,
 	}
@@ -593,6 +611,18 @@ function TrailModule.ValidateConfiguration()
 		assert(not usedEraLocations[eraLocationKey], "TrailModule: два трейла назначены одной локации : " .. eraLocationKey)
 		
 		usedEraLocations[eraLocationKey] = trailId
+		
+		for level = TrailModule.MIN_LEVEL, TrailModule.MAX_LEVEL do 
+			local coverage = 0
+			
+			for _, range in ipairs(config.LevelBoost or {}) do
+				if level >= range.FromLevel and level <= range.ToLevel then
+					coverage += 1
+				end
+			end
+			
+			assert(coverage == 1, string.format("TrailModule: %s needs exactly one boost range for Level %d", trailId, level))
+		end
 		
 		for level = 1, TrailModule.MAX_LEVEL do
 			assert(getLevelRange(config, level) ~= nil, string.format("TrailModule: у %s отсутствует цена для Level %d", trailId, level))
