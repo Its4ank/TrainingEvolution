@@ -15,11 +15,26 @@ RaceModule.Settings = {
 	RewardLevelsPerStage = 5,
 	
 	BaseSpeed = 16,
-	BaseAccelerationPerSecond = 0.2,
+	BaseAccelerationPerSecond = 0.5,
 	
 	BaseGemChance = 0.20,
 	
 	TopPlayerCount = 3,
+}
+
+RaceModule.EnergySpeedPoints = {
+	{Energy = 0, Speed = 16},
+	{Energy = 150, Speed = 20},
+	{Energy = 1000, Speed = 26},
+	{Energy = 5000, Speed = 34},
+	{Energy = 25000, Speed = 44},
+	{Energy = 100000, Speed = 58},
+	{Energy = 300000, Speed = 72},
+	{Energy = 1000000, Speed = 90},
+	{Energy = 10000000, Speed = 120},
+	{Energy = 100000000, Speed = 180},
+	{Energy = 10000000000, Speed = 260},
+	{Energy = 10000000000000, Speed = 400},
 }
 
 RaceModule.WorldNames = {
@@ -163,18 +178,18 @@ RaceModule.Stages = {
 		Icon = "rbxassetid://80634958548140",
 		
 		LevelUpgradePrices = {
-			[2] = 100,
-			[3] = 250,
-			[4] = 500,
-			[5] = 1000,
+			[2] = 40,
+			[3] = 70,
+			[4] = 110,
+			[5] = 160,
 		},
 		
 		NextStageRequirements = {
 			Level = 5,
-			Money = 1500,
-			RaceTouch = 100,
-			Rebirth = 500,
-			Energy = 50000,
+			Money = 500,
+			RaceTouch = 25,
+			Rebirth = 10,
+			Energy = 500,
 		},
 	},
 	
@@ -188,18 +203,18 @@ RaceModule.Stages = {
 		Icon = "rbxassetid://132992843832066",
 
 		LevelUpgradePrices = {
-			[2] = 2500,
-			[3] = 3500,
-			[4] = 4500,
-			[5] = 6000,
+			[2] = 250,
+			[3] = 350,
+			[4] = 500,
+			[5] = 700,
 		},
 
 		NextStageRequirements = {
 			Level = 5,
-			Money = 5000,
-			RaceTouch = 250,
-			Rebirth = 2500,
-			Energy = 1000000,
+			Money = 2000,
+			RaceTouch = 100,
+			Rebirth = 40,
+			Energy = 5000,
 		},
 	},
 	
@@ -213,18 +228,18 @@ RaceModule.Stages = {
 		Icon = "rbxassetid://122433413012673",
 
 		LevelUpgradePrices = {
-			[2] = 7500,
-			[3] = 9000,
-			[4] = 11500,
-			[5] = 13000,
+			[2] = 1000,
+			[3] = 1400,
+			[4] = 1900,
+			[5] = 2500,
 		},
 
 		NextStageRequirements = {
 			Level = 5,
-			Money = 25000,
-			RaceTouch = 500,
-			Rebirth = 50000,
-			Energy = 25000000,
+			Money = 6000,
+			RaceTouch = 250,
+			Rebirth = 110,
+			Energy = 25000,
 		},
 	},
 	
@@ -238,10 +253,10 @@ RaceModule.Stages = {
 		Icon = "rbxassetid://100510262721575",
 
 		LevelUpgradePrices = {
-			[2] = 15000,
-			[3] = 17500,
-			[4] = 20000,
-			[5] = 25000,
+			[2] = 3400,
+			[3] = 4400,
+			[4] = 5600,
+			[5] = 7000,
 		},
 
 		NextStageRequirements = {
@@ -263,10 +278,10 @@ RaceModule.Stages = {
 		Icon = "rbxassetid://99609767140625",
 
 		LevelUpgradePrices = {
-			[2] = 30000,
-			[3] = 35000,
-			[4] = 42500,
-			[5] = 50000,
+			[2] = 15000,
+			[3] = 600,
+			[4] = 230,
+			[5] = 10000,
 		},
 		
 		NextStageRequirements = nil,
@@ -276,70 +291,70 @@ RaceModule.Stages = {
 --// Базовые награды R1-R10
 RaceModule.Rewards = {
 	R1 = {
-		Money = 2.5,
+		Money = 4,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R2 = {
-		Money = 5,
+		Money = 4.5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R3 = {
-		Money = 10,
+		Money = 5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R4 = {
-		Money = 25,
+		Money = 5.5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R5 = {
-		Money = 50,
+		Money = 6,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R6 = {
-		Money = 100,
+		Money = 6.5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R7 = {
-		Money = 200,
+		Money = 7,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R8 = {
-		Money = 400,
+		Money = 7.5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R9 = {
-		Money = 800,
+		Money = 8,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
 	},
 	
 	R10 = {
-		Money = 1600,
+		Money = 8.5,
 		Gems = 1,
 		XP = 1,
 		RaceTouch = 1,
@@ -352,85 +367,85 @@ RaceModule.RewardUpgradeLevels = {
 		FromLevel = 1,
 		ToLevel = 5,
 		
-		StartBonus = 1.1,
-		EndBonus = 1.3,
+		StartBonus = 1.04,
+		EndBonus = 1.20,
 		
-		StartPriceMoney = 50,
-		EndPriceMoney = 500,
+		StartPriceMoney = 20,
+		EndPriceMoney = 60,
 		
-		StartPriceTouch = 5,
-		EndPriceTouch = 25,
+		StartPriceTouch = 2,
+		EndPriceTouch = 6,
 		
-		StartPriceXP = 15,
-		EndPriceXP = 45,
+		StartPriceXP = 3,
+		EndPriceXP = 7,
 	},
 	
 	[2] = {
 		FromLevel = 6,
 		ToLevel = 10,
 		
-		StartBonus = 1.4,
-		EndBonus = 1.7,
+		StartBonus = 1.24,
+		EndBonus = 1.40,
 
-		StartPriceMoney = 1000,
-		EndPriceMoney = 5000,
+		StartPriceMoney = 80,
+		EndPriceMoney = 160,
 
-		StartPriceTouch = 35,
-		EndPriceTouch = 75,
+		StartPriceTouch = 8,
+		EndPriceTouch = 16,
 
-		StartPriceXP = 60,
-		EndPriceXP = 125,
+		StartPriceXP = 10,
+		EndPriceXP = 18,
 	},
 	
 	[3] = {
 		FromLevel = 11,
 		ToLevel = 15,
 		
-		StartBonus = 1.8,
-		EndBonus = 2.1,
+		StartBonus = 1.44,
+		EndBonus = 1.60,
 
-		StartPriceMoney = 7500,
-		EndPriceMoney = 12500,
+		StartPriceMoney = 200,
+		EndPriceMoney = 400,
 
 		StartPriceTouch = 20,
-		EndPriceTouch = 50,
+		EndPriceTouch = 40,
 
-		StartPriceXP = 50,
-		EndPriceXP = 100,
+		StartPriceXP = 22,
+		EndPriceXP = 42,
 	},
 	
 	[4] = {
 		FromLevel = 16,
 		ToLevel = 20,
 		
-		StartBonus = 2.2,
-		EndBonus = 2.5,
+		StartBonus = 1.64,
+		EndBonus = 1.80,
 
-		StartPriceMoney = 14000,
-		EndPriceMoney = 20000,
+		StartPriceMoney = 500,
+		EndPriceMoney = 900,
 
-		StartPriceTouch = 20,
-		EndPriceTouch = 50,
+		StartPriceTouch = 50,
+		EndPriceTouch = 90,
 
 		StartPriceXP = 50,
-		EndPriceXP = 100,
+		EndPriceXP = 90,
 	},
 	
 	[5] = {
 		FromLevel = 21,
 		ToLevel = 25,
 		
-		StartBonus = 2.6,
-		EndBonus = 3.0,
+		StartBonus = 1.84,
+		EndBonus = 2.0,
 
-		StartPriceMoney = 25000,
-		EndPriceMoney = 40000,
+		StartPriceMoney = 1100,
+		EndPriceMoney = 1900,
 
-		StartPriceTouch = 20,
-		EndPriceTouch = 50,
+		StartPriceTouch = 110,
+		EndPriceTouch = 190,
 
-		StartPriceXP = 50,
-		EndPriceXP = 100,
+		StartPriceXP = 110,
+		EndPriceXP = 190,
 	},
 }
 
@@ -515,6 +530,18 @@ function RaceModule.GetRewardCount(stage, roadLevel)
 	roadLevel = clampRoadLevel(roadLevel)
 	
 	return stage + roadLevel
+end
+
+function RaceModule.GetRoadRewardMultiplier(stage, roadLevel)
+	roadLevel = clampRoadLevel(roadLevel)
+	
+	local distance = RaceModule.GetTrackDistance(stage, roadLevel)
+	local rewardCount = RaceModule.GetRewardCount(stage, roadLevel)
+	
+	local distanceMultiplier = distance / (100 * rewardCount)
+	local levelMultiplier = 1 + (roadLevel - 1) * 0.05
+	
+	return distanceMultiplier * levelMultiplier
 end
 
 function RaceModule.GetRewardWealth(rewardIndex, rewardCount)
@@ -782,17 +809,22 @@ function RaceModule.GetBaseReward(rewardIndex)
 	return RaceModule.Rewards[rewardName]
 end
 
-function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifiers)
+function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifiers, roadLevel)
 	modifiers = modifiers or {}
+	roadLevel = roadLevel or 1
 	
 	local baseReward = RaceModule.GetBaseReward(rewardIndex)
 	if not baseReward then return nil end
 	
 	local stageMultiplier = RaceModule.GetStageRewardMultiplier(stage)
 	local rewardUpgradeMultiplier = RaceModule.GetRewardBonus(rewardLevel)
-	local sharedMultiplier = stageMultiplier * rewardUpgradeMultiplier
+	local roadMultiplier = RaceModule.GetRoadRewardMultiplier(stage, roadLevel)
+	
+	local sharedMultiplier = stageMultiplier * rewardUpgradeMultiplier * roadMultiplier
 	
 	local moneyMultiplier = tonumber(modifiers.MoneyMultiplier) or 1
+	local moneyFlatBonus = tonumber(modifiers.MoneyFlatBonus) or 0
+	
 	local xpMultiplier = tonumber(modifiers.XPMultiplier) or 1
 	local gemsMultiplier = tonumber(modifiers.GemsMultiplier) or 1
 	local raceTouchMultiplier = tonumber(modifiers.RaceTouchMultiplier) or 1
@@ -805,11 +837,10 @@ function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifi
 	local baseXp = tonumber(baseReward.XP) or 0
 	local baseRaceTouch = tonumber(baseReward.RaceTouch) or 1
 	
-	local finalMoney = math.floor(baseMoney * sharedMultiplier * moneyMultiplier)
-	local finalGems = math.floor((baseGems + gemFlatBonus) * sharedMultiplier * gemsMultiplier)
+	local finalMoney = roundNumber((baseMoney + moneyFlatBonus) * sharedMultiplier * moneyMultiplier, 3)
+	local finalGems = roundNumber((baseGems + gemFlatBonus) * sharedMultiplier * gemsMultiplier, 3)
 	local finalXP = roundNumber(baseXp * sharedMultiplier * xpMultiplier, 3)
-	
-	local finalRaceTouch = math.floor(baseRaceTouch * raceTouchMultiplier)
+	local finalRaceTouch = roundNumber(baseRaceTouch * sharedMultiplier * raceTouchMultiplier, 3)
 	local finalGemChance = math.clamp(RaceModule.Settings.BaseGemChance + gemsChanceBonus, 0, 1)
 	
 	return {
@@ -819,8 +850,10 @@ function RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifi
 		RaceTouch = math.max(0, finalRaceTouch),
 		
 		GemChance = finalGemChance,
+		
 		StageMultiplier = stageMultiplier,
 		RewardUpgradeMultiplier = rewardUpgradeMultiplier,
+		RoadMultiplier = roadMultiplier,
 		SharedRewardMultiplier = sharedMultiplier,
 	}
 end
@@ -1059,27 +1092,20 @@ end
 function RaceModule.GetTargetSpeedFromEnergy(effectiveEnergy)
 	effectiveEnergy = math.max(0, tonumber(effectiveEnergy) or 0)
 	
-	if effectiveEnergy <= 0 then
-		return RaceModule.Settings.BaseSpeed
+	local points = RaceModule.EnergySpeedPoints
+	
+	for index = 2, #points do
+		local previous = points[index - 1]
+		local nextPoint = points[index]
+		
+		if effectiveEnergy <= nextPoint.Energy then
+			local alpha = (effectiveEnergy - previous.Energy) / (nextPoint.Energy - previous.Energy)
+			
+			return lerp(previous.Speed, nextPoint.Speed, alpha)
+		end
 	end
 	
-	if effectiveEnergy < 1e6 then
-		return lerp(16, 50, effectiveEnergy / 1e6)
-	end
-	
-	if effectiveEnergy < 1e9 then
-		return lerp(50, 100, (effectiveEnergy - 1e6) / (1e9 - 1e6))
-	end
-	
-	if effectiveEnergy < 1e12 then
-		return lerp(100, 200, (effectiveEnergy - 1e9) / (1e12 - 1e9))
-	end
-	
-	if effectiveEnergy < 1e15 then
-		return lerp(200, 400, (effectiveEnergy - 1e12) / (1e15 - 1e12))
-	end
-	
-	return 400
+	return points[#points].Speed
 end
 
 function RaceModule.GetNextSpeed(currentSpeed, targetSpeed, deltaTime, accelerationMultiplier)
