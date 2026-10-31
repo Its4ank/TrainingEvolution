@@ -318,7 +318,7 @@ local function addTrainerHatchProgress(player, results)
 	local requirement = TrainerModule.getCurrentRequirement(player, trainerName, "PetRarity")
 	
 	for _, result in ipairs(results) do
-		TrainerModule.addEquippedProgress(player, "EggHatched", 1)
+		TrainerModule.addEquippedTrainerProgress(player, "EggHatched", 1)
 		
 		if requirement then
 			local actualOrder = PetModule.GetRarityOrder(result.Rarity)
