@@ -192,31 +192,10 @@ local function getPlayerStat(
 	return nil
 end
 
-local function getSpendableStat(
-	player,
-	requirementType
-)
-	if requirementType == "Energy" then
-		return getPlayerStat(
-			player,
-			"Energy"
-		)
+local function getSpendableStat(player, requirementType)
+	if requirementType == "Energy" or requirementType == "Money" or requirementType == "Rebirth" or requirementType == "RaceTouch" then
+		return getPlayerStat(player, requirementType)
 	end
-
-	if requirementType == "Money" then
-		return getPlayerStat(
-			player,
-			"Money"
-		)
-	end
-
-	if requirementType == "Rebirth" then
-		return getPlayerStat(
-			player,
-			"Rebirth"
-		)
-	end
-
 	return nil
 end
 
@@ -454,15 +433,15 @@ local function setupTrainerData(
 		TrainerModule.ProgressValues[trainerName]
 
 	if progressConfig then
-		for valueName, className
-			in pairs(progressConfig) do
-
-			getOrCreateValue(
-				progressFolder,
-				className,
-				valueName,
-				0
-			)
+		for valueName, className in pairs(progressConfig) do
+			local existing = progressFolder:FindFirstChild(valueName)
+			local initialValue = 0
+			
+			if existing and existing:IsA("ValueBase") then
+				initialValue = math.max(0, tonumber(existing.Value) or 0)
+			end
+			
+			getOrCreateValue(progressFolder, className, valueName, initialValue)
 		end
 	end
 
@@ -1351,7 +1330,7 @@ local function processLevelUp(
 	end
 
 	local cost =
-		TrainerModule.getLevelUpCost(
+		TrainerModule.getLevelCost(
 			level.Value
 		)
 
