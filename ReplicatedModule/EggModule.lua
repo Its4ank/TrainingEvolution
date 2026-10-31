@@ -37,18 +37,6 @@ EggModule.EggAnimationImages = {
 	},
 }
 
---// Price progression
-EggModule.PriceRanges = {
-	{From = 0, To = 9, Increase = 50},
-	{From = 10, To = 24, Increase = 100},
-	{From = 25, To = 49, Increase = 250},
-	{From = 50, To = 99, Increase = 500},
-	{From = 100, To = 199, Increase = 2500},
-	{From = 200, To = 499, Increase = 10000},
-	{From = 500, To = 999, Increase = 50000},
-	{From = 1000, To = math.huge, Increase = 250000},
-}
-
 --// Eggs
 EggModule.Eggs = {
 	Egg1 = {
@@ -69,16 +57,6 @@ EggModule.Eggs = {
 		},
 	},
 }
-
---// Internal helpers
-local function getPriceRange(openedCount)
-	for _, range in ipairs(EggModule.PriceRanges) do
-		if openedCount >= range.From and openedCount <= range.To then
-			return range
-		end
-	end
-	return nil
-end
 
 --// Egg config
 function EggModule.GetEggConfig(eggName)
@@ -114,30 +92,9 @@ function EggModule.GetEggPrice(eggName, openedCount)
 	local eggConfig = EggModule.GetEggConfig(eggName)
 	if not eggConfig then return nil end
 	
-	openedCount = math.max(0, math.floor(openedCount or 0))
+	local price = tonumber(eggConfig.BasePrice)
+	if not price or price < 0 then return end
 	
-	local price = eggConfig.BasePrice
-	local remainingOpenings = openedCount
-	local currentOpening = 0
-	
-	for _, range in ipairs(EggModule.PriceRanges) do
-		if remainingOpenings <= 0 then break end
-		
-		local rangeLength
-		
-		if range.To == math.huge then
-			rangeLength = remainingOpenings
-		else
-			rangeLength = range.To - range.From + 1
-		end
-		
-		local openingsInRange = math.min(remainingOpenings, rangeLength)
-		
-		price += openingsInRange * range.Increase
-		
-		remainingOpenings -= openingsInRange
-		currentOpening += openingsInRange
-	end
 	return math.floor(price)
 end
 
