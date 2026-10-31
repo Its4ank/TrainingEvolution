@@ -15,7 +15,6 @@ local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 local TransportModule = require(ReplicatedStorage.Modules.TransportModule)
 
 local BoostModule = require(ServerScriptService.Modules.BoostModule)
-local ItemModule = require(ServerScriptService.Modules.ItemModule)
 local PetModule = require(ReplicatedStorage.Modules.PetModule)
 local XPModule = require(ServerScriptService.Modules.XPModule)
 
@@ -331,31 +330,8 @@ local function getPlayerResources(player)
 	return values
 end
 
-local function getPetMoneyMultiplier(player)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return 1 end
-	
-	local multiplier = 1
-	
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		if not petFolder:IsA("Folder") then continue end 
-		
-		local equipped = petFolder:FindFirstChild("Equipped")
-		local petName = petFolder:FindFirstChild("PetName")
-		local pattern = petFolder:FindFirstChild("Pattern")
-		local tier = petFolder:FindFirstChild("Tier")
-		local level = petFolder:FindFirstChild("Level")
-		
-		if equipped and equipped.Value and petName and pattern and tier and level then
-			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
-			
-			if stats then 
-				local petMultiplier = tonumber(stats.Money) or 1
-				multiplier *= math.max(1, petMultiplier)
-			end
-		end
-	end
-	return multiplier
+local function getPetMoneyBonus(player)
+	return ShopModule.GetEquippedPetBonuses(player).Money
 end
 
 local function getEquippedTrailData(player)
@@ -410,32 +386,8 @@ local function getEffectiveEnergy(player, resources)
 	return UpgradeModule.GetRaceEnergy(player, resources.Energy.Value)
 end
 
-local function getPetRacePowerMultiplier(player)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return 1 end
-	
-	local multiplier = 1
-	
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		if not petFolder:IsA("Folder") then continue end
-		
-		local equipped = petFolder:FindFirstChild("Equipped")
-		local petName = petFolder:FindFirstChild("PetName")
-		local pattern = petFolder:FindFirstChild("Pattern")
-		local tier = petFolder:FindFirstChild("Tier")
-		local level = petFolder:FindFirstChild("Level")
-		
-		if equipped and equipped.Value and petName and pattern and tier and level then
-			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
-			
-			if stats then
-				local petPower = tonumber(stats.RacePower) or 1
-				multiplier *= math.max(1, petPower)
-			end
-		end
-	end
-	
-	return multiplier
+local function getPetRacePowerBonus(player)
+	return ShopModule.GetEquippedPetBonuses(player).RacePower
 end
 
 local function getEquippedTransportBoost(player)
@@ -469,16 +421,17 @@ end
 local function getTargetSpeed(player, resources)
 	local targetSpeed = RaceModule.GetTargetSpeedFromEnergy(getEffectiveEnergy(player, resources))
 	
-	local transportBoost = getEquippedTransportBoost(player)
+	targetSpeed += getPetRacePowerBonus(player)
 	
+	local transportBoost = getEquippedTransportBoost(player)
 	local transportMultiplier = 1
+	
 	if transportBoost then
 		transportMultiplier += (transportBoost.RacePower or 0) / 100
 	end
 	
 	local racePowerMultiplier = TrainerModule.getRacePowerMultiplier(player)
 		* getTrailRacePowerMultiplier(player)
-		* getPetRacePowerMultiplier(player)
 		* transportMultiplier
 	
 	racePowerMultiplier = ShopModule.ApplyRacePower(player, 1, racePowerMultiplier)
@@ -501,27 +454,26 @@ end
 
 --// Reward calculations and granting
 local function getRewardModifiers(player)
-	local moneyMultiplier = ItemModule.getShoesMultiplier(player) 
-		* getPetMoneyMultiplier(player)
-		* UpgradeModule.GetMoneyMultiplier(player) 
+	local moneyMultiplier = UpgradeModule.GetMoneyMultiplier(player) 
 		* TrainerModule.getMoneyMultiplier(player)
 		* BoostModule.GetMoneyMultiplier(player)
 		* RebirthModule.GetMoneyMultiplier(player)
 	
 	moneyMultiplier = ShopModule.ApplyResourcePass(player, "Money", 1, moneyMultiplier)
+	
 	local xpMultiplier = RebirthModule.GetXpMultiplier(player) * TrainerModule.getRaceXPMultiplier(player)
 	local baseGemChance = settings.BaseGemChance
 	local finalGemChance = UpgradeModule.GetFinalGemChance(player, baseGemChance)
-	local gemChanceBonus = finalGemChance - baseGemChance
-	local gemFlatBonus = UpgradeModule.GetFinalGemAmount(player, 0)
 	
 	return {
 		MoneyMultiplier = moneyMultiplier,
+		MoneyFlatBonus = getPetMoneyBonus(player),
 		XPMultiplier = xpMultiplier,
+		
 		GemsMultiplier = ShopModule.ApplyResourcePass(player, "Gems", 1, 1),
 		RaceTouchMultiplier = ShopModule.ApplyResourcePass(player, "RaceTouch", 1, 1),
-		GemFlatBonus = gemFlatBonus,
-		GemChanceBonus = gemChanceBonus,
+		GemFlatBonus = UpgradeModule.GetFinalGemAmount(player, 0),
+		GemChanceBonus = finalGemChance - baseGemChance,
 	}
 end
 
@@ -542,8 +494,8 @@ racePreviewFunction.OnServerInvoke = function(player)
 	
 	for rewardIndex = 1, rewardCount do 
 		preview[rewardIndex] = {
-			Current = RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifiers),
-			Next = RaceModule.calculateFinalReward(rewardIndex, stage, nextRewardLevel, modifiers),
+			Current = RaceModule.calculateFinalReward(rewardIndex, stage, rewardLevel, modifiers, roadLevel),
+			Next = RaceModule.calculateFinalReward(rewardIndex, stage, nextRewardLevel, modifiers, roadLevel),
 		}
 	end
 	return preview
@@ -555,7 +507,7 @@ local function giveCheckpointReward(player, rewardIndex)
 	
 	if not data or not resources then return false end
 	
-	local reward = RaceModule.calculateFinalReward(rewardIndex, data.Stage.Value, data.RewardLevel.Value, getRewardModifiers(player))
+	local reward = RaceModule.calculateFinalReward(rewardIndex, data.Stage.Value, data.RewardLevel.Value, getRewardModifiers(player), data.RoadLevel.Value)
 	
 	if not reward then return false end
 	
@@ -579,8 +531,18 @@ local function giveCheckpointReward(player, rewardIndex)
 	end
 	
 	if reward.Gems > 0 and math.random() < reward.GemChance then
-		resources.Gems.Value += reward.Gems
-		racePopupEvent:FireClient(player, "Gems", reward.Gems)
+		local remainder = player:GetAttribute("RaceGemRemainder") or 0
+		local accumulated = reward.Gems + remainder
+		
+		local gainedGems = math.floor(accumulated + 1e-9)
+		
+		player:SetAttribute("RaceGemRemainder", math.max(0, accumulated - gainedGems))
+		
+		if gainedGems > 0 then
+			resources.Gems.Value += gainedGems
+			
+			racePopupEvent:FireClient(player, "Gems", gainedGems)
+		end
 	end
 	return true
 end
@@ -786,7 +748,7 @@ local function updateRacer(player, deltaTime)
 	if currentDistance <= previousDistance then return end 
 	
 	local distanceGained = currentDistance - previousDistance
-	local distanceResource = resources:FindFirstChild("Distance")
+	local distanceResource = resources.Distance
 	
 	if distanceResource then
 		distanceResource.Value += distanceGained
