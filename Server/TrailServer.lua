@@ -156,7 +156,7 @@ local function getPlayerResources(player)
 	local money = playerData:FindFirstChild("Money")
 	local rebirth = leaderstats:FindFirstChild("Rebirth")
 	
-	if not money or not money:IsA("IntValue") then
+	if not money or (not money:IsA("NumberValue") and not money:IsA("IntValue")) then
 		return nil
 	end
 	
