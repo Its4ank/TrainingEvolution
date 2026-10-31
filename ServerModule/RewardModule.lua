@@ -97,14 +97,41 @@ RewardModule.RewardTypes = {
 }
 
 RewardModule.WealthMultiplier = {
-	[1] = 2.00,
-	[2] = 3.00,
-	[3] = 4.00,
+	[1] = 1.00,
+	[2] = 1.50,
+	[3] = 2.00,
+}
+
+RewardModule.CurrencyAmounts = {
+	Energy = {
+		150,
+		1500,
+		10000,
+		50000,
+		150000,
+		
+	},
+	
+	Money = {
+		150,
+		750,
+		3500,
+		12000,
+		30000,
+	},
+	
+	Gems = {
+		15,
+		35,
+		75,
+		125,
+		200,
+	},
 }
 
 RewardModule.DailySchedule = {
 	[1] = {
-		[1] = {Type = "Energy", Wealth = 1,},
+		[1] = {Type = "Energy", Amount = 150,},
 		[2] = {Type = "EnergyPotion", Amount = 2,},
 		[3] = {Type = "PotionBundle", Amount = 3,},
 	
@@ -276,19 +303,30 @@ RewardModule.DailySchedule = {
 	},
 }
 
+for day, cycles in pairs(RewardModule.DailySchedule) do
+	for _, config in pairs(cycles) do
+		local typeData = RewardModule.RewardTypes[config.Type]
+		
+		if typeData and typeData.Category == "Permanent" then
+			config.OnceKey = config.OnceKey or string.format("Daily_%s_Day%d", config.Type, day)
+			config.RepeatReward = config.RepeatReward or {Type = "Gems", Wealth = 2,}
+		end
+	end
+end
+
 RewardModule.HourlySchedule = {
-	[1] = {UnlockTime = 5 * 60, Type = "Energy", Wealth = 1,},
-	[2] = {UnlockTime = 10 * 60, Type = "Money", Wealth = 1,},
+	[1] = {UnlockTime = 5 * 60, Type = "Energy", Amount = 300,},
+	[2] = {UnlockTime = 10 * 60, Type = "Money", Amount = 200,},
 	[3] = {UnlockTime = 15 * 60, Type = "EnergyPotion", Amount = 1,},
-	[4] = {UnlockTime = 25 * 60, Type = "Gems", Wealth = 1,},
+	[4] = {UnlockTime = 25 * 60, Type = "Gems", Amount = 50,},
 	[5] = {UnlockTime = 35 * 60, Type = "MoneyPotion", Amount = 1,},
 	[6] = {UnlockTime = 50 * 60, Type = "Pet", PetName = "Reaper",},
 	[7] = {UnlockTime = 65 * 60, Type = "LuckPotion", Amount = 1,},
-	[8] = {UnlockTime = 85 * 60, Type = "Money", Wealth = 2,},
-	[9] = {UnlockTime = 105 * 60, Type = "Gems", Wealth = 2,},
+	[8] = {UnlockTime = 85 * 60, Type = "Money", Amount = 25000,},
+	[9] = {UnlockTime = 105 * 60, Type = "Gems", Amount = 200,},
 	[10] = {UnlockTime = 130 * 60, Type = "Pet", PetName = "DualReaper",},
 	[11] = {UnlockTime = 155 * 60, Type = "PotionBundle", Amount = 1,},
-	[12] = {UnlockTime = 180 * 60, Type = "Energy", Wealth = 3,},
+	[12] = {UnlockTime = 180 * 60, Type = "Energy", Amount = 200000,},
 }
 
 -- Internal Helper
@@ -362,23 +400,13 @@ local function addPotion(player, potionName, amount)
 	return true
 end
 
-local function getRawBalance(player, rewardType)
-	if rewardType == "Energy" then
-		local energy = getFolderValue(player, "leaderstats", "Energy")
-		return energy and energy.Value or 0
-	end
+local function getRewardStage(player)
+	local playerData = player:FindFirstChild("PlayerData")
 	
-	if rewardType == "Money" then
-		local money = getFolderValue(player, "PlayerData", "Money")
-		return money and money.Value or 0
-	end
+	local raceData = playerData and playerData:FindFirstChild("RaceData")
+	local stage = raceData and raceData:FindFirstChild("Stage")
 	
-	if rewardType == "Gems" then
-		local gems = getFolderValue(player, "PlayerData", "Gems")
-		return gems and gems.Value or 0
-	end
-	
-	return 0
+	return math.clamp(math.floor(tonumber(stage and stage.Value) or 1), 1, 5)
 end
 
 local function getClaimValue(player, folderName, claimKey)
@@ -481,22 +509,21 @@ function RewardModule.CalculateAmount(player, config, previousMaxValue)
 		return tonumber(config.Amount) or 0
 	end
 	
-	local rewardType = config.Type
-	local typeData = RewardModule.RewardTypes[rewardType]
+	local typeData = RewardModule.RewardTypes[config.Type]
 	
 	if not typeData then return 0 end
 	if not typeData.Scalable then return 1 end
 	
-	local wealth = config.Wealth or 1
-	local multiplier = RewardModule.WealthMultiplier[wealth] or 0.5
-	local baseValue = getRawBalance(player, rewardType)
-	local calculated = math.floor(baseValue * multiplier)
-	local minimum = typeData.Minimum or 1
+	local amounts = RewardModule.CurrencyAmounts[config.Type]
+	if not amounts then return 0 end 
 	
-	calculated = math.max(minimum, calculated)
-	calculated = math.max(calculated, tonumber(previousMaxValue) or 0)
+	local stage = getRewardStage(player)
 	
-	return calculated
+	local wealth = math.clamp(math.floor(tonumber(config.Wealth) or 1), 1, 3)
+	local multiplier = RewardModule.WealthMultiplier[wealth]
+	local amount = math.floor(amounts[stage] * multiplier + 0.5)
+	
+	return math.max(typeData.Minimum or 1, amount)
 end
 
 function RewardModule.BuildRewardData(player, config, previousMaxValue)
@@ -519,7 +546,7 @@ function RewardModule.BuildRewardData(player, config, previousMaxValue)
 	end
 	
 	local displayName = typeData.Name
-	local formattedAmount = ShopModule.FormatNumber(displayAmount)
+ 	local formattedAmount = FormatModule.FormatNumber(displayAmount)
 	
 	local displayText
 
@@ -593,6 +620,8 @@ function RewardModule.GiveReward(player, rewardData)
 	if not player or not rewardData then
 		return false, "InvalidArguments"
 	end
+	
+	if player:GetAttribute("DataReady") ~= true then return false, "DataNotReady" end
 
 	local rewardType = rewardData.Type
 	local amount = tonumber(rewardData.Amount) or 0
