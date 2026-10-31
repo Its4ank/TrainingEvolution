@@ -45,7 +45,7 @@ end
 
 function RebirthModule.GetRebirthCost(currentRebirths, rebirthAmount, rebirthPerPurchase)
 	rebirthAmount = math.max(0, math.floor(tonumber(rebirthAmount) or 0))
-	rebirthPerPurchase = math.max(1, math.max(tonumber(rebirthPerPurchase) or 1))
+	rebirthPerPurchase = math.max(1, math.floor(tonumber(rebirthPerPurchase) or 1))
 	
 	local firstCost = RebirthModule.GetOneRebirthCost(currentRebirths)
 	local priceStep = RebirthModule.GetPerRebirth * rebirthPerPurchase
@@ -53,10 +53,10 @@ function RebirthModule.GetRebirthCost(currentRebirths, rebirthAmount, rebirthPer
 	return rebirthAmount * firstCost + priceStep * rebirthAmount * (rebirthAmount - 1) / 2
 end
 
-function RebirthModule.GetMaxRebirthAmount(currentRebirth, currentEnergy, rebirthPerPurchase)
+function RebirthModule.GetMaxRebirthAmount(currentRebirths, currentEnergy, rebirthPerPurchase)
 	currentEnergy = math.max(0, tonumber(currentEnergy) or 0)
 	
-	local firstCost = RebirthModule.GetOneRebirthCost(currentRebirth)
+	local firstCost = RebirthModule.GetOneRebirthCost(currentRebirths)
 	if firstCost <= 0 then return 0 end
 	
 	local maxPerOperation = math.max(1, math.floor(tonumber(RebirthModule.MaxRebirthPerOperation) or 1000000))
@@ -67,18 +67,16 @@ function RebirthModule.GetMaxRebirthAmount(currentRebirth, currentEnergy, rebirt
 	while low < high do
 		local middle = math.floor((low + high + 1) / 2)
 		
-		local cost = RebirthModule.GetRebirthCost(currentRebirth, middle, rebirthPerPurchase)
+		local cost = RebirthModule.GetRebirthCost(currentRebirths, middle, rebirthPerPurchase)
 		
 		if cost <= currentEnergy then
 			low = middle
 		else
 			high = middle - 1
 		end
-		
-		return low
 	end
 	
-	return math.clamp(maxAmount, 0, maxPerOperation)
+	return low
 end
 
 function RebirthModule.GetEnergyMultiplier(player)
