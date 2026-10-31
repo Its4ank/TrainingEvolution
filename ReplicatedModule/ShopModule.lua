@@ -11,7 +11,7 @@ local function pass(frame, name, boost, info, icon, gamePassId, robux, srRobux, 
 	return {
 		FrameName = frame, Name = name, Boost = boost, Info = info,
 		Description = info, Icon = icon, GamePassId = gamePassId,
-		RobuxPrice = robux, SRobuxPrice = srRobux, Effect = effect, EffectReady = false,
+		RobuxPrice = robux, SRRobuxPrice = srRobux, Effect = effect, EffectReady = false,
 	}
 end
 
@@ -118,9 +118,9 @@ ShopModule.Potions = {
 		BoostType = "Energy", Duration = 900,
 		Products = {[1] = 3605923166, [5] = 3605923313, [10] = 3605923404},
 		Prices = {
-			[1] = {Robux = 19, SRRobux = 9},
-			[5] = {Robux = 79, SRRobux = 49},
-			[10] = {Robux = 169, SRRobux = 99},
+			[1] = {Robux = 19, SRRobux = 3},
+			[5] = {Robux = 79, SRRobux = 9},
+			[10] = {Robux = 169, SRRobux = 15},
 		},
 	},
 	
@@ -129,9 +129,9 @@ ShopModule.Potions = {
 		BoostType = "Money", Duration = 900,
 		Products = {[1] = 3605923802, [5] = 3605923866, [10] = 3605923925},
 		Prices = {
-			[1] = {Robux = 19, SRRobux = 9},
-			[5] = {Robux = 79, SRRobux = 49},
-			[10] = {Robux = 169, SRRobux = 99},
+			[1] = {Robux = 19, SRRobux = 3},
+			[5] = {Robux = 79, SRRobux = 9},
+			[10] = {Robux = 169, SRRobux = 15},
 		},
 	},
 	
@@ -140,9 +140,9 @@ ShopModule.Potions = {
 		BoostType = "Luck", Duration = 1200,
 		Products = {[1] = 3605923597, [5] = 3605923668, [10] = 3605923725},
 		Prices = {
-			[1] = {Robux = 19, SRRobux = 9},
-			[5] = {Robux = 79, SRRobux = 49},
-			[10] = {Robux = 169, SRRobux = 99},
+			[1] = {Robux = 19, SRRobux = 3},
+			[5] = {Robux = 79, SRRobux = 9},
+			[10] = {Robux = 169, SRRobux = 15},
 		},
 	},
 }
@@ -304,6 +304,34 @@ function ShopModule.GetPetStats(player, petName, pattern, tier, level, externalB
 	local calculatedStats = PetModule.CalculateFinalPetStats(petName, pattern, tier, level, externalBoosts)
 	
 	return ShopModule.ApplyPetStats(player, calculatedStats)
+end
+
+function ShopModule.GetEquippedBonuses(player)
+	local result = {Energy = 0, Money = 0, RacePower = 0,}
+	
+	local petsFolder = player and player:FindFirstChild("Pets")
+	if not petsFolder then return result end
+	
+	for _, petFolder in ipairs(petsFolder:GetChildren()) do
+		if petFolder:IsA("Folder") then
+			local equipped = petFolder:FindFirstChild("Equipped")
+			local petName = petFolder:FindFirstChild("PetName")
+			local pattern = petFolder:FindFirstChild("Pattern")
+			local tier = petFolder:FindFirstChild("Tier")
+			local level = petFolder:FindFirstChild("Level")
+			
+			if equipped and equipped.Value and petName and pattern and tier and level then
+				local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
+				
+				if stats then
+					result.Energy += math.max(0, tonumber(stats.Energy) or 0)
+					result.Money += math.max(0, tonumber(stats.Money) or 0)
+					result.RacePower += math.max(0, tonumber(stats.RacePower) or 0)
+				end
+			end
+		end
+	end
+	return result
 end
 
 function ShopModule.ApplyPetLuck(player, baseLuck, currentLuck)
