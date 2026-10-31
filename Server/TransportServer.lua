@@ -16,7 +16,7 @@ local DEFAULT_LOCATION = "StoneAge"
 local DEFAULT_TRANSPORT = "Feet"
 
 --// TRANSPORT TEST MODE
-local TRANSPORT_TEST_MODE = true
+local TRANSPORT_TEST_MODE = false
 
 local TEST_TRANSPORT = {
 	Feet = false,
