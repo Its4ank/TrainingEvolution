@@ -541,6 +541,8 @@ end
 
 --// Events
 petEquipEvent.OnServerEvent:Connect(function(player, petId, shouldEquip)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if typeof(petId) ~= "string" then return end
 	if typeof(shouldEquip) ~= "boolean" then return end
 	
@@ -552,6 +554,8 @@ petEquipEvent.OnServerEvent:Connect(function(player, petId, shouldEquip)
 end)
 
 petDeleteEvent.OnServerEvent:Connect(function(player, petIds)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if typeof(petIds) == "string" then
 		deletePet(player, petIds)
 	elseif typeof(petIds) == "table" then
@@ -560,16 +564,22 @@ petDeleteEvent.OnServerEvent:Connect(function(player, petIds)
 end)
 
 petUnequipAllEvent.OnServerEvent:Connect(function(player)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	unequipAllPets(player)
 	refreshPetVisuals(player)
 end)
 
 petEquipBestEvent.OnServerEvent:Connect(function(player)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	toggleEquipBest(player)
 	refreshPetVisuals(player)
 end)
 
 petUpgradeEvent.OnServerEvent:Connect(function(player, petId)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if typeof(petId) ~= "string" then return end
 	upgradePet(player, petId)
 end)
