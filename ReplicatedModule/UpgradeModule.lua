@@ -6,15 +6,6 @@ local UpgradeModule = {}
 
 local DEFAULT_MAX_LEVEL = 10
 
-local ACCELERATION_MAX_BOOST = 0.75
-local ENERGY_MAX_MULTIPLIER = 2.00
-local GEM_CHANCE_MAX_BOOST = 0.20
-local GEM_MORE_MAX_BOOST = 10
-local MONEY_MAX_MULTIPLIER = 2.00
-local PET_LUCK_MAX_BOOST = 1.00
-local RACE_POWER_MAX_MULTIPLIER = 2.00
-local SPEED_TRAINING_MAX_REDUCTION = 0.25
-
 UpgradeModule.VISIBLE_LEVEL_SLOTS = 10
 UpgradeModule.CENTER_LEVEL_SLOT = 6
 
@@ -38,7 +29,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "PercentBonus",
-		MaxBoost = ACCELERATION_MAX_BOOST,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -50,16 +40,16 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 2,
+				EndPrice = 26,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 40,
+				EndPrice = 120,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -80,7 +70,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "Multiplier",
-		MaxMultiplier = ENERGY_MAX_MULTIPLIER,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -92,16 +81,16 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 5,
+				EndPrice = 45,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 65,
+				EndPrice = 225,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -122,7 +111,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "PercentBonus",
-		MaxBoost = GEM_CHANCE_MAX_BOOST,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -134,15 +122,15 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 10,
+				EndPrice = 70,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
+				StartPrice = 100,
 				EndPrice = 500,
 				Curve = 1,
 				RoundTo = 1,
@@ -164,7 +152,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "IntegerBonus",
-		MaxBoost = GEM_MORE_MAX_BOOST,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -176,16 +163,16 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 20,
+				EndPrice = 120,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 180,
+				EndPrice = 980,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -206,7 +193,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "Multiplier",
-		MaxMultiplier = MONEY_MAX_MULTIPLIER,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -218,16 +204,16 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 5,
+				EndPrice = 45,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 65,
+				EndPrice = 225,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -281,7 +267,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "PercentBonus",
-		MaxBoost = PET_LUCK_MAX_BOOST,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -293,16 +278,16 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 2,
+				EndPrice = 26,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 40,
+				EndPrice = 120,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -323,7 +308,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "Multiplier",
-		MaxMultiplier = RACE_POWER_MAX_MULTIPLIER,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -336,15 +320,15 @@ UpgradeModule.Upgrades = {
 				FromLevel = 1,
 				ToLevel = 5,
 				StartPrice = 1,
-				EndPrice = 100,
+				EndPrice = 13,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 20,
+				EndPrice = 60,
 				Curve = 1,
 				RoundTo = 1,
 			},
@@ -385,20 +369,21 @@ UpgradeModule.Upgrades = {
 		PriceRanges = {
 			{
 				FromLevel = 1,
-				ToLevel = 3,
-				StartPrice = 1,
-				EndPrice = 100,
+				ToLevel = 2,
+				StartPrice = 3,
+				EndPrice = 12,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
-				FromLevel = 4,
-				ToLevel = 6,
-				StartPrice = 150,
-				EndPrice = 500,
+				FromLevel = 3,
+				ToLevel = 4,
+				StartPrice = 35,
+				EndPrice = 80,
 				Curve = 1,
 				RoundTo = 1,
 			},
+			{FromLevel = 5, ToLevel = 6, StartPrice = 160, EndPrice = 300, Curve = 1, RoundTo = 1,},
 		},
 	},
 	
@@ -416,7 +401,6 @@ UpgradeModule.Upgrades = {
 		MaxLevel = DEFAULT_MAX_LEVEL,
 		
 		EffectType = "TickReduction",
-		MaxReduction = SPEED_TRAINING_MAX_REDUCTION,
 		
 		Icons = {
 			Default = "rbxassetid://81342077488409",
@@ -428,20 +412,62 @@ UpgradeModule.Upgrades = {
 			{
 				FromLevel = 1,
 				ToLevel = 5,
-				StartPrice = 1,
-				EndPrice = 100,
+				StartPrice = 2,
+				EndPrice = 18,
 				Curve = 1,
 				RoundTo = 1,
 			},
 			{
 				FromLevel = 6,
 				ToLevel = 10,
-				StartPrice = 150,
-				EndPrice = 500,
+				StartPrice = 26,
+				EndPrice = 90,
 				Curve = 1,
 				RoundTo = 1,
 			},
 		},
+	},
+}
+
+UpgradeModule.LevelBoost = {
+	Acceleration = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 7.5, EndBoost = 37.5,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 45, EndBoost = 75,},
+	},
+	
+	Energy = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 1.10, EndBoost = 1.50,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 1.60, EndBoost = 2.00,},
+	},
+	
+	GemChance = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 2, EndBoost = 10,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 12, EndBoost = 20,},
+	},
+	
+	GemMore = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 0.2, EndBoost = 1.0,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 1.2, EndBoost = 2.0,},
+	},
+	
+	Money = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 1.10, EndBoost = 1.50,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 1.60, EndBoost = 2.00,},
+	},
+	
+	PetLuck = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 10, EndBoost = 50,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 60, EndBoost = 100,},
+	},
+	
+	RacePower = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 1.10, EndBoost = 1.50,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 1.60, EndBoost = 2.00,},
+	},
+	
+	SpeedTraining = {
+		{FromLevel = 1, ToLevel = 5, StartBoost = 2.5, EndBoost = 12.5,},
+		{FromLevel = 6, ToLevel = 10, StartBoost = 15, EndBoost = 25,},
 	},
 }
 
@@ -662,51 +688,44 @@ end
 --// Расчет силы апгрейда
 function UpgradeModule.GetEffectValue(upgradeName, level)
 	local config = UpgradeModule.GetConfig(upgradeName)
-	
-	if not config then
-		return nil
-	end
+	if not config then return nil end
 	
 	level = clampLevel(level, config.MaxLevel)
-	
-	local ratio = getLevelRatio(level, config.MaxLevel)
-	
-	if config.EffectType == "Multiplier" then
-		local maxMultiplier = config.MaxMultiplier or 1
-		
-		return 1 + ((maxMultiplier - 1) * ratio)
-	end
-	
-	if config.EffectType == "PercentBonus" then
-		local maxBoost = config.MaxBoost or 0
-		
-		return maxBoost * ratio
-	end
-	
-	if config.EffectType == "IntegerBonus" then
-		local maxBoost = config.MaxBoost or 0
-		local exactBonus = maxBoost * ratio
-		
-		return math.floor(exactBonus + 0.5)
-	end
-	
-	if config.EffectType == "TickReduction" then
-		local maxReduction = config.MaxReduction or 0
-		
-		return maxReduction * ratio
-	end
-	
 	
 	if config.EffectType == "Unlock" then
 		return level >= 1
 	end
 	
 	if config.EffectType == "RebirthButtons" then
-		local buttonOrder = config.RebirthButtonOrder or {}
-		local unlockedCount = level + 1
-		
-		return math.clamp(unlockedCount, 1, #buttonOrder)
+		return math.clamp(level + 1, 1, #(config.RebirthButtonOrder or {}))
 	end
+	
+	if level == 0 then
+		return config.EffectType == "Multiplier" and 1 or 0
+	end
+	
+	for _, range in ipairs(UpgradeModule.LevelBoost[upgradeName] or {}) do
+		if level >= range.FromLevel and level <= range.ToLevel then
+			local span = range.ToLevel - range.FromLevel
+			local alpha = span > 0 and (level - range.FromLevel) / span or 0
+			
+			local startValue = tonumber(range.StartBoost) or 0
+			local endValue = tonumber(range.EndBoost) or startValue
+			
+			local value = startValue + (endValue - startValue) * alpha
+			
+			if config.EffectType == "PercentBonus" or config.EffectType == "TickReduction" then 
+				return value / 100
+			end
+			
+			if config.EffectType == "IntegerBonus" then
+				return math.floor(value + 0.5)
+			end
+			
+			return value
+		end
+	end
+	
 	return nil
 end
 
@@ -719,43 +738,37 @@ end
 --// Текс бонуса для UI
 function UpgradeModule.GetBonusText(upgradeName, level)
 	local config = UpgradeModule.GetConfig(upgradeName)
-	
-	if not config then 
-		return ""
-	end
+	if not config then return "" end
 	
 	level = clampLevel(level, config.MaxLevel)
 	
 	local effectValue = UpgradeModule.GetEffectValue(upgradeName, level)
 	
 	if config.EffectType == "Multiplier" then
-		return "x" .. formatCompactNumber(effectValue, 2)
+		local prefix = upgradeName == "RacePower" and "ENERGY x" or "x"
+		return prefix .. formatCompactNumber(effectValue, 2)
 	end
 	
 	if config.EffectType == "PercentBonus" then 
-		return "+" .. FormatModule.FormatPercent(effectValue)
+		return "+" .. FormatModule.FormatPercent(effectValue * 100)
 	end
 	
-	if config.EffectType == "IntegerBonus" then
-		return "+" .. tostring(effectValue) .. " GEMS"
+	if config.EffectType == "FlatBonus" or config.EffectType == "IntegerBonus" then
+		return "+" .. FormatModule.FormatNumber(effectValue) .. " GEMS"
 	end
 	
 	if config.EffectType == "TickReduction" then
-		return "-" .. FormatModule.FormatPercent(effectValue)
+		return "-" .. FormatModule.FormatPercent(effectValue * 100)
 	end
 	
-	if config.EffectType == "Unlock" then 
-		if effectValue then
-			return "UNLOCKED"
-		end
-		return "LOCKED"
+	if config.EffectType == "Unlock" then
+		return effectValue and "UNLOCKED" or "LOCKED"
 	end
 	
 	if config.EffectType == "RebirthButtons" then
-		local totalButtons = #(config.RebirthButtonOrder or {})
-		
-		return tostring(effectValue) .. "/" .. tostring(totalButtons) .. " BUTTONS"
+		return tostring(effectValue) .. "/" .. tostring(#(config.RebirthButtonOrder or {})) .. " BUTTONS"
 	end
+	
 	return ""
 end
 
@@ -863,7 +876,7 @@ end
 function UpgradeModule.GetFinalGemAmount(player, baseAmount)
 	baseAmount = tonumber(baseAmount) or 0
 	
-	return math.max(0, math.floor(baseAmount + UpgradeModule.GetGemMoreBonus(player)))
+	return math.max(0, baseAmount + UpgradeModule.GetGemMoreBonus(player))
 end
 
 function UpgradeModule.GetPetLuckBonus(player)
@@ -920,36 +933,65 @@ end
 function UpgradeModule.ValidateConfig()
 	local valid = true
 	
-	for upgradeName, config in pairs(UpgradeModule.Upgrades) do
-		if type(config.MaxLevel) ~= "number" or config.MaxLevel < 1 then 
-			valid = false
-			
-			warn("Invalid MaxLevel:", upgradeName)
-		end
+	local function report(message, upgradeName, level)
+		valid = false
 		
-		if not config.ButtonName then
-			valid = false
-			
-			warn("ButtonName missing:", upgradeName)
-		end
+		warn("UpgradeModule: " .. message, upgradeName, level or "")
+	end
+	
+	local function coverage(ranges, level)
+		local count = 0
 		
-		local coveredLevels = {}
-		
-		for _, priceRange in ipairs(config.PriceRanges or {}) do
-			for level = priceRange.FromLevel, priceRange.ToLevel do 
-				coveredLevels[level] = true
+		for _, range in ipairs(ranges or {}) do
+			if type(range.FromLevel) == "number" and type(range.ToLevel) == "number" and level >= range.FromLevel and level <= range.ToLevel then
+				count += 1
 			end
 		end
 		
-		for level = 1, config.MaxLevel do
-			if not coveredLevels[level] then
-				valid = false
+		return count
+	end
+	
+	for upgradeName, config in pairs(UpgradeModule.Upgrades) do
+		local maxLevel = config.MaxLevel
+		
+		if type(maxLevel) ~= "number" or maxLevel < 1 or maxLevel % 1 ~= 0 then
+			report("invalid MaxLevel", upgradeName)
+		else 
+			if not config.ButtonName then
+				report("Missing ButtonName", upgradeName)
+			end
+			
+			local numericEffect = config.EffectType ~= "Unlock" and config.EffectType ~= "RebirthButtons"
+			for level = 1, maxLevel do
+				if coverage(config.PriceRanges, level) ~= 1 then
+					report("price range gap or overlap", upgradeName, level)
+				else 
+					local price = UpgradeModule.GetLevelPrice(upgradeName, level)
+					
+					if type(price) ~= "number" or price <= 0 or price % 1 ~= 0 then
+						report("invalid price", upgradeName, level)
+					end
+				end
 				
-				warn("Price missing:", upgradeName, "Level:", level)
+				if numericEffect then
+					if coverage(UpgradeModule.LevelBoost[upgradeName], level) ~= 1 then
+						report("boost range gap or overlap", upgradeName, level)
+					else 
+						local effect = UpgradeModule.GetEffectValue(upgradeName, level)
+						local previous = UpgradeModule.GetEffectValue(upgradeName, level - 1)
+						
+						if type(effect) ~= "number" or type(previous) ~= "number" or effect <= previous then
+							report("level gives no improvement", upgradeName, level)
+						end
+					end
+				end
 			end
 		end
 	end
+	
 	return valid
 end
+
+assert(UpgradeModule.ValidateConfig(), "UpgradeModule: check price and boost ranges")
 
 return UpgradeModule
