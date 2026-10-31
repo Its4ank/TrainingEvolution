@@ -59,7 +59,7 @@ local TRAINER_INFO = {
 		DisplayName = "LEDY",
 		Specialty = "Energy Trainer",
 		ModelName = "LedyTrainer",
-		PriceText = "5000 ENERGY",
+		PriceText = "1000 ENERGY",
 		
 		InfoText = "The Lady Trainer may look sweet and charming at first glance, but behind those beautiful eyes hides a truly dedicated and disciplined coach. With her by your side, your training efficiency will rise to a whole new level.",
 		
@@ -68,8 +68,6 @@ local TRAINER_INFO = {
 		LeaderValueType = "Energy",
 		
 		PrimaryBoostName = "Energy",
-		BaseBoost1 = 20,
-		BaseBoost2 = 0,
 	},
 	
 	BellaTrainer = {
@@ -85,8 +83,6 @@ local TRAINER_INFO = {
 		LeaderValueType = "Money",
 		
 		PrimaryBoostName = "Money",
-		BaseBoost1 = 20,
-		BaseBoost2 = 0,
 	},
 	
 	MonikaTrainer = {
@@ -104,28 +100,22 @@ local TRAINER_INFO = {
 		
 		PrimaryBoostName = "PetLuck",
 		SecondaryBoostName = "RACE XP",
-		
-		BaseBoost1 = 20,
-		BaseBoost2 = 10,
 	},
 	
 	JoeTrainer = {
 		DisplayName = "Joe",
 		Specialty = "Power/Acc Trainer",
 		ModelName = "JoeTrainer",
-		PriceText = "100 Rebirth",
+		PriceText = "15 Rebirth",
 		
 		InfoText = "Joe may look serious, but that’s exactly what makes him dangerous. With his intimidating presence and relentless discipline, he pushes you to run faster and harder in every race. Because when Joe is watching, slowing down is not an option.",
 		
 		SpecialIcon = ICONS.SpecialPower,
 		LeaderIcon = ICONS.LeaderRebirth,
-		LeaderValueType = "RaceTouch",
+		LeaderValueType = "Rebirth",
 		
 		PrimaryBoostName = "Power",
 		SecondaryBoostName = "Acceleration",
-		
-		BaseBoost1 = 15,
-		BaseBoost2 = 15,
 	},
 }
 
@@ -187,41 +177,25 @@ local STAGE_REQUIREMENTS = {
 		[1] = {
 			{Type = "Level", Need = 5},
 			{Type = "EggHatched", Need = 20},
-			{
-				Type = "PetRarity",
-				Rarity = "Rare",
-				Need = 10,
-			}
+			{Type = "PetRarity", Rarity = "Rare", Need = 10,}
 		},
 		
 		[2] = {
 			{Type = "Level", Need = 10},
 			{Type = "EggHatched", Need = 50},
-			{
-				Type = "PetRarity",
-				Rarity = "Epic",
-				Need = 10,
-			},
+			{Type = "PetRarity", Rarity = "Epic", Need = 10,},
 		},
 		
 		[3] = {
 			{Type = "Level", Need = 15},
 			{Type = "EggHatched", Need = 75},
-			{
-				Type = "PetRarity",
-				Rarity = "Epic",
-				Need = 15,
-			}
+			{Type = "PetRarity", Rarity = "Epic", Need = 15,},
 		},
 		
 		[4] = {
 			{Type = "Level", Need = 20},
 			{Type = "EggHatched", Need = 100},
-			{
-				Type = "PetRarity",
-				Rarity = "Legendary",
-				Need = 10,
-			},
+			{Type = "PetRarity", Rarity = "Legendary", Need = 10,},
 		},
 	},
 	
@@ -792,45 +766,27 @@ end
 
 
 --// бонусы
-local function getTrainerBaseBoosts(trainerName)
-	local trainerData = TrainerModule.getTrainerData(trainerName)
+local function getTrainerBoosts(trainerName, stage, level)
+	local boosts = TrainerModule.getBoost(trainerName, level, stage)
 	
-	if not trainerData then
-		return 0, 0
+	local function rounded(value)
+		return math.floor((value or 0) * 100 + 0.5) / 100
 	end
 	
 	if trainerName == "LedyTrainer" then
-		return TrainerModule.multiplierToPercent(trainerData.EnergyMultiplier), 0
+		return rounded(boosts.Energy), 0
+		
 	elseif trainerName == "BellaTrainer" then
-		return TrainerModule.multiplierToPercent(trainerData.MoneyMultiplier), 0
-	elseif trainerName == "MonikaTrainer" then
-		return TrainerModule.multiplierToPercent(trainerData.PetLuckMultiplier),
-			TrainerModule.multiplierToPercent(trainerData.RaceXPMultiplier)
+		return rounded(boosts.Money), 0
+		
 	elseif trainerName == "JoeTrainer" then
-		return TrainerModule.multiplierToPercent(trainerData.RacePowerMultiplier),
-			TrainerModule.multiplierToPercent(trainerData.AccelerationMultiplier)
+		return rounded(boosts.RacePower), rounded(boosts.Acceleration)
+		
+	elseif trainerName == "MonikaTrainer" then
+		return rounded(boosts.PetLuck), rounded(boosts.RaceXP)
 	end
+	
 	return 0, 0
-end
-
-local function getTrainerBoosts(trainerName, stage, level)
-	local info = TRAINER_INFO[trainerName]
-	
-	if not info then 
-		return 0, 0
-	end
-	
-	local stageMultiplier = TrainerModule.getStageMultiplier(stage)
-	
-	local levelMultiplier = 1 + math.max(0, level - 1) * 0.02
-	
-	local totalMultiplier = stageMultiplier * levelMultiplier
-	
-	local baseBoost1, baseBoost2 = getTrainerBaseBoosts(trainerName)
-	local boost1 = math.floor(baseBoost1 * totalMultiplier)
-	local boost2 = math.floor(baseBoost2 * totalMultiplier)
-	
-	return boost1, boost2
 end
 
 local function setBoostLabelText(object, text)
@@ -1069,12 +1025,26 @@ end
 local function updateRequirementBar(index, requirement)
 	local requirementType = requirement.Type
 	local need = tonumber(requirement.Need) or 0
+	
 	local current = getProgressValue(selectedTrainerName, requirementType)
+	
+	if requirement.Speed == true then
+		local balances = {
+			Energy = energy,
+			Money = money,
+			Rebirth = rebirth,
+			RaceTouch = raceTouch,
+		}
+		
+		local balance = balances[requirementType]
+		
+		current = math.min(current, balance and balance.Value or 0)
+	end
+
 	local progress = math.clamp(current / math.max(1, need), 0, 1)
 	
 	local icon = requirementIcons[index]
 	local valueLabel = requirementValueLabels[index]
-	
 	local bar = requirementBars[index]
 	local barLabel = requirementBarLabels[index]
 	
@@ -1082,7 +1052,7 @@ local function updateRequirementBar(index, requirement)
 	
 	if valueLabel then 
 		if requirementType == "PetRarity" then
-			valueLabel.Text = getRequirementName(requirementType) .. ": " .. tostring(requirement.Rarity or "")
+			valueLabel.Text = getRequirementName(requirementType) .. ": " .. tostring(requirement.Rarity or "") .. "+"
 		else
 			valueLabel.Text = getRequirementName(requirementType)
 		end
