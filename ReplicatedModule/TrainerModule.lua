@@ -107,11 +107,11 @@ TrainerModule.LevelBoost = {
 	},
 	
 	BellaTrainer = {
-		{FromLevel = 1, ToLevel = 5, StartMoney = 20, EndMode = 24,},
-		{FromLevel = 6, ToLevel = 10, StartMoney = 26, EndMode = 32,},
-		{FromLevel = 11, ToLevel = 15, StartMoney = 34, EndMode = 42,},
-		{FromLevel = 16, ToLevel = 20, StartMoney = 44, EndMode = 52,},
-		{FromLevel = 21, ToLevel = 25, StartMoney = 54, EndMode = 62,},
+		{FromLevel = 1, ToLevel = 5, StartMoney = 20, EndMoney = 24,},
+		{FromLevel = 6, ToLevel = 10, StartMoney = 26, EndMoney = 32,},
+		{FromLevel = 11, ToLevel = 15, StartMoney = 34, EndMoney = 42,},
+		{FromLevel = 16, ToLevel = 20, StartMoney = 44, EndMoney = 52,},
+		{FromLevel = 21, ToLevel = 25, StartMoney = 54, EndMoney = 62,},
 	},
 	
 	JoeTrainer = {
@@ -370,17 +370,17 @@ TrainerModule.StageRequirements = {
 		[2] = {
 			{Type = "Level", Need = 10,},
 			{Type = "Rebirth", Need = 25, Spend = true, ResetOnRankUp = true,},
-			{Type = "RaceTouch", Need = 40, Spen = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 40, Spend = true, ResetOnRankUp = true,},
 		},	
 		[3] = {
 			{Type = "Level", Need = 15,},
 			{Type = "Rebirth", Need = 50, Spend = true, ResetOnRankUp = true,},
-			{Type = "RaceTouch", Need = 100, Spen = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 100, Spend = true, ResetOnRankUp = true,},
 		},
 		[4] = {
 			{Type = "Level", Need = 20,},
 			{Type = "Rebirth", Need = 90, Spend = true, ResetOnRankUp = true,},
-			{Type = "RaceTouch", Need = 250, Spent = true, ResetOnRankUp = true,},
+			{Type = "RaceTouch", Need = 250, Spend = true, ResetOnRankUp = true,},
 		},
 	},
 }
