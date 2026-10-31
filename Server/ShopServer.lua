@@ -450,6 +450,11 @@ usePotionEvent.OnServerEvent:Connect(function(player, potionId, amountMode)
 			return
 		end
 		
+		if player:GetAttribute("ProfileSaveInProgress") == true then
+			report(player, potionId, false, "BUSY")
+			return
+		end
+		
 		local amount = amountMode == "Max" and potion.Value or amountMode
 		if amountMode ~= "Max" and amountMode ~= 1 and amountMode ~= 5 then
 			report(player, potionId, false, "INVALID_AMOUNT")
