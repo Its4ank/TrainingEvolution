@@ -115,7 +115,7 @@ TrailModule.Trails = {
 			Price = 100,
 		},
 		
-		LevelBoosts = {
+		LevelBoost = {
 			{FromLevel = 0, ToLevel = 5, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 3, EndAcceleration = 5.5,},
 			{FromLevel = 6, ToLevel = 10, StartRacePower = 11, EndRacePower = 15, StartAcceleration = 6, EndAcceleration = 8,},
 			{FromLevel = 11, ToLevel = 15, StartRacePower = 16.5, EndRacePower = 21.5, StartAcceleration = 9, EndAcceleration = 11,},
@@ -517,13 +517,13 @@ function TrailModule.GetStageProgress(trailId, currentStage, level, money, rebir
 end
 
 --// BOOST CALCULATIONS
-function TrailModule.GetBaseBost(trailId, level)
+function TrailModule.GetBaseBoost(trailId, level)
 	local config = TrailModule.GetTrailConfig(trailId)
 	
 	if config then
 		level = math.clamp(math.floor(tonumber(level) or 0), TrailModule.MIN_LEVEL, TrailModule.MAX_LEVEL)
 		
-		for _, range in ipairs(config.LevelBoosts or {}) do
+		for _, range in ipairs(config.LevelBoost or {}) do
 			if level >= range.FromLevel and level <= range.ToLevel then
 				local alpha = getRangeAlpha(level, range.FromLevel, range.ToLevel)
 				
@@ -541,7 +541,7 @@ end
 function TrailModule.GetBoostData(trailId, level, stageId)
 	if not TrailModule.GetTrailConfig(trailId) then
 		return {
-			RacePercent = 0,
+			PowerPercent = 0,
 			AccelerationPercent = 0,
 			
 			PowerMultiplier = 1,
