@@ -156,10 +156,67 @@ playerDataLoadedEvent.Event:Connect(function(player)
 	BoostModule.InitPlayer(player)
 end)
 
-for _, player in ipairs(Players:GetPlayers()) do
-	BoostModule.InitPlayer(player)
-end
+local timeBoostLoopStarted = false
 
-BoostModule.StartTimeBoostLoop()
+function BoostModule.StartTimeBoostLoop()
+	if timeBoostLoopStarted then return end
+	timeBoostLoopStarted = true
+	
+	task.spawn(function()
+		local previousTick = os.clock()
+		
+		while true do
+			task.wait(1)
+			local now = os.clock()
+			local elapsed = now - previousTick
+			previousTick = now
+			local wallNow = os.time()
+			
+			for _, player in ipairs(Players:GetPlayers()) do
+				if player:GetAttribute("DataReady") == true then
+					local data = playerTimeBoosts[player.UserId]
+					local boostData = getBoostData(player)
+					
+					if data then
+						data.Seconds += elapsed
+						local intervals = math.floor(data.Seconds / TIME_BOOST_INTERVAL)
+						
+						if intervals > 0 then
+							data.Seconds -= intervals * TIME_BOOST_INTERVAL
+							local bonusValue = boostData and boostData:FindFirstChild("TimeBoostBonus")
+							local bonus = math.max(0, bonusValue and bonusValue.Value or 0)
+							
+							data.Percent = math.clamp(data.Percent + intervals * (TIME_BOOST_PER_INTERVAL + bonus), 0, MAX_TIME_PERCENT)
+						end
+						
+						if boostData then
+							local secondsValue = boostData:FindFirstChild("TimeBoostSeconds")
+							local percentValue = boostData:FindFirstChild("TimeBoostPercent")
+							
+							if secondsValue then
+								secondsValue.Value = math.floor(data.Seconds)
+							end
+							
+							if percentValue then
+								percentValue.Value = data.Percent
+							end
+						end
+					end
+					
+					local potionData = playerPotionBoosts[player,UserId]
+					if potionData then
+						for boostType, potionInfo in pairs(potionData) do
+							local timerValue = getPotionTimerValue(player, boostType)
+							
+							if timerValue then
+								timerValue.Value = math.max(0, potionInfo.ExpiresAt - wallNow)
+							end
+						end
+					end
+				end
+			end
+		end
+	end)
+end
 
 print("BoostServer loaded")
