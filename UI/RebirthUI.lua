@@ -18,7 +18,6 @@ ClientDataModule.WaitUntilReady(player)
 MenuManager.init(gui)
 
 --// UI PATHS
-
 local guiFolder = gui:WaitForChild("GuiFolder")
 local rebirthFolder = guiFolder:WaitForChild("RebirthFolder")
 local rebirthHost = rebirthFolder:WaitForChild("RebirthHost")
@@ -267,11 +266,8 @@ local function getOneRebirthCost(currentRebirths)
 	)
 end
 
-local function getRebirthCost(currentRebirths, amount)
-	return RebirthModule.GetRebirthCost(
-		currentRebirths,
-		amount
-	)
+local function getRebirthCost(currentRebirths, currentEnergy)
+	return RebirthModule.GetRebirthCost(currentRebirths, currentEnergy, ShopModule.GetRebirthAward(player, 1))
 end
 
 local function getMaxRebirthAmount(
@@ -464,7 +460,7 @@ local function updateDetails()
 	energyBoostLabel.Text =
 		"x"
 		.. string.format(
-			"%.1f",
+			"%.2f",
 			getEnergyMultiplier(currentRebirths)
 		)
 
@@ -511,7 +507,7 @@ local function updateInfoFrame()
 	energyCurrentMult.Text =
 		"x"
 		.. string.format(
-			"%.1f",
+			"%.2f",
 			getEnergyMultiplier(currentRebirths)
 		)
 
@@ -548,7 +544,7 @@ local function updateInfoFrame()
 	energyNextMult.Text =
 		"+"
 		.. string.format(
-			"%.1f",
+			"%.2f",
 			addedEnergyMult
 		)
 		.. "x"
