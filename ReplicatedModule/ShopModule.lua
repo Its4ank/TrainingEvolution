@@ -306,7 +306,7 @@ function ShopModule.GetPetStats(player, petName, pattern, tier, level, externalB
 	return ShopModule.ApplyPetStats(player, calculatedStats)
 end
 
-function ShopModule.GetEquippedBonuses(player)
+function ShopModule.GetEquippedPetBonuses(player)
 	local result = {Energy = 0, Money = 0, RacePower = 0,}
 	
 	local petsFolder = player and player:FindFirstChild("Pets")
