@@ -279,12 +279,6 @@ claimHourlyRewardEvent.OnServerEvent:Connect(function(player, slot)
 	end
 
 	sendHourlyUpdate(player)
-	
-	if success then
-		claimedValue.Value = true
-	end
-	
-	sendHourlyUpdate(player)
 end)
 
 requestHourlyRewardUpdateEvent.OnServerEvent:Connect(function(player)
@@ -316,7 +310,7 @@ local function onPlayerAdded(player)
 			if player:GetAttribute("DataReady") == true then
 				checkHourlyReset(player)
 				
-				rewardsFolder.HourlySessionSaeconds.Value += elapsed
+				rewardsFolder.HourlySessionSeconds.Value += elapsed
 				
 				sendHourlyUpdate(player)
 			end
