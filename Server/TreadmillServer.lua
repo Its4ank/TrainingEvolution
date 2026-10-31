@@ -299,25 +299,25 @@ local function startTraining(player, treadmillId, isAuto)
 			local energyDelta = now - data.LastEnergyTick
 			
 			if energyDelta >= interval then 
-				data.LastEnergyTick = now 
+				data.LastEnergyTick += interval
 				
 				local leaderstats = player:FindFirstChild("leaderstats")
 				local energy = leaderstats and leaderstats:FindFirstChild("Energy")
 				
 				if energy then
-					local energyPerSecond = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
-					local gainedEnergy = energyPerSecond
+					local energyPerTick = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
+					local accumulated = energyPerTick + (data.EnergyRemaining or 0)
+					local gainedEnergy = math.floor(accumulated + 1e-9)
 					
-					gainedEnergy = math.floor(gainedEnergy)
+					data.EnergyRemainder = math.max(0, accumulated - gainedEnergy)
 					
-					if gainedEnergy < 1 then 
-						gainedEnergy = 1
+					if gainedEnergy > 0 then 
+						energy.Value += gainedEnergy
+						
+						TrainerModule.addEquippedTrainerProgress(player, "Energy", gainedEnergy)
+						
+						energyPopupEvent:FireClient(player, gainedEnergy)
 					end
-					
-					energy.Value += gainedEnergy
-					
-					TrainerModule.addEquippedTrainerProgress(player, "Energy", gainedEnergy)
-					energyPopupEvent:FireClient(player, gainedEnergy)
 				end
 			end
 			
@@ -406,8 +406,9 @@ local function getTreadmillInfo(player, treadmillId)
 	
 	local levelPrice = TreadmillModule.GetLevelPrice(treadmillId, level)
 	
-	local currentEnergy = TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId, level, stage)
-	local nextEnergy = TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId, nextLevel, stage)
+	local interval = getTrainingInterval(player)
+	local currentEnergy = TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId, level, stage) / interval
+	local nextEnergy = TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId, nextLevel, stage) / interval
 	
 	local canTierUp, tierReason, tierInfo = TreadmillModule.GetTierUpStatus(player, treadmillId)
 	
