@@ -65,9 +65,9 @@ PetModule.Pets = {
 		Icon = "",
 		
 		BaseStats = {
-			Energy = 1,
+			Energy = 2,
 			Money = 1,
-			RacePower = 1,
+			RacePower = 0.5,
 		},
 	},
 	
@@ -81,9 +81,9 @@ PetModule.Pets = {
 		Icon = "",
 		
 		BaseStats = {
-			Energy = 2.5,
+			Energy = 3,
 			Money = 1.5,
-			RacePower = 2,
+			RacePower = 0.75,
 		},
 	},
 	
@@ -97,9 +97,9 @@ PetModule.Pets = {
 		Icon = "",
 		
 		BaseStats = {
-			Energy = 5,
+			Energy = 4.5,
 			Money = 2.5,
-			RacePower = 4,
+			RacePower = 1,
 		},
 	},
 	
@@ -113,9 +113,9 @@ PetModule.Pets = {
 		Icon = "",
 		
 		BaseStats = {
-			Energy = 10,
-			Money = 6.5,
-			RacePower = 12,
+			Energy = 6,
+			Money = 4,
+			RacePower = 1.5,
 		},
 	},
 	
@@ -129,9 +129,9 @@ PetModule.Pets = {
 		Icon = "",
 		
 		BaseStats = {
-			Energy = 15,
-			Money = 10,
-			RacePower = 17.5,
+			Energy = 8,
+			Money = 6,
+			RacePower = 2,
 		},
 	},
 	
@@ -143,9 +143,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardHourly",
 		
 		BaseStats = {
-			Energy = 7.5,
-			Money = 10,
-			RacePower = 15,
+			Energy = 6,
+			Money = 5,
+			RacePower = 1.5,
 		},
 	},
 	
@@ -157,9 +157,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardHourly",
 		
 		BaseStats = {
-			Energy = 15,
-			Money = 12.5,
-			RacePower = 30,
+			Energy = 10,
+			Money = 8,
+			RacePower = 2.5,
 		},
 	},
 	
@@ -171,9 +171,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 45,
-			Money = 35,
-			RacePower = 50,
+			Energy = 12,
+			Money = 10,
+			RacePower = 3,
 		},
 	},
 	
@@ -185,9 +185,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 70,
-			Money = 50,
-			RacePower = 125,
+			Energy = 14,
+			Money = 12,
+			RacePower = 3.5,
 		},
 	},
 	
@@ -199,9 +199,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 100,
-			Money = 75,
-			RacePower = 150,
+			Energy = 16,
+			Money = 14,
+			RacePower = 4,
 		},
 	},
 	
@@ -213,9 +213,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 125,
-			Money = 100,
-			RacePower = 200,
+			Energy = 18,
+			Money = 16,
+			RacePower = 4.5,
 		},
 	},
 	
@@ -227,9 +227,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 150,
-			Money = 125,
-			RacePower = 250,
+			Energy = 20,
+			Money = 18,
+			RacePower = 5,
 		},
 	},
 	
@@ -241,9 +241,9 @@ PetModule.Pets = {
 		ModelFolder = "PetRewardDaily",
 		
 		BaseStats = {
-			Energy = 175,
-			Money = 150,
-			RacePower = 300,
+			Energy = 22,
+			Money = 20,
+			RacePower = 5.5,
 		},
 	},
 }
