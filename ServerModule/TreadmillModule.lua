@@ -19,29 +19,29 @@ TreadmillModule.MAX_LEVEL = 25
 TreadmillModule.Treadmills = { 
 	[1] = {
 		Name = "Treadmill 1",
-		BaseEnergy = 1,
-		EnergyPerLevel = 0.2,
+		BaseEnergy = 2,
+		EnergyPerLevel = 0.4,
 		
-		LevelPriceBase = 100,
-		LevelPriceMultiplier = 1.4,
+		LevelPriceBase = 20,
+		LevelPriceMultiplier = 1.15,
 	},
 	
 	[2] = {
 		Name = "Treadmill 2",
-		BaseEnergy = 300,
-		EnergyPerLevel = 20,
+		BaseEnergy = 30,
+		EnergyPerLevel = 1.2,
 		
-		LevelPriceBase = 300,
-		LevelPriceMultiplier = 1.5,
+		LevelPriceBase = 180,
+		LevelPriceMultiplier = 1.14,
 	},
 	
 	[3] = {
 		Name = "Treadmill 3",
-		BaseEnergy = 1800,
-		EnergyPerLevel = 100,
+		BaseEnergy = 150,
+		EnergyPerLevel = 4,
 		
-		LevelPriceBase = 5000,
-		LevelPriceMultiplier = 1.6,
+		LevelPriceBase = 1500,
+		LevelPriceMultiplier = 1.13,
 	},
 }
 
@@ -79,24 +79,24 @@ TreadmillModule.Stages = {
 
 TreadmillModule.TierRequirements = { 
 	[1] = { -- Treadmill 1
-		[1] = {Energy = 1000, Rebirth = 25, Time = 300}, -- Stage 1 > 2
-		[2] = {Energy = 15000, Rebirth = 100, Time = 900}, -- Stage 2 > 3
-		[3] = {Energy = 50000, Rebirth = 150, Time = 1800}, -- Stage 3 > 4
-		[4] = {Energy = 100000, Rebirth = 200, Time = 2700}, -- Stage 4 > 5
+		[1] = {Energy = 150, Rebirth = 5, Time = 60}, -- Stage 1 > 2
+		[2] = {Energy = 300, Rebirth = 10, Time = 90}, -- Stage 2 > 3
+		[3] = {Energy = 600, Rebirth = 15, Time = 120}, -- Stage 3 > 4
+		[4] = {Energy = 1000, Rebirth = 25, Time = 150}, -- Stage 4 > 5
 	},
 	
 	[2] = { -- Treadmill 2
-		[1] = {Energy = 500000, Rebirth = 500, Time = 400}, -- Stage 1 > 2
-		[2] = {Energy = 1000000, Rebirth = 750, Time = 800}, -- Stage 2 > 3
-		[3] = {Energy = 1500000, Rebirth = 1000, Time = 1900}, -- Stage 3 > 4
-		[4] = {Energy = 2500000, Rebirth = 1500, Time = 3000}, -- Stage 4 > 5
+		[1] = {Energy = 2500, Rebirth = 40, Time = 90}, -- Stage 1 > 2
+		[2] = {Energy = 6000, Rebirth = 60, Time = 120}, -- Stage 2 > 3
+		[3] = {Energy = 12000, Rebirth = 85, Time = 150}, -- Stage 3 > 4
+		[4] = {Energy = 20000, Rebirth = 110, Time = 180}, -- Stage 4 > 5
 	},
 	
 	[3] = { -- Treadmill 3
-		[1] = {Energy = 3000000, Rebirth = 2000, Time = 600}, -- Stage 1 > 2
-		[2] = {Energy = 4500000, Rebirth = 2500, Time = 1100}, -- Stage 2 > 3
-		[3] = {Energy = 6000000, Rebirth = 3500, Time = 2400}, -- Stage 3 > 4
-		[4] = {Energy = 8500000, Rebirth = 5000, Time = 3500}, -- Stage 4 > 5
+		[1] = {Energy = 50000, Rebirth = 140, Time = 120}, -- Stage 1 > 2
+		[2] = {Energy = 100000, Rebirth = 180, Time = 150}, -- Stage 2 > 3
+		[3] = {Energy = 180000, Rebirth = 230, Time = 180}, -- Stage 3 > 4
+		[4] = {Energy = 300000, Rebirth = 300, Time = 210}, -- Stage 4 > 5
 	},
 }
 
@@ -244,35 +244,12 @@ function TreadmillModule.ResetTrainingTime(player, treadmillId)
 	data.TrainingTime.Value = 0
 end
 
-local function getPetEnergyMultiplier(player)
-	local petsFolder = player:FindFirstChild("Pets")
-	if not petsFolder then return 1 end 
-	
-	local multiplier = 1
-	
-	for _, petFolder in ipairs(petsFolder:GetChildren()) do
-		if not petFolder:IsA("Folder") then continue end
-		
-		local equipped = petFolder:FindFirstChild("Equipped")
-		local petName = petFolder:FindFirstChild("PetName")
-		local pattern = petFolder:FindFirstChild("Pattern")
-		local tier = petFolder:FindFirstChild("Tier")
-		local level = petFolder:FindFirstChild("Level")
-		
-		if equipped and equipped.Value and petName and pattern and tier and level then
-			local stats = ShopModule.GetPetStats(player, petName.Value, pattern.Value, tier.Value, level.Value)
-			
-			if stats then
-				local petMultiplier = tonumber(stats.Energy) or 1
-				multiplier *= math.max(1, petMultiplier)
-			end
-		end
-	end
-	return multiplier
+local function getPetEnergyBonus(player)
+	return ShopModule.GetEquippedPetBonuses(player).Energy
 end
 
 function TreadmillModule.GetPlayerEnergyMultiplier(player)
-	local multiplier = getPetEnergyMultiplier(player)
+	local multiplier = 1
 	
 	--// Буст к беговой дорожке
 	local rebirthEnergyMultiplier = RebirthModule.GetEnergyMultiplier(player)
@@ -351,11 +328,10 @@ end
 
 function TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId, levelOverride, stageOverride)
 	local baseEnergy = TreadmillModule.GetBaseEnergyPerSecond(player, treadmillId, levelOverride, stageOverride)
+	local petEnergy = getPetEnergyBonus(player)
 	local multiplier = TreadmillModule.GetPlayerEnergyMultiplier(player)
 	
-	local result = baseEnergy * multiplier 
-	
-	return math.floor(result * 100) / 100
+	return (baseEnergy + petEnergy) * multiplier
 end
 
 function TreadmillModule.CanUpgradeLevel(player, treadmillId)
@@ -488,27 +464,22 @@ function TreadmillModule.GetTierUpStatus(player, treadmillId)
 end
 
 function TreadmillModule.TierUp(player, treadmillId)
-	local canTierUp, reason, info = TreadmillModule.GetTierUpStatus(player, treadmillId)
+	local canTierUp, _, info = TreadmillModule.GetTierUpStatus(player, treadmillId)
 	
 	if not canTierUp then 
 		return false, "NOT_ENOUGH", info 
 	end
 	
 	local data = TreadmillModule.GetTreadmillValues(player, treadmillId)
-	if not data then 
-		return false, "NO_DATA"
-	end
-	
 	local energy = getLeaderstats(player, "Energy")
 	local rebirth = getLeaderstats(player, "Rebirth")
 	
-	if energy then 
-		energy.Value = 0
+	if not data or not energy or not rebirth then 
+		return false, "NO_DATA"
 	end
 	
-	if rebirth then 
-		rebirth.Value = 0
-	end
+	energy.Value = 0
+	rebirth.Value = 0
 	
 	data.TrainingTime.Value = 0
 	data.Stage.Value += 1
