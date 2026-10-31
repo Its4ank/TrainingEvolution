@@ -674,7 +674,7 @@ local previewCache = {}
 local previewRequestsInProgress = false
 
 local function getFallbackRewardPreview(rewardIndex, rewardLevel)
-	local cappedLevel = math.min(rewardLevel, RaceModule.GetRewardLevelUp(stageValue.Value))
+	local cappedLevel = math.min(rewardLevel, RaceModule.GetRewardLevelCap(stageValue.Value))
 	
 	return RaceModule.calculateFinalReward(rewardIndex, stageValue.Value, cappedLevel, {}, roadLevelValue.Value)
 		or {Money = 0, Gems = 0, XP = 0, RaceTouch = 0, GemChance = 0,}
