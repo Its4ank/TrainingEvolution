@@ -272,31 +272,31 @@ PetModule.PatternRanges = {
 --// Tiers
 PetModule.Tiers = {
 	[0] = {Name = "Normal", Chance = 95, StatMultiplier = 1,},
-	[1] = {Name = "Big", Chance = 3, StatMultiplier = 1.5,},
-	[2] = {Name = "Silver", Chance = 1, StatMultiplier = 2,},
-	[3] = {Name = "Gold", Chance = 0.5, StatMultiplier = 3,},
-	[4] = {Name = "Rainbow", Chance = 0.4, StatMultiplier = 4,},
-	[5] = {Name = "Legend", Chance = 0.1, StatMultiplier = 5,},
+	[1] = {Name = "Big", Chance = 3, StatMultiplier = 1.15,},
+	[2] = {Name = "Silver", Chance = 1, StatMultiplier = 1.30,},
+	[3] = {Name = "Gold", Chance = 0.5, StatMultiplier = 1.50,},
+	[4] = {Name = "Rainbow", Chance = 0.4, StatMultiplier = 1.75,},
+	[5] = {Name = "Legend", Chance = 0.1, StatMultiplier = 2.00,},
 }
 
 --// PetLevel upgrade prices
 PetModule.LevelUp = {
-	{FromLevel = 1, ToLevel = 5, StartPrice = 100, EndPrice = 500, StartXP = 5, EndXP = 50,},
-	{FromLevel = 6, ToLevel = 10, StartPrice = 1000, EndPrice = 5000, StartXP = 60, EndXP = 100,},
-	{FromLevel = 11, ToLevel = 15, StartPrice = 10000, EndPrice = 50000, StartXP = 125, EndXP = 250,},
-	{FromLevel = 16, ToLevel = 20, StartPrice = 100000, EndPrice = 500000, StartXP = 300, EndXP = 500,},
-	{FromLevel = 21, ToLevel = 25, StartPrice = 1000000, EndPrice = 5000000, StartXP = 550, EndXP = 750,},
-	{FromLevel = 26, ToLevel = 30, StartPrice = 10000000, EndPrice = 50000000, StartXP = 800, EndXP = 1100,},
+	{FromLevel = 1, ToLevel = 5, StartPrice = 20, EndPrice = 60, StartXP = 1, EndXP = 5,},
+	{FromLevel = 6, ToLevel = 10, StartPrice = 75, EndPrice = 135, StartXP = 6, EndXP = 10,},
+	{FromLevel = 11, ToLevel = 15, StartPrice = 160, EndPrice = 300, StartXP = 12, EndXP = 20,},
+	{FromLevel = 16, ToLevel = 20, StartPrice = 360, EndPrice = 660, StartXP = 24, EndXP = 40,},
+	{FromLevel = 21, ToLevel = 25, StartPrice = 780, EndPrice = 1380, StartXP = 45, EndXP = 65,},
+	{FromLevel = 26, ToLevel = 30, StartPrice = 1620, EndPrice = 2820, StartXP = 75, EndXP = 115,},
 }
 
 --// Pet level stat boost
 PetModule.LevelBoost = {
 	{FromLevel = 1, ToLevel = 5, StartBoost = 0.10, EndBoost = 0.25,},
-	{FromLevel = 6, ToLevel = 10, StartBoost = 0.25, EndBoost = 0.50,},
-	{FromLevel = 11, ToLevel = 15, StartBoost = 0.50, EndBoost = 0.75,},
-	{FromLevel = 16, ToLevel = 20, StartBoost = 0.75, EndBoost = 1.00,},
-	{FromLevel = 21, ToLevel = 25, StartBoost = 1.00, EndBoost = 1.25,},
-	{FromLevel = 26, ToLevel = 30, StartBoost = 1.25, EndBoost = 1.50,},
+	{FromLevel = 6, ToLevel = 10, StartBoost = 0.30, EndBoost = 0.50,},
+	{FromLevel = 11, ToLevel = 15, StartBoost = 0.55, EndBoost = 0.75,},
+	{FromLevel = 16, ToLevel = 20, StartBoost = 0.80, EndBoost = 1.00,},
+	{FromLevel = 21, ToLevel = 25, StartBoost = 1.05, EndBoost = 1.25,},
+	{FromLevel = 26, ToLevel = 30, StartBoost = 1.30, EndBoost = 1.50,},
 }
 
 --// Internal helpers
@@ -336,12 +336,11 @@ end
 
 --// Pattern
 function PetModule.GetPatternMultiplier(pattern)
-	pattern = math.clamp(pattern or PetModule.MIN_PATTERN, PetModule.MIN_PATTERN, PetModule.MAX_PATTERN)
-	if pattern <= 20 then
-		return 1 + (pattern * 0.05)
-	end
+	pattern = math.clamp(tonumber(pattern) or PetModule.MIN_PATTERN, PetModule.MIN_PATTERN, PetModule.MAX_PATTERN)
 	
-	return pattern / 10
+	local alpha = (pattern - PetModule.MIN_PATTERN) / (PetModule.MAX_PATTERN - PetModule.MIN_PATTERN)
+	
+	return 1 + alpha * 0.25
 end
 
 --// Pattern roll
