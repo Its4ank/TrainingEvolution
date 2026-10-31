@@ -120,18 +120,9 @@ end
 
 --// Reward calculation
 local function getCurrentRewardData(player, rewardsFolder)
-	local absoluteDay = rewardsFolder.DailyCurrentDay.Value
-	local previousMax = rewardsFolder.DailyCurrentMaxValue.Value
-	local rewardData, reason = RewardModule.GetDailyReward(player, absoluteDay, previousMax)
+	rewardsFolder.DailyCurrentMaxValue.Value = 0
 	
-	if not rewardData then return nil, reason end
-	
-	if rewardData.Amount > previousMax then
-		rewardsFolder.DailyCurrentMaxValue.Value = rewardData.Amount
-	else
-		rewardData.Amount = previousMax
-	end
-	return rewardData
+	return RewardModule.GetDailyReward(player, rewardsFolder.DailyCurrentDay.Value, 0)
 end
 
 local function getCycleStartDay(absoluteDay)
