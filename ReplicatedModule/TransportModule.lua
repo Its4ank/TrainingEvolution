@@ -81,7 +81,7 @@ TransportModule.Locations = {
 				LevelBoost = {
 					{FromLevel = 0, ToLevel = 5, StartRacePower = 1, EndRacePower = 5, StartAcceleration = 2, EndAcceleration = 8,},
 					{FromLevel = 5, ToLevel = 10, StartRacePower = 5, EndRacePower = 10, StartAcceleration = 8, EndAcceleration = 16,},
-					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 15, StartAcceleration = 16, EndAcceleration = 24,},
+					{FromLevel = 10, ToLevel = 15, StartRacePower = 10, EndRacePower = 16, StartAcceleration = 16, EndAcceleration = 24,},
 					{FromLevel = 15, ToLevel = 20, StartRacePower = 16, EndRacePower = 23, StartAcceleration = 24, EndAcceleration = 32,},
 					{FromLevel = 20, ToLevel = 25, StartRacePower = 23, EndRacePower = 30, StartAcceleration = 32, EndAcceleration = 40,},	
 				},
@@ -247,7 +247,7 @@ TransportModule.Locations = {
 					{FromLevel = 6, ToLevel = 10, StartPrice = {Money = 1700, RaceTouch = 115, XP = 160,}, EndPrice = {Money = 2500, RaceTouch = 155, XP = 240},},
 					{FromLevel = 11, ToLevel = 15, StartPrice = {Money = 2800, RaceTouch = 175, XP = 270,}, EndPrice = {Money = 4000, RaceTouch = 235, XP = 390},},
 					{FromLevel = 16, ToLevel = 20, StartPrice = {Money = 4400, RaceTouch = 260, XP = 430,}, EndPrice = {Money = 6000, RaceTouch = 340, XP = 590},},
-					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 6600, RaceTouch = 380, XP = 650,}, EndPrice = {Money = 8600, RaceTouch = 480, XP = 8500},},
+					{FromLevel = 21, ToLevel = 25, StartPrice = {Money = 6600, RaceTouch = 380, XP = 650,}, EndPrice = {Money = 8600, RaceTouch = 480, XP = 850},},
 				},
 
 				LevelBoost = {
