@@ -48,7 +48,7 @@ function RebirthModule.GetRebirthCost(currentRebirths, rebirthAmount, rebirthPer
 	rebirthPerPurchase = math.max(1, math.floor(tonumber(rebirthPerPurchase) or 1))
 	
 	local firstCost = RebirthModule.GetOneRebirthCost(currentRebirths)
-	local priceStep = RebirthModule.GetPerRebirth * rebirthPerPurchase
+	local priceStep = RebirthModule.CostPerRebirth * rebirthPerPurchase
 	
 	return rebirthAmount * firstCost + priceStep * rebirthAmount * (rebirthAmount - 1) / 2
 end
