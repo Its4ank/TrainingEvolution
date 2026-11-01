@@ -1236,7 +1236,7 @@ task.spawn(function()
 		task.wait(2)
 		
 		if raceHost.Visible then
-			updateRewardDetail()
+			requestServerPreview()
 		end
 	end
 end)
