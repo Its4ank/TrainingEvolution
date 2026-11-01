@@ -355,6 +355,8 @@ end
 
 --// Remoite handling
 treadmillRequestEvent.OnServerEvent:Connect(function(player, action, treadmillId)
+	if player:GetAttribute("DataReady") ~= true then return end
+	
 	if action == "StartTraining" or action == "StopTraining" or action == "ToggleTraining" then
 		if player:GetAttribute("AutomaticMode") == "AutoTraining" then
 			player:SetAttribute("AutomaticMode", "None")
