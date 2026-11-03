@@ -1,0 +1,152 @@
+-- ServerScriptService. This demo supplies occupancy/holding and belt state, NOT rewards.
+local Players = game:GetService('Players')
+local RunService = game:GetService('RunService')
+local CollectionService = game:GetService('CollectionService')
+local ReplicatedStorage = game:GetService('ReplicatedStorage')
+local shared = ReplicatedStorage:WaitForChild('StoneTreadmillRuntime')
+local remote = shared:WaitForChild('MovementInput')
+local Path = require(shared:WaitForChild('BeltPath'))
+local entries, inputs, heldBy, cooldown = {}, {}, {}, {}
+local function rig(player)
+ local c = player.Character
+ if not c then return end
+ local h, root = c:FindFirstChildOfClass('Humanoid'), c:FindFirstChild('HumanoidRootPart')
+ if h and root and h.Health > 0 and not h.Sit then return h, root end
+end
+local function flat(v)
+ local q = Vector3.new(v.X, 0, v.Z)
+ return q.Magnitude > 0.001 and q.Unit or Vector3.zero
+end
+local function release(e)
+ local p = e.player
+ if not p then return end
+ local hold = e.hold
+ if hold then
+  for _, v in ipairs(hold.instances) do v:Destroy() end
+  if hold.humanoid.Parent then hold.humanoid.AutoRotate = hold.autoRotate end
+ end
+ heldBy[p] = nil
+ cooldown[p] = os.clock() + 1.25
+ if p.Parent then p:SetAttribute('StoneTreadmillHeld', nil) end
+ e.player, e.hold = nil, nil
+ if e.model.Parent then e.model:SetAttribute('RunnerUserId', 0) end
+end
+local function inside(e, root)
+ local q = e.origin.CFrame:PointToObjectSpace(root.Position)
+ return math.abs(q.X) < e.width * 0.5 - 0.10 and q.Z < -0.25 and q.Z > -e.length + 0.25
+  and q.Y > e.radius + 0.3 and q.Y < e.radius + 7.0
+end
+local function grounded(e, h, root)
+ local params = RaycastParams.new()
+ params.FilterType = Enum.RaycastFilterType.Include
+ params.FilterDescendantsInstances = {e.deck}
+ local leg = h.RigType == Enum.HumanoidRigType.R6 and h.Parent:FindFirstChild('Left Leg')
+ local height = h.HipHeight + root.Size.Y * 0.5 + (leg and leg.Size.Y or 0)
+ return workspace:Raycast(root.Position, Vector3.new(0, -height - 1.2, 0), params) ~= nil
+end
+local function acquire(e, player, h, root)
+ e.player = player; heldBy[player] = e
+ e.model:SetAttribute('RunnerUserId', player.UserId)
+ if e.model:GetAttribute('HoldRunner') == false then return end
+ local q = e.origin.CFrame:PointToObjectSpace(root.Position)
+ local vertical = (q.Y - e.radius - e.slatTop) / math.max(0.2, e.origin.CFrame.UpVector.Y)
+ local foot = root.Position - Vector3.new(0, vertical, 0)
+ local leg = h.RigType == Enum.HumanoidRigType.R6 and h.Parent:FindFirstChild('Left Leg')
+ local height = h.HipHeight + root.Size.Y * 0.5 + (leg and leg.Size.Y or 0)
+ local a = Instance.new('Attachment'); a.Name = 'TM_HoldAttachment'; a.Parent = root
+ local ap = Instance.new('AlignPosition'); ap.Name = 'TM_HoldPosition'; ap.Mode = Enum.PositionAlignmentMode.OneAttachment
+ ap.Attachment0 = a; ap.ApplyAtCenterOfMass = true; ap.Position = foot + Vector3.new(0, height, 0)
+ ap.MaxForce = math.max(100000, root.AssemblyMass * 50000); ap.MaxVelocity = 50; ap.Responsiveness = 80; ap.Parent = root
+ local ao = Instance.new('AlignOrientation'); ao.Name = 'TM_HoldYaw'; ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
+ ao.Attachment0 = a; ao.CFrame = CFrame.lookAt(Vector3.zero, flat(e.origin.CFrame.LookVector))
+ ao.MaxTorque = 1000000; ao.Responsiveness = 60; ao.Parent = root
+ e.hold = {instances = {ap, ao, a}, humanoid = h, autoRotate = h.AutoRotate}
+ h.AutoRotate = false; player:SetAttribute('StoneTreadmillHeld', e.model:GetAttribute('TreadmillId'))
+end
+local function register(model)
+ if entries[model] or not model:IsA('Model') or not model:GetAttribute('SetupComplete') then return end
+ local origin, deck = model:FindFirstChild('BeltOrigin'), model:FindFirstChild('CollisionDeck')
+ if not origin or not deck then return end
+ local length, radius = model:GetAttribute('BeltLength'), model:GetAttribute('BeltRadius')
+ if not length or not radius or length <= 0 or radius <= 0 then return end
+ local e = {model = model, origin = origin, deck = deck, length = length, radius = radius,
+  width = model:GetAttribute('BeltWidth'), slatTop = model:GetAttribute('SlatTopOffset'), speed = 0, phase = 0}
+ entries[model] = e
+ model:SetAttribute('BeltSpeed', 0); model:SetAttribute('BeltPhase', 0); model:SetAttribute('PhaseEpoch', workspace:GetServerTimeNow())
+ model:SetAttribute('RunnerUserId', 0)
+end
+for _, model in ipairs(CollectionService:GetTagged('StoneAgeTreadmill')) do register(model) end
+CollectionService:GetInstanceAddedSignal('StoneAgeTreadmill'):Connect(register)
+CollectionService:GetInstanceRemovedSignal('StoneAgeTreadmill'):Connect(function(m)
+ local e = entries[m]; if e then release(e); entries[m] = nil end
+end)
+remote.OnServerEvent:Connect(function(player, direction, jump)
+ if typeof(jump) ~= 'boolean' then return end
+ if typeof(direction) ~= 'Vector3' or direction.Magnitude ~= direction.Magnitude or direction.Magnitude > 1.1 then return end
+ local now = os.clock(); local old = inputs[player]
+ if old and now - old.time < 0.04 and not jump then return end
+ inputs[player] = {direction = direction, jump = jump == true, time = now}
+ if jump == true and heldBy[player] then
+  release(heldBy[player])
+  local h, root = rig(player)
+  if h and root and not root.Anchored then
+   local power = h.UseJumpPower and h.JumpPower or math.sqrt(2 * workspace.Gravity * h.JumpHeight)
+   local v = root.AssemblyLinearVelocity
+   root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, power), v.Z)
+   h.Jump = true
+  end
+ end
+end)
+local function leaving(player)
+ if heldBy[player] then release(heldBy[player]) end
+ inputs[player], cooldown[player] = nil, nil
+end
+local function bindPlayer(player)
+ player.CharacterRemoving:Connect(function() leaving(player) end)
+end
+for _, p in ipairs(Players:GetPlayers()) do bindPlayer(p) end
+Players.PlayerAdded:Connect(bindPlayer); Players.PlayerRemoving:Connect(leaving)
+local accumulator = 0
+RunService.Heartbeat:Connect(function(dt)
+ accumulator = accumulator + dt
+ if accumulator < 0.08 then return end
+ local step = accumulator; accumulator = 0; local clock = os.clock(); local now = workspace:GetServerTimeNow()
+ for model, e in pairs(entries) do
+  if not model:IsDescendantOf(workspace) then release(e); entries[model] = nil
+  else
+   local desired = 0; local mode = model:GetAttribute('ControlMode')
+   if mode == 'External' then
+    release(e); desired = math.clamp(tonumber(model:GetAttribute('RequestedBeltSpeed')) or 0, 0, 30)
+   else
+    if e.player then
+     local h, root = rig(e.player); local input = inputs[e.player]
+     if not h or not input or clock - input.time > 0.65 or not inside(e, root)
+      or input.jump or h:GetState() == Enum.HumanoidStateType.Jumping then release(e)
+     else
+      local dir = input.direction; local forward = dir:Dot(flat(e.origin.CFrame.LookVector))
+      if dir.Magnitude > 0.2 and forward < 0.15 then release(e)
+      elseif forward > 0.15 then desired = (model:GetAttribute('RunBeltSpeed') or 5) * math.clamp(forward, 0, 1) end
+     end
+    end
+    if not e.player then
+     for _, player in ipairs(Players:GetPlayers()) do
+      local input = inputs[player]; local h, root = rig(player)
+      if h and input and not input.jump and clock - input.time < 0.65 and not heldBy[player]
+       and clock > (cooldown[player] or 0) and inside(e, root) and grounded(e, h, root)
+       and input.direction:Dot(flat(e.origin.CFrame.LookVector)) > 0.15 then
+       acquire(e, player, h, root); desired = model:GetAttribute('RunBeltSpeed') or 5; break
+      end
+     end
+    end
+   end
+   -- Integrate the old speed before changing it, so stop/start never resets the loop.
+   e.phase = (e.phase + e.speed * step) % Path.length(e.length, e.radius)
+   local change = math.clamp(desired - e.speed, -step * 10, step * 7)
+   if math.abs(change) > 0.00001 then
+    e.speed = e.speed + change
+    model:SetAttribute('BeltPhase', e.phase); model:SetAttribute('PhaseEpoch', now); model:SetAttribute('BeltSpeed', e.speed)
+   end
+  end
+ end
+end)
+script.Destroying:Connect(function() for _, e in pairs(entries) do release(e) end end)
