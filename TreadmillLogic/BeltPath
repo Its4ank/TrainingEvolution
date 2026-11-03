@@ -1,0 +1,23 @@
+-- Shared exact capsule path. Local -Z points toward the rear/high roller.
+local Path = {}
+function Path.length(length, radius)
+ return 2 * length + 2 * math.pi * radius
+end
+function Path.frame(distance, length, radius)
+ local s = distance % Path.length(length, radius)
+ local y, z, dy, dz
+ if s < length then
+  y, z, dy, dz = radius, -length + s, 0, 1
+ elseif s < length + math.pi * radius then
+  local a = (s - length) / radius
+  y, z, dy, dz = radius * math.cos(a), radius * math.sin(a), -math.sin(a), math.cos(a)
+ elseif s < 2 * length + math.pi * radius then
+  y, z, dy, dz = -radius, -(s - length - math.pi * radius), 0, -1
+ else
+  local a = math.pi + (s - 2 * length - math.pi * radius) / radius
+  y, z, dy, dz = radius * math.cos(a), -length + radius * math.sin(a), -math.sin(a), math.cos(a)
+ end
+ return CFrame.fromMatrix(Vector3.new(0, y, z), Vector3.xAxis,
+  Vector3.new(0, dz, -dy), Vector3.new(0, dy, dz))
+end
+return Path
