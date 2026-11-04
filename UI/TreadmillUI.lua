@@ -201,7 +201,7 @@ end
 --// functions
 local function setupBillboards()
 	for i = 1, MAX_TREADMILLS do
-		local treadmillObject = workspace:FindFirstChild("Treadmill" .. i, 10)
+		local treadmillObject = workspace:WaitForChild("Treadmill" .. i, 10)
 		local data = billboardData[i]
 		
 		if not treadmillObject or not data then
