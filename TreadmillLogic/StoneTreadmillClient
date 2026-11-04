@@ -1,82 +1,169 @@
--- StarterPlayerScripts. Visual motion is computed locally for every visible treadmill.
-local Players = game:GetService('Players')
-local RunService = game:GetService('RunService')
-local CollectionService = game:GetService('CollectionService')
-local ReplicatedStorage = game:GetService('ReplicatedStorage')
-local UserInputService = game:GetService('UserInputService')
-local player = Players.LocalPlayer
-local shared = ReplicatedStorage:WaitForChild('StoneTreadmillRuntime')
-local remote = shared:WaitForChild('MovementInput'); local Path = require(shared:WaitForChild('BeltPath'))
-local entries = {}; local generation = {}; local character, humanoid, runTrack; local inputTime = 0
+--// StoneTreadmillClient v1.3
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer 
+local shared = ReplicatedStorage:WaitForChild("StoneTreadmillRuntime")
+local remote = shared:WaitForChild("MovementInput")
+local Path = require(shared:WaitForChild("BeltPath"))
+
+local entries = {}
+local generation = {}
+local character, humanoid, runTrack
+local inputTime = 0
+
 local function characterAdded(c)
- if runTrack then runTrack:Stop(0); runTrack:Destroy(); runTrack = nil end
- character = c; humanoid = c:WaitForChild('Humanoid')
- local animator = humanoid:WaitForChild('Animator', 10); local animate = c:WaitForChild('Animate', 10)
- if character ~= c or not animator or not animate then return end
- local folder = animate:FindFirstChild('run') or animate:FindFirstChild('walk')
- local animation = folder and folder:FindFirstChildWhichIsA('Animation', true)
- if animation then
-  local ok, track = pcall(function() return animator:LoadAnimation(animation) end)
-  if ok then runTrack = track; track.Priority = Enum.AnimationPriority.Action; track.Looped = true end
- end
+	if runTrack then
+		runTrack:Stop(0)
+		runTrack:Destroy()
+		runTrack = nil
+	end
+	
+	character = c
+	humanoid = c:WaitForChild("Humanoid")
+	local animator = humanoid:WaitForChild("Animator", 10)
+	local animate = c:WaitForChild("Animate", 10)
+	if character ~= c or not animator or not animate then return end
+	
+	local folder = animate:FindFirstChild("run") or animate:FindFirstChild("Walk")
+	local animation = folder and folder:FindFirstChildWhichIsA("Animation", true)
+	
+	if animation then
+		local ok, track = pcall(function()
+			return animator:LoadAnimation(animation)
+		end)
+		
+		if ok and track then
+			runTrack = track 
+			track.Priority = Enum.AnimationPriority.Action 
+			track.Looped = true
+		end
+	end
 end
-player.CharacterAdded:Connect(function(c) task.spawn(characterAdded, c) end)
-if player.Character then task.spawn(characterAdded, player.Character) end
+
+player.CharacterAdded:Connect(function(c)
+	task.spawn(characterAdded, c)
+end)
+
+if player.Character then
+	task.spawn(characterAdded, player.Character)
+end
+
 local function register(model)
- generation[model] = (generation[model] or 0) + 1; local gen = generation[model]
- task.spawn(function()
-  if not model:GetAttribute('SetupComplete') then return end
-  local origin = model:WaitForChild('BeltOrigin', 10); local belt = model:WaitForChild('Belt', 10)
-  if not origin or not belt or generation[model] ~= gen then return end
-  local slats = {}
-  for _, o in ipairs(belt:GetDescendants()) do
-   if o:IsA('BasePart') and o:GetAttribute('PathDistance') then table.insert(slats, o) end
-  end
-  if #slats ~= model:GetAttribute('SlatCount') then warn('Treadmill: missing belt slats; use Atomic streaming and Merge Meshes OFF', model); return end
-  entries[model] = {origin = origin, slats = slats, length = model:GetAttribute('BeltLength'), radius = model:GetAttribute('BeltRadius'), rollers = {}}
-  for _, o in ipairs(model:GetDescendants()) do
-   if o:IsA('BasePart') and o:GetAttribute('RollerOffset') then table.insert(entries[model].rollers, o) end
-  end
- end)
+	generation[model] = (generation[model] or 0) + 1
+	local currentGeneration = generation[model]
+	
+	task.spawn(function()
+		if not model:GetAttribute("SetupCompleted") then return end
+		
+		local origin = model:WaitForChild("BeltOrigin", 10)
+		local belt = model:WaitForChild("Belt", 10)
+		
+		if not origin or not belt or generation[model] ~= currentGeneration then return end
+		
+		local slats = {}
+		
+		for _, part in ipairs(belt:GetDescendants()) do
+			if part:IsA("BasePart") and part:GetAttribute("PathDistance") ~= nil then
+				table.insert(slats, part)
+			end
+		end
+		
+		if #slats ~= model:GetAttribute("SlatCount") then
+			warn("[Treadmill] Missing slats. Enabled Atomic streaming, disable Merge Meshes:", model)
+			return
+		end
+		
+		local entry = {
+			origin = origin,
+			slats = slats,
+			length = model:GetAttribute("BeltLength"),
+			radius = model:GetAttribute("BeltRadius"),
+			rollers = {},
+		}
+		
+		for _, part in ipairs(model:GetDescendants()) do
+			if part:IsA("BasePart") and part:GetAttribute("RollOffset") ~= nil then
+				table.insert(entry.rollers, part)
+			end
+		end
+		entries[model] = entry 
+	end)
 end
-for _, model in ipairs(CollectionService:GetTagged('StoneAgeTreadmill')) do register(model) end
-CollectionService:GetInstanceAddedSignal('StoneAgeTreadmill'):Connect(register)
-CollectionService:GetInstanceRemovedSignal('StoneAgeTreadmill'):Connect(function(m) generation[m] = (generation[m] or 0) + 1; entries[m] = nil end)
+
+for _, model in ipairs(CollectionService:GetTagged("StoneAgeTreadmill")) do 
+	register(model)
+end
+
+CollectionService:GetInstanceAddedSignal("StoneAgeTreadmill"):Connect(register)
+CollectionService:GetInstanceRemovedSignal("StoneAgeTreadmill"):Connect(function(model)
+	generation[model] = (generation[model] or 0) + 1
+	entries[model] = nil
+end)
+
 UserInputService.JumpRequest:Connect(function()
- if humanoid then remote:FireServer(humanoid.MoveDirection, true) end
+	if humanoid then
+		remote:FireServer(humanoid.MoveDirection, true)
+	end
 end)
+
 RunService.RenderStepped:Connect(function(dt)
- local now = workspace:GetServerTimeNow()
- for model, e in pairs(entries) do
-  if model:IsDescendantOf(workspace) and e.origin.Parent then
-   local phase = (model:GetAttribute('BeltPhase') or 0) + (model:GetAttribute('BeltSpeed') or 0) * (now - (model:GetAttribute('PhaseEpoch') or now))
-   local origin = e.origin.CFrame
-   local parts, cframes = {}, {}
-   for _, slat in ipairs(e.slats) do
-    if slat.Parent then
-     table.insert(parts, slat)
-     table.insert(cframes, origin * Path.frame(phase + slat:GetAttribute('PathDistance'), e.length, e.radius) * slat:GetAttribute('SetupOffset'))
-    end
-   end
-   for _, roller in ipairs(e.rollers) do
-    if roller.Parent then
-     table.insert(parts, roller)
-     local at = roller:GetAttribute('RearRoller') and CFrame.new(0, 0, -e.length) or CFrame.new()
-     table.insert(cframes, origin * at * CFrame.Angles(phase / e.radius, 0, 0) * roller:GetAttribute('RollerOffset'))
-    end
-   end
-   if #parts > 0 then workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged) end
-  else entries[model] = nil end
- end
- inputTime = inputTime + dt
- if inputTime > 0.1 and humanoid and humanoid.Parent then
-  inputTime = 0; remote:FireServer(humanoid.MoveDirection, false)
- end
- if runTrack and humanoid then
-  local running = player:GetAttribute('StoneTreadmillHeld') ~= nil and humanoid.Health > 0 and humanoid.MoveDirection.Magnitude > 0.15
-  if running then
-   if not runTrack.IsPlaying then runTrack:Play(0.15) end
-   runTrack:AdjustSpeed(1)
-  elseif runTrack.IsPlaying then runTrack:Stop(0.15) end
- end
+	local now = workspace:GetServerTimeNow()
+	
+	for model, entry in pairs(entries) do 
+		if model:IsDescendantOf(workspace) and entry.origin.Parent then
+			local epoch = model:GetAttribute("PhaseEpoch") or now
+			local phase = (model:GetAttribute("BeltPhase") or 0) + (model:GetAttribute("BeltSpeed") or 0) * (now - epoch)
+			local origin = entry.origin.CFrame 
+			local parts, cframes = {}, {}
+			
+			for _, slat in ipairs(entry.slats) do
+				if slat.Parent then
+					table.insert(parts, slat)
+					table.insert(cframes, origin * Path.frame(phase + slat:GetAttribute("PathDistance"), entry.length, entry.radius) * slat:GetAttribute("SetupOffset"))
+				end
+			end
+			
+			for _, roller in ipairs(entry.rollers) do
+				if roller.Parent then
+					table.insert(parts, roller)
+					local offset = roller:GetAttribute("RearRoller") and CFrame.new(0, 0, -entry.length) or CFrame.new()
+					table.insert(cframes, origin * offset * CFrame.Angles(phase / entry.radius, 0, 0) * roller:GetAttribute("RollerOfset"))
+				end
+			end
+			
+			if #parts > 0 then
+				workspace:BulkMoveTo(parts, cframes, Enum.BultMoveMode.FireCFrameChanged)
+			end
+		else 
+			entries[model] = nil
+		end
+	end
+	
+	inputTime += dt 
+	if inputTime >= 0.1 and humanoid and humanoid.Parent then
+		inputTime = 0
+		remote:FireServer(humanoid.MoveDirection, false)
+	end
+	
+	if runTrack and humanoid then
+		local held = player:GetAttribute("StoneTreadmillHeld") ~= nil
+		local running = held and player:GetAttribute("StoneTreadmillRunning") == true and humanoid.Health > 0
+		local transport = player:GetAttribute("RuntimeTransportId") or "Feet"
+		local useFeetAnimation = running and transport == "Feet"
+
+		if useFeetAnimation then
+			if not runTrack.IsPlaying then runTrack:Play(0.15) end 
+			local personalSpeed = player:GetAttribute("StoneTreadmillSpeed") or 16
+			runTrack:AdjustSpeed(math.clamp(personalSpeed / 16, 0.75, 4))
+		elseif runTrack.IsPlaying then
+			runTrack:Stop(0.15)
+		end
+	end
 end)
+
+print("StoneTreadmillClient v1.3 loaded")
