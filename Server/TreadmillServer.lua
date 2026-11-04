@@ -1,16 +1,16 @@
---// TreadmillServer 1.2
+--// TreadmillServer v1.3
 
 --// Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local RunService = game:GetService("RunService")
 
 --// Modules
 local TreadmillModule = require(ServerScriptService.Modules.TreadmillModule)
 
 local TrainerModule = require(ReplicatedStorage.Modules.TrainerModule)
 local UpgradeModule = require(ReplicatedStorage.Modules.UpgradeModule)
-local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
 
 --// RemopteEvents
 local treadmillEventsFolder = ReplicatedStorage:FindFirstChild("TreadmillEvents")
@@ -42,8 +42,6 @@ if not treadmillInfoFunction then
 end
 
 --// Optional old RunEvent for effects/UI
-local runEvent = ReplicatedStorage:FindFirstChild("RunEvent")
-
 local energyPopupEvent = ReplicatedStorage:FindFirstChild("EnergyPopupEvent")
 if not energyPopupEvent then 
 	energyPopupEvent = Instance.new("RemoteEvent")
@@ -51,289 +49,50 @@ if not energyPopupEvent then
 	energyPopupEvent.Parent = ReplicatedStorage
 end
 
---// Setting
-local MAX_DISTANCE_TO_START = 15
-local MAX_DISTANCE_WHILE_TRAINING = 25
+--// Settings
 local CHECK_LOOP_DELAY = 0.1
 
-local RUN_ANIMATION_ID = "rbxassetid://913376220"
+local trainingStates = {}
 
-local activeTraining = {}
+local function isValidId(id)
+	return type(id) == "number" and id == math.floor(id) and id >= 1 and id <= TreadmillModule.MAX_TREADMILLS
+end
 
 --// Helpers
-
-local function getTreadmillObject(treadmillId)
-	return workspace:FindFirstChild("Treadmill" .. tostring(treadmillId))
-end
-
-local function getTreadmillPosition(treadmillId)
-	local treadmillObject = getTreadmillObject(treadmillId)
-	if not treadmillObject then 
-		return nil
-	end
-	
-	if treadmillObject:IsA("BasePart") then 
-		return treadmillObject.Position
-	end
-	
-	local part = treadmillObject:FindFirstChildWhichIsA("BasePart", true)
-	if part then 
-		return part.Position
-	end
-	
-	return nil
-end
-
 local function getTrainingInterval(player)
 	return UpgradeModule.GetTrainingInterval(player, 1)
+end
+
+--// Check active physical treadmill
+local function getRunningTreadmill(player)
+	if player:GetAttribute("DataReady") ~= true then return nil end
+	if player:GetAttribute("StoneTreadmillRunning") ~= true then return nil end
+	
+	local treadmillId = player:GetAttribute("StoneTreadmillHeld")
+	
+	if not isValidId(treadmillId) then return nil end
+	if not TreadmillModule.IsTreadmillUnlocked(player, treadmillId) then return nil end
+	
+	local currentTreadmill = player:FindFirstChild("CurrentTreadmill")
+	if not currentTreadmill or currentTreadmill.Value ~= treadmillId then return nil end
+	
+	local inRace = player:FindFirstChild("InRace")
+	if inRace and inRace.Value then return nil end
+	
+	local character = player.Character
+	local humanoid = character and character:FindFirstChild("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then return nil end
+	
+	return treadmillId 
 end
 
 local function fireResponse(player, action, success, reason, info)
 	treadmillResponseEvent:FireClient(player, action, success, reason, info)
 end
 
-local function cleanupTraining(player)
-	local data = activeTraining[player]
-	if not data then return end 
-	
-	activeTraining[player] = nil
-	
-	local humanoid = data.Humanoid
-	local hrp = data.HRP
-	local runTrack = data.RunTrack
-	
-	if runTrack then
-		runTrack:Stop()
-		runTrack:Destroy()
-	end
-	
-	if humanoid then
-		humanoid.AutoRotate = data.OldAutoRotate
-		
-		if data.OldWalkSpeed then 
-			humanoid.WalkSpeed = data.OldWalkSpeed
-		else
-			humanoid.WalkSpeed = 16
-		end
-		
-		if data.OldJumpPower then 
-			humanoid.JumpPower = data.OldJumpPower
-		else
-			humanoid.JumpPower = 50
-		end
-	end
-	
-	if hrp then 
-		hrp.Anchored = false
-	end
-	
-	local currentTreadmill = player:FindFirstChild("CurrentTreadmill")
-	if currentTreadmill then 
-		currentTreadmill.Value = 0
-	end
-	
-	if runEvent then 
-		runEvent:FireClient(player, false)
-	end 
-	
-	fireResponse(player, "StopTraining", true, "STOPPED", { 
-		TreadmillId = data.TreadmillId,
-	})
-end
-
-local function startTraining(player, treadmillId, isAuto)
-	if player:GetAttribute("DataReady") ~= true then return end
-	
-	treadmillId = tonumber(treadmillId)
-	if not treadmillId then 
-		fireResponse(player, "StartTraining", false, "BAD_TREADMILL_ID")
-		return
-	end
-	
-	if activeTraining[player] then 
-		if isAuto then
-			if activeTraining[player].TreadmillId == treadmillId and activeTraining[player].IsAuto then
-				return
-			end
-			
-			cleanupTraining(player)
-		else 
-			cleanupTraining(player)
-			return
-		end
-	end
-	
-	TreadmillModule.SetupPlayer(player)
-	
-	if not TreadmillModule.IsTreadmillUnlocked(player, treadmillId) then 
-		fireResponse(player, "StartTraining", false, "LOCKED", { 
-			TreadmillId = treadmillId,
-		})
-		return
-	end
-	
-	local treadmillPosition = getTreadmillPosition(treadmillId)
-	if not treadmillPosition then 
-		fireResponse(player, "StartTraining", false, "NO_TREADMILL_PART", { 
-			TreadmillId = treadmillId,
-		})
-		return 
-	end
-	
-	local character = player.Character 
-	if not character then 
-		fireResponse(player, "StartTraining", false, "NO_CHARACTER")
-		return
-	end
-	
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChild("Humanoid")
-	
-	if not hrp or not humanoid then
-		fireResponse(player, "StartTraining", false, "NO_HUMANOID")
-		return
-	end
-	
-	local distance = (hrp.Position - treadmillPosition).Magnitude
-	if distance > MAX_DISTANCE_TO_START and not isAuto then 
-		fireResponse(player, "StartTraining", false, "TOO_FAR", { 
-			Distance = distance,
-			MaxDistance = MAX_DISTANCE_TO_START,
-		})
-		return
-	end
-	
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then 
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-	
-	local runAnim = Instance.new("Animation")
-	runAnim.AnimationId = RUN_ANIMATION_ID
-	
-	local runTrack = animator:LoadAnimation(runAnim)
-	runTrack.Priority = Enum.AnimationPriority.Action
-	runTrack.Looped = true
-	runTrack:Play()
-	runTrack:AdjustSpeed(3)
-	
-	local oldWalkSpeed = humanoid.WalkSpeed
-	local oldJumpPower = humanoid.JumpPower
-	local oldAutoRotate = humanoid.AutoRotate
-	
-	hrp.CFrame = CFrame.new(treadmillPosition + Vector3.new(0, 3, 0))
-	
-	humanoid.WalkSpeed = 0
-	humanoid.JumpPower = 0
-	humanoid.AutoRotate = false
-	hrp.Anchored = true 
-	
-	local currentTreadmill = player:FindFirstChild("CurrentTreadmill")
-	if currentTreadmill then 
-		currentTreadmill.Value = treadmillId
-	end
-	
-	activeTraining[player] = { 
-		TreadmillId = treadmillId,
-		HRP = hrp,
-		Humanoid = humanoid,
-		RunTrack = runTrack,
-		
-		OldWalkSpeed = oldWalkSpeed,
-		OldJumpPower = oldJumpPower,
-		OldAutoRotate = oldAutoRotate,
-		
-		LastEnergyTick = os.clock(),
-		LastTimeUpdate = os.clock(),
-		
-		IsAuto = isAuto == true,
-	}
-	
-	if runEvent then 
-		runEvent:FireClient(player, true)
-	end
-	
-	fireResponse(player, "StartTraining", true, "STARTED", { 
-		TreadmillId = treadmillId,
-	})
-	
-	local ownTrainingData = activeTraining[player]
-	
-	task.spawn(function()
-		while activeTraining[player] == ownTrainingData do 
-			local data = ownTrainingData
-			
-			local currentCharacker = player.Character 
-			if not currentCharacker then 
-				break
-			end
-			
-			local currentHumanoid = data.Humanoid
-			if not currentHumanoid or currentHumanoid.Health <= 0 then
-				break
-			end
-			
-			local treadmillPosition = getTreadmillPosition(data.TreadmillId)
-			
-			if not treadmillPosition or not data.HRP then 
-				break
-			end
-			
-			local distanceFromTreadmill = (data.HRP.Position - treadmillPosition).Magnitude
-			
-			if distanceFromTreadmill > MAX_DISTANCE_WHILE_TRAINING then 
-				break
-			end
-			
-			local now = os.clock()
-			
-			local dt = now - data.LastTimeUpdate
-			data.LastTimeUpdate = now
-			
-			if dt > 0 then
-				TreadmillModule.AddTrainingTime(player, data.TreadmillId, dt)
-
-				TreadmillModule.AddTrainerTrainingTime(player, dt)
-			end
-			
-			local interval = getTrainingInterval(player)
-			local energyDelta = now - data.LastEnergyTick
-			
-			if energyDelta >= interval then 
-				data.LastEnergyTick += interval
-				
-				local leaderstats = player:FindFirstChild("leaderstats")
-				local energy = leaderstats and leaderstats:FindFirstChild("Energy")
-				
-				if energy then
-					local energyPerTick = TreadmillModule.GetFinalEnergyPerSecond(player, data.TreadmillId)
-					local accumulated = energyPerTick + (data.EnergyRemainder or 0)
-					local gainedEnergy = math.floor(accumulated + 1e-9)
-					
-					data.EnergyRemainder = math.max(0, accumulated - gainedEnergy)
-					
-					if gainedEnergy > 0 then 
-						energy.Value += gainedEnergy
-						
-						TrainerModule.addEquippedTrainerProgress(player, "Energy", gainedEnergy)
-						
-						energyPopupEvent:FireClient(player, gainedEnergy)
-					end
-				end
-			end
-			
-			task.wait(CHECK_LOOP_DELAY)
-		end
-		if activeTraining[player] == ownTrainingData then
-			cleanupTraining(player)
-		end
-	end)
-end
-
 local function upgradeLevel(player, treadmillId)
 	treadmillId = tonumber(treadmillId)
-	if not treadmillId then return end
+	if not isValidId(treadmillId) then return end
 	
 	TreadmillModule.SetupPlayer(player)
 	
@@ -344,7 +103,7 @@ end
 
 local function tierUp(player, treadmillId)
 	treadmillId = tonumber(treadmillId)
-	if not treadmillId then return end
+	if not isValidId(treadmillId) then return end
 	
 	TreadmillModule.SetupPlayer(player)
 	
@@ -357,35 +116,23 @@ end
 treadmillRequestEvent.OnServerEvent:Connect(function(player, action, treadmillId)
 	if player:GetAttribute("DataReady") ~= true then return end
 	
-	if action == "StartTraining" or action == "StopTraining" or action == "ToggleTraining" then
-		if player:GetAttribute("AutomaticMode") == "AutoTraining" then
-			player:SetAttribute("AutomaticMode", "None")
-		end
-	end
+	local id = tonumber(treadmillId)
 	
-	if action == "StartTraining" then 
-		startTraining(player, treadmillId)
+	if action == "UpgradeLevel" then
+		upgradeLevel(player, id)
 		
-	elseif action == "StopTraining" then 
-		cleanupTraining(player)
+	elseif action == "TierUp" then
+		tierUp(player, id)
 		
-	elseif action == "ToggleTraining" then
-		if activeTraining[player] then 
-			cleanupTraining(player)
-		else 
-			startTraining(player, treadmillId)
-		end
-		
-	elseif action == "UpgradeLevel" then 
-		upgradeLevel(player, treadmillId)
-		
-	elseif action == "TierUp" then 
-		tierUp(player, treadmillId)
+	elseif action == "StartTraining" or action == "StopTraining" or action == "ToggleTraining" then
+		fireResponse(player, action, false, "USE_PHYSICAL_TREADMILL")
 	end
 end)
 
 local function getTreadmillInfo(player, treadmillId)
 	treadmillId = tonumber(treadmillId) or 1
+	
+	if not isValidId(treadmillId) then return nil end
 	
 	TreadmillModule.SetupPlayer(player)
 	
@@ -456,66 +203,86 @@ treadmillInfoFunction.OnServerInvoke = function(player, treadmillId)
 	return getTreadmillInfo(player, treadmillId)
 end
 
+--// Energy rewards
+local function processEnergy(player, state, treadmillId, now)
+	local interval = getTrainingInterval(player)
+	
+	if now - state.LastEnergyTick < interval then return end
+	
+	state.LastEnergyTick += interval 
+	
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local energy = leaderstats and leaderstats:FindFirstChild("Energy")
+	
+	if not energy then return end
+	
+	local energyPerTick = TreadmillModule.GetFinalEnergyPerSecond(player, treadmillId)
+	local accumulated = energyPerTick + state.EnergyRemainder
+	local gainedEnergy = math.floor(accumulated + 1e-9)
+	
+	state.EnergyRemainder = math.max(0, accumulated - gainedEnergy)
+	
+	if gainedEnergy > 0 then
+		energy.Value += gainedEnergy
+		
+		TrainerModule.addEquippedTrainerProgress(player, "Energy", gainedEnergy)
+		
+		energyPopupEvent:FireClient(player, gainedEnergy)
+	end
+end
+
+--// Physical treadmill training loop
+local accumulator = 0
+
+RunService.Heartbeat:Connect(function(dt)
+	accumulator += dt
+	
+	if accumulator < CHECK_LOOP_DELAY then return end
+	
+	accumulator = 0
+	
+	local now = os.clock()
+	
+	for _, player in ipairs(Players:GetPlayers()) do
+		local treadmillId = getRunningTreadmill(player)
+		
+		if not treadmillId then
+			trainingState[player] = nil
+			continue
+		end
+		
+		local state = trainingStates[player]
+		
+		if not state or state.TreadmillId ~= treadmillId then
+			trainingStates[player] = {
+				TreadmillId = treadmillId,
+				LastEnergyTick = now,
+				LastTimeUpdate = now,
+				EnergyRemainder = 0,
+			}
+			
+			continue
+		end
+		
+		local elapsed = math.clamp(now - state.LastTimeUpdate, 0, 0.5)
+		
+		state.LastTimeUpdate = now
+		
+		if elapsed > 0 then
+			TreadmillModule.AddTrainingTime(player, treadmillId, elapsed)
+			TreadmillModule.AddTrainerTrainingTime(player, elapsed)
+		end
+		
+		processEnergy(player, state, treadmillId, now)
+	end
+end)
+
 Players.PlayerAdded:Connect(function(player)
 	TreadmillModule.SetupPlayer(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	cleanupTraining(player)
-end)
-
---// Automatic Training Controller
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		
-		for _, player in ipairs(Players:GetPlayers()) do
-			local wantsAuto = player:GetAttribute("AutomaticMode") == "AutoTraining"
-			
-			local current = activeTraining[player]
-			
-			if wantsAuto and not ShopModule.CanUseAutomaticMode(player, "AutoTraining") then
-				player:SetAttribute("AutomaticMode", "None")
-				wantsAuto = false
-			end
-			
-			if not wantsAuto then
-				local mode = player:GetAttribute("AutomaticMode")
-				
-				if current and (current.IsAuto or mode == "AutoRace") then
-					cleanupTraining(player)
-				end
-				
-				continue
-			end
-			
-			if player:GetAttribute("DataReady") ~= true then
-				continue
-			end
-			
-			local inRace = player:FindFirstChild("InRace")
-			
-			if inRace and inRace.Value then
-				continue
-			end
-			
-			local character = player.Character
-			local humanoid = character and character:FindFirstChild("Humanoid")
-			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-			
-			if not humanoid or humanoid.Health <= 0 or not rootPart then continue end
-			
-			local bestId = ShopModule.GetLatestAvailableTreadmill(TreadmillModule.MAX_TREADMILLS, function(id)
-				return TreadmillModule.IsTreadmillUnlocked(player, id)
-			end)
-			
-			if not bestId then continue end
-			
-			if not current or current.TreadmillId ~= bestId or not current.IsAuto then
-				startTraining(player, bestId, true)
-			end
-		end
-	end
+	trainingStates[player] = nil
 end)
 
 print("TreadmillServer loaded")
