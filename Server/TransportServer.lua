@@ -21,7 +21,7 @@ local TRANSPORT_TEST_MODE = false
 local TEST_TRANSPORT = {
 	Feet = false,
 	Log = false,
-	Stone = true,
+	Stone = false,
 }
 
 local TESTER_USER_IDS = {
