@@ -201,18 +201,22 @@ end
 --// functions
 local function setupBillboards()
 	for i = 1, MAX_TREADMILLS do
-		local treadmillObject = workspace:FindFirstChild("Treadmill" .. i)
+		local treadmillObject = workspace:FindFirstChild("Treadmill" .. i, 10)
 		local data = billboardData[i]
-
-		if treadmillObject and data then
-			local mainPart = getMainPart(treadmillObject)
-
-			if mainPart then
-				data.Billboard.Adornee = mainPart
-				data.Billboard.Enabled = true
-			else
-				warn("No BasePart found for Treadmill" .. i)
-			end
+		
+		if not treadmillObject or not data then
+			warn("Treadmill billboard setup failed:", i)
+			continue
+		end
+		
+		local anchor = treadmillObject:FindFirstChild("BillboardAnchor", true) or treadmillObject:FindFirstChild("BeltOrigin", true) or treadmillObject:FindFirstChild("CollisionDeck", true)
+		
+		if anchor and anchor:IsA("BasePart") then
+			data.Billboard.Adornee = anchor
+			data.Billboard.Enabled = true 
+		else 
+			data.Billboard.Enabled = false
+			warn("No billboard anchor found for Treadmill" .. i)
 		end
 	end
 end
