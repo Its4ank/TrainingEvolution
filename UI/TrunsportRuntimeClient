@@ -13,9 +13,12 @@ local CONFIG = {
 	
 	Stone = {
 		Radius = 2.048,
-		RollSign = 1,
+		RollSign = -1,
 		StepStrength = 0.38,
 		TurnStrength = 0.55,
+		
+		SteerResponsiveness = 12,
+		InputDeadzone = 0.08,
 	},
 	
 	ReferenceSpeed = 16,
@@ -61,7 +64,10 @@ local function buildState(character, runtime)
 		
 		Phase = 0,
 		RollAngle = 0,
-		StoneRotation = CFrame.identity,
+		
+		StoneSteerYaw = 0,
+		StoneRollDirection = 1,
+		
 		LastLook = nil,
 		
 		SmoothForward = 0,
@@ -76,7 +82,7 @@ local function setJoint(joint, transform)
 	end
 end
 
-local function animateCharacter(state, transportId, forwardSpeed, speedFactor, turn, dt)
+local function animateCharacter(state, transportId, forwardSpeed, speedFactor, turn, dt, onTreadmill)
 	local joints = state.Joints
 	local config = CONFIG[transportId]
 	if not config then return end
@@ -85,7 +91,13 @@ local function animateCharacter(state, transportId, forwardSpeed, speedFactor, t
 	local direction = forwardSpeed >= 0 and 1 or -1
 	
 	if moving then
-		state.Phase += math.abs(forwardSpeed) * dt * 1.8
+		local phaseSpeed = math.abs(forwardSpeed)
+		
+		if onTreadmill then
+			phaseSpeed = math.min(phaseSpeed, 48)
+		end
+		
+		state.Phase += phaseSpeed * dt * 1.8
 	end
 	
 	local wave = math.sin(state.Phase)
@@ -157,6 +169,18 @@ local function updateTransport(player, dt)
 	local rightSpeed = horizontalVelocity:Dot(rootPart.CFrame.RightVector)
 	
 	local speed = horizontalVelocity.Magnitude
+	
+	--// Treadmill movement
+	local onTreadmill = player:GetAttibute("StoneTreadmillRunnning") == true and player:GetAttribute("StoneTreadmillHelp") ~= nil
+	
+	if onTreadmill then
+		local treadmillSpeed = math.max(0, tonumber(player:GetAttribute("StoneTreadmillSpeed")) or 0)
+		
+		forwardSpeed = treadmillSpeed
+		rightSpeed = 0
+		speed = treadmillSpeed
+	end
+	
 	local speedFactor = math.clamp(speed / CONFIG.ReferenceSpeed, 0, 1)
 	
 	local look = rootPart.CFrame.LookVector
@@ -172,32 +196,58 @@ local function updateTransport(player, dt)
 	
 	state.LastLook = look
 	
-	local targetTurn = math.clamp(turnRate / CONFIG.MaxTurnRate, -1, 1)
-	local alpha = 1 - math.exp(-10 * dt)
+	local targetTurn = onTreadmill and 0 or math.clamp(turnRate / CONFIG.MaxTurnRate, -1, 1)
+	local alpha = onTreadmill and 1 or (1 - math.exp(-10 * dt))
 	
 	state.SmoothForward += (forwardSpeed - state.SmoothForward) * alpha
 	state.SmoothRight += (rightSpeed - state.SmoothRight) * alpha
 	state.SmoothTurn += (targetTurn - state.SmoothTurn) * alpha
 	
-	local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
+	local grounded = onTreadmill or humanoid.FloorMaterial ~= Enum.Material.Air
 	
 	if state.Motor and state.Motor.Parent then
-		if grounded then
-			if transportId == "Log" then
+		if transportId == "Log" then
+			if grounded then
 				state.RollAngle += (state.SmoothForward / config.Radius) * dt * config.RollSign
 				state.RollAngle %= (math.pi * 2)
 				state.Motor.Transform = CFrame.Angles(0, 0, state.RollAngle)
-			elseif transportId == "Stone" then
-				local forwardRoll = (state.SmoothForward / config.Radius) * dt * config.RollSign
-				local sideRoll = (state.SmoothRight / config.Radius) * dt * config.RollSign
-				
-				state.StoneRotation *= CFrame.Angles(forwardRoll, 0, sideRoll)
-				state.Motor.Transform = state.StoneRotation
 			end
+		elseif transportId == "Stone" then
+			local moveDirection = onTreadmill and Vector3.zero or humanoid.MoveDirection
+			if onTreadmill then
+				state.StoneRollDirection = 1
+			end
+			
+			local localMove = rootPart.CFrame:VectorToObjectSpace(moveDirection)
+			local forwardIntent = -localMove.Z
+			local rightIntent = localMove.X
+			
+			if math.abs(forwardIntent) > config.InputDeadzone then
+				state.StoneRollDirection = forwardIntent >= 0 and 1 or -1
+			end
+			
+			local targetSteer = 0
+			
+			if moveDirection.Magnitude > config.InputDeadzone and math.abs(rightIntent) > config.InputDeadzone then
+				targetSteer = -math.atan2(rightIntent * state.StoneRollDirection, math.abs(forwardIntent))
+			end
+			
+			local steerAlpha = 1 - math.exp(-config.SteerResponsiveness * dt)
+			
+			state.StoneSteerYaw += ( targetSteer - state.StoneSteerYaw) * steerAlpha
+			
+			if grounded and speed > CONFIG.MinMovementSpeed then
+				local rollDelta = (speed / config.Radius) * dt * config.RollSign * state.StoneRollDirection
+				
+				state.RollAngle += rollDelta
+				state.RollAngle %= (math.pi * 2)
+			end
+			
+			state.Motor.Transform = CFrame.Angles(0, state.StoneSteerYaw, 0) * CFrame.Angles(state.RollAngle, 0, 0)
 		end
 	end
 	
-	animateCharacter(state, transportId, state.SmoothForward, grounded and speedFactor or 0, state.SmoothTurn, dt)
+	animateCharacter(state, transportId, state.SmoothForward, grounded and speedFactor or 0, state.SmoothTurn, dt, onTreadmill)
 end
 
 RunService.PreSimulation:Connect(function(dt)
