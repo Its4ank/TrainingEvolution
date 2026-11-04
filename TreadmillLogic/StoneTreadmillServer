@@ -1,152 +1,495 @@
--- ServerScriptService. This demo supplies occupancy/holding and belt state, NOT rewards.
-local Players = game:GetService('Players')
-local RunService = game:GetService('RunService')
-local CollectionService = game:GetService('CollectionService')
-local ReplicatedStorage = game:GetService('ReplicatedStorage')
-local shared = ReplicatedStorage:WaitForChild('StoneTreadmillRuntime')
-local remote = shared:WaitForChild('MovementInput')
-local Path = require(shared:WaitForChild('BeltPath'))
-local entries, inputs, heldBy, cooldown = {}, {}, {}, {}
+--// StoneTreadmillServer v1.3
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
+
+local RaceModule = require(ReplicatedStorage.Modules.RaceModule)
+local ShopModule = require(ReplicatedStorage.Modules.ShopModule)
+
+local TreadmillModule = require(ServerScriptService.Modules.TreadmillModule)
+
+local shared = ReplicatedStorage:WaitForChild("StoneTreadmillRuntime")
+local inputRemote = shared:WaitForChild("MovementInput")
+local Path = require(shared:WaitForChild("BeltPath"))
+
+local STEP_TIME = 0.08
+local AUTO_CHECK_TIME = 0.5
+local MANUAL_INPUT_TIMEOUT = 0.65
+local MANUAL_START_THRESHOLD = 0.15
+local RELEASE_COOLDOWN = 1.0
+local MIN_LANE_SPACING = 2.6
+
+local entries = {}
+local byId = {}
+local inputs = {}
+local heldBy = {}
+local cooldown = {}
+
 local function rig(player)
- local c = player.Character
- if not c then return end
- local h, root = c:FindFirstChildOfClass('Humanoid'), c:FindFirstChild('HumanoidRootPart')
- if h and root and h.Health > 0 and not h.Sit then return h, root end
+	local char = player.Character
+	if not char then return nil end
+	
+	local hum = char:FindFirstChild("Humanoid")
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if hum and root and hum.Health > 0 and not hum.Sit then return hum, root end
+	
+	return nil
 end
-local function flat(v)
- local q = Vector3.new(v.X, 0, v.Z)
- return q.Magnitude > 0.001 and q.Unit or Vector3.zero
+
+local function horizontalUnit(direction)
+	local vektor = Vector3.new(direction.X, 0, direction.Z)
+	return vector.Magnitude > 0.001 and vector.Unit or Vector3.zero
 end
-local function release(e)
- local p = e.player
- if not p then return end
- local hold = e.hold
- if hold then
-  for _, v in ipairs(hold.instances) do v:Destroy() end
-  if hold.humanoid.Parent then hold.humanoid.AutoRotate = hold.autoRotate end
- end
- heldBy[p] = nil
- cooldown[p] = os.clock() + 1.25
- if p.Parent then p:SetAttribute('StoneTreadmillHeld', nil) end
- e.player, e.hold = nil, nil
- if e.model.Parent then e.model:SetAttribute('RunnerUserId', 0) end
+
+local function getId(model)
+	local id = tonumber(model.Name:match("^Treadmill(%d+)$"))
+	
+	if id and id >= 1 and id <= TreadmillModule.MAX_TREADMILLS then return id end
+	
+	return nil
 end
-local function inside(e, root)
- local q = e.origin.CFrame:PointToObjectSpace(root.Position)
- return math.abs(q.X) < e.width * 0.5 - 0.10 and q.Z < -0.25 and q.Z > -e.length + 0.25
-  and q.Y > e.radius + 0.3 and q.Y < e.radius + 7.0
+
+local function isInRace(player)
+	local inRace = player:FindFirstChild("InRace")
+	return inRace ~= nil and inRace.Value == true 
 end
-local function grounded(e, h, root)
- local params = RaycastParams.new()
- params.FilterType = Enum.RaycastFilterType.Include
- params.FilterDescendantsInstances = {e.deck}
- local leg = h.RigType == Enum.HumanoidRigType.R6 and h.Parent:FindFirstChild('Left Leg')
- local height = h.HipHeight + root.Size.Y * 0.5 + (leg and leg.Size.Y or 0)
- return workspace:Raycast(root.Position, Vector3.new(0, -height - 1.2, 0), params) ~= nil
+
+local function isUnlocked(player, treadmillId)
+	if player:GetAttribute("DataReady") ~= true then return false end
+	
+	if not treadmillId or treadmillId < 1 or treadmillId > TreadmillModule.MAX_TREADMILLS then
+		return false
+	end
+	
+	return TreadmillModule.IsTreadmillUnlocked(player, treadmillId)
 end
-local function acquire(e, player, h, root)
- e.player = player; heldBy[player] = e
- e.model:SetAttribute('RunnerUserId', player.UserId)
- if e.model:GetAttribute('HoldRunner') == false then return end
- local q = e.origin.CFrame:PointToObjectSpace(root.Position)
- local vertical = (q.Y - e.radius - e.slatTop) / math.max(0.2, e.origin.CFrame.UpVector.Y)
- local foot = root.Position - Vector3.new(0, vertical, 0)
- local leg = h.RigType == Enum.HumanoidRigType.R6 and h.Parent:FindFirstChild('Left Leg')
- local height = h.HipHeight + root.Size.Y * 0.5 + (leg and leg.Size.Y or 0)
- local a = Instance.new('Attachment'); a.Name = 'TM_HoldAttachment'; a.Parent = root
- local ap = Instance.new('AlignPosition'); ap.Name = 'TM_HoldPosition'; ap.Mode = Enum.PositionAlignmentMode.OneAttachment
- ap.Attachment0 = a; ap.ApplyAtCenterOfMass = true; ap.Position = foot + Vector3.new(0, height, 0)
- ap.MaxForce = math.max(100000, root.AssemblyMass * 50000); ap.MaxVelocity = 50; ap.Responsiveness = 80; ap.Parent = root
- local ao = Instance.new('AlignOrientation'); ao.Name = 'TM_HoldYaw'; ao.Mode = Enum.OrientationAlignmentMode.OneAttachment
- ao.Attachment0 = a; ao.CFrame = CFrame.lookAt(Vector3.zero, flat(e.origin.CFrame.LookVector))
- ao.MaxTorque = 1000000; ao.Responsiveness = 60; ao.Parent = root
- e.hold = {instances = {ap, ao, a}, humanoid = h, autoRotate = h.AutoRotate}
- h.AutoRotate = false; player:SetAttribute('StoneTreadmillHeld', e.model:GetAttribute('TreadmillId'))
+
+local function wantsAuto(player)
+	return player:GetAttribute("AutomaticMode") == "AutoTraining"
+		and player:GetAttribute("DataReady") == true
+		and ShopModule.CanUseAutomaticMode(player, "AutoTraining") and not isInRace(player)
 end
+
+local function setRunning(player, running, speed)
+	running = running == true
+	speed = running and math.max(0, speed or 0) or 0
+	
+	if player:GetAttribute("StoneTreadmillRunning") ~= running then
+		player:SetAttribute("StoneTreadmillRunning", running)
+	end
+	
+	local previous = player:GetAttribute("StoneTreadmillSpeed") or 0
+	if math.abs(previous - speed) >= 0.05 then
+		player:SetAttribute("StoneTreadmillSpeed", speed)
+	end
+end
+
+local function setCurrentTreadmill(player, treadmillId)
+	local current = player:FindFirstChild("CurrentTreadmill")
+	if current then current.Value = treadmillId or 0 end
+end
+
+local function release(player, applyCooldown)
+	local entry = heldBy[player]
+	if not entry then return end
+	
+	local runner = entry.runners[player]
+	if runner and runner.hold then
+		for _, instance in ipairs(runner.hold.instances) do
+			if instance.Parent then instance:Destroy() end
+		end
+		
+		local humanoid = runner.hold.humanoid
+		if humanoid.Parent then
+			humanoid.AutoRotate = runner.hold.previousAutoRotate
+		end
+	end
+	
+	entry.runners[player] = nil
+	heldBy[player] = nil
+	cooldown[player] = applyCooldown and (os.clock() + RELEASE_COOLDOWN) or nil
+	
+	if player.Parent then
+		setRunning(player, false, 0)
+		player:SetAttribute("StoneTreadmillHeld", nil)
+		setCurrentTreadmill(player, 0)
+	end
+end
+
+local function inside(entry, root)
+	local localPos = entry.origin.CFrame:PointToObjectSpace(root.Position)
+	
+	return math.abs(localPos.X) < entry.width * 0.5 - 0.10 and localPos.Z < -0.25 and localPos.Z > -entry.length + 0.25 and localPos.Y > entry.radius + 0.3 and localPos.Y < entry.radius + 7.0
+end
+
+local function rootHeight(humanoid, root)
+	local leg = humanoid.RigType == Enum.HumanoidRigType.R6 and humanoid.Parent:FindFirstChild("Left Leg")
+	
+	return humanoid.HipHeight + root.Size.Y * 0.5 + (leg and leg.Size.Y or 0)
+end
+
+local function grounded(entry, humanoid, root)
+	local params = RaycastParams.new()
+	
+	params.FilterType = Enum.RaycastFilterType.Include
+	parms.FilterDescendantsInstances = {entry.deck}
+	
+	return workspace:Raycast(root.Position, Vector3.new(0, -rootHeight(humanoid, root) - 1.2, 0), params) ~= nil
+end
+
+local function acquire(entry, player, humanoid, root, isAuto)
+	if heldBy[player] or not isUnlocked(player, entry.id) or isInRace(player) then
+		return false
+	end
+	
+	if entry.model:GetAttribute("HoldRunner") == false then
+		warn("[Treadmill] HoldRunner disabled:", entry.model.Name)
+		return false
+	end
+	
+	local localPos = entry.origin.CFrame:PointToObjectSpace(root.Position)
+	local upY = math.max(0.2, entry.origin.CFrame.UpVector.Y)
+	local vertical = (localPos.Y - entry.radius - entry.slatTop) / upY
+	local foot = root.Position - Vector3.new(0, vertical, 0)
+	
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "TM_HoldAttachment"
+	attachment.Parent = root 
+	
+	local position = Instance.new("AlignPosition")
+	position.Name = "TM_HoldPosition"
+	position.Mode = Enum.PositionAlignmentMode.OneAttachment
+	position.Attachment0 = attachment
+	position.ApplyAtCenterOsMass = true 
+	position.Position = foot + Vector3.new(0, rootHeight(humanoid, root), 0)
+	position.MaxForce = math.max(100000, root.AssemblyMass * 50000)
+	position.MaxVelocity = 50
+	position.Responsiveness = 80
+	position.Parent = root 
+	
+	local orientation = Instance.new("AlignOrientation")
+	orientation.Name = "TM_HoldYaw"
+	orientation.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	orientation.Attachment0 = attachment
+	orientation.CFrame = CFrame.lookAt(Vector3.zero, horizontalUnit(entry.origin.CFrame.LookVector))
+	orientation.MaxTorque = 1000000
+	orientation.Responsiveness = 60
+	orisntation.Parent = root 
+	
+	entry.runner[player] = {
+		isAuto = isAuto == true,
+		hold = {
+			instances = {position, orientation, attachment},
+			humanoid = humanoid,
+			previousAutoRotate = humanoid.AutoRotate,
+		},
+	}
+	
+	humanoid.AutoRotate = false
+	heldBy[player] = entry
+	player:SetAttribute("StoneTreadmillHeld", entry.id)
+	setCurrentTreadmill(player, entry.id)
+	setRunning(player, false, 0)
+	
+	return true
+end
+
+local function getTargetSpeed(player)
+	local stats = player:FindFirstChild("leaderstats")
+	local energy = stats and stats:FindFirstChild("Energy")
+	
+	return RaceModule.GetTargetSpeedFromEnergy(energy and energy.Value or 0)
+end
+
+local function findAutoSpot(entry)
+	local availableHalf = entry.width * 0.5 - 0.9
+	if availableHalf < 0 then return nil end
+	
+	local xCandidates = {0, -MIN_LANE_SPACING, MIN_LANE_SPACING, -2 * MIN_LANE_SPACING, 2 * MIN_LANE_SPACING}
+	local zCenter = -entry.length * 0.5
+	local zCandidates = {zCenter, zCenter - MIN_LANE_SPACING, zCenter + MIN_LANE_SPACING, zCenter - 2 * MIN_LANE_SPACING, zCenter + 2 * MIN_LANE_SPACING}
+	
+	for _, z in ipairs(zCandidates) do
+		if z > -entry.length + 0.75 and z < -0.75 then
+			for _, x in ipairs(xCandidates) do
+				if math.abs(x) <= availableHalf then
+					local clear = true
+					
+					for existingPlayer in pairs(entry.runners) do
+						local _, root = rig(existingPlayer)
+						
+						if root then
+							local q = entry.origin.CFrame:PointToObjectSpace(root.Position)
+							local dx, dz = q.X - x, q.Z - z 
+							if dx * dx + dz * dz < MIN_LANE_SPACING * MIN_LANE_SPACING then
+								clear = false
+								break
+							end
+						end
+					end
+					if clear then return x, z end
+				end
+			end
+		end
+	end
+	
+	return nil
+end
+
+local function startAuto(player, entry)
+	local humanoid, root = rig(player)
+	if not humanoid or not root or not isUnlocked(player, entry.id) then return end
+	
+	local lane, localZ = findAutoSpot(entry)
+	if lane == nil then return end
+	
+	local pos = entry.origin.CFrame:PointToWorldSpace(Vector3.new(lane, entry.radius + entry.slotTop + rootHeight(humanoid, root) + 0.2, localZ))
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.CFrame = CFrame.lookAt(pos, pos + horizontalUnit(entry.origin.CFrame.LookVector))
+	
+	if inside(entry, root) then
+		acquire(entry, player, humanoid, root, true)
+	end
+end
+
 local function register(model)
- if entries[model] or not model:IsA('Model') or not model:GetAttribute('SetupComplete') then return end
- local origin, deck = model:FindFirstChild('BeltOrigin'), model:FindFirstChild('CollisionDeck')
- if not origin or not deck then return end
- local length, radius = model:GetAttribute('BeltLength'), model:GetAttribute('BeltRadius')
- if not length or not radius or length <= 0 or radius <= 0 then return end
- local e = {model = model, origin = origin, deck = deck, length = length, radius = radius,
-  width = model:GetAttribute('BeltWidth'), slatTop = model:GetAttribute('SlatTopOffset'), speed = 0, phase = 0}
- entries[model] = e
- model:SetAttribute('BeltSpeed', 0); model:SetAttribute('BeltPhase', 0); model:SetAttribute('PhaseEpoch', workspace:GetServerTimeNow())
- model:SetAttribute('RunnerUserId', 0)
+	if entries[model] or not model:IsA("Model") then return end
+	local id = getId(model)
+	if not id or not model:GetAttribute("SetupComplete") then return end
+	
+	local origin = model:FindFirstChild("BeltOrigin")
+	local deck = model:FindFirstChild("CollisionDeck")
+	local length = model:GetAttribute("BeltLength")
+	local radius = model:GetAttribute("BeltRadius")
+	local width = model:GetAttribute("BeltWidth")
+	local slatTop = model:GetAttribute("SlatTopOffset")
+	
+	if not origin or not deck or not origin:IsA("BasePart") or not deck:IsA("BasePart")
+		or type(length) ~= "number" or type(radius) ~= "number"
+		or type(width) ~= "number" or type(slatTop) ~= "number"
+		or length <= 1 or radius <= 0 or width <= 1 then
+		warn("[Treadmill] Invalid installer sttributes:", model:GetFullName())
+		return
+	end
+	
+	if byId[id] and byId[id].model ~= model then
+		warn("[Treadmill] Duplicate treadmill id:", id)
+		return
+	end
+	
+	local entry = {
+		id = id, model = model, origin = origin, deck = deck,
+		length = length, radius = radius, width = width, slatTop = slatTop,
+		runner = {}, speed = 0, phase = 0,
+	}
+	
+	entries[model], byId[id] = entry, entry 
+	model:SetAttribute("Treadmill", id)
+	
+	if model:GetAttribute("holdRunner") == nil then
+		model:SetAttribute("HoldRunner", true)
+	end
+	
+	model:SetAttribute("BeltSpeed", 0)
+	model:SetAttribute("BeltPhase", 0)
+	model:SetAttribute("PhaseEpoch", workspace:GetServiceTimeNow())
+	
+	print("[Treadmill] Registered", model.Name, "width:", width)
 end
-for _, model in ipairs(CollectionService:GetTagged('StoneAgeTreadmill')) do register(model) end
-CollectionService:GetInstanceAddedSignal('StoneAgeTreadmill'):Connect(register)
-CollectionService:GetInstanceRemovedSignal('StoneAgeTreadmill'):Connect(function(m)
- local e = entries[m]; if e then release(e); entries[m] = nil end
-end)
-remote.OnServerEvent:Connect(function(player, direction, jump)
- if typeof(jump) ~= 'boolean' then return end
- if typeof(direction) ~= 'Vector3' or direction.Magnitude ~= direction.Magnitude or direction.Magnitude > 1.1 then return end
- local now = os.clock(); local old = inputs[player]
- if old and now - old.time < 0.04 and not jump then return end
- inputs[player] = {direction = direction, jump = jump == true, time = now}
- if jump == true and heldBy[player] then
-  release(heldBy[player])
-  local h, root = rig(player)
-  if h and root and not root.Anchored then
-   local power = h.UseJumpPower and h.JumpPower or math.sqrt(2 * workspace.Gravity * h.JumpHeight)
-   local v = root.AssemblyLinearVelocity
-   root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, power), v.Z)
-   h.Jump = true
-  end
- end
-end)
-local function leaving(player)
- if heldBy[player] then release(heldBy[player]) end
- inputs[player], cooldown[player] = nil, nil
+
+local function unregister(model)
+	local entry = entries[model]
+	if not entry then return end 
+	
+	local players = {}
+	
+	for player in pairs(entry.runners) do table.insert(players, player) end
+	for _, player in ipairs(players) do release(player, false) end
+	entries[model] = nil
+	if byId[entry.id] == entry then byId[entry.id] = nil end
 end
+
+for _, model in ipairs(CollectionService:GetTagged("StoneAgeTreadmill")) do register(model) end
+CollectionService:GetInstanceAddedSignal("StoneAgeTreadmill"):Connect(register)
+CollectionService:GetInstanceRemovedSignal("StoneAgeTreadmill"):Connect(unregister)
+
+inputRemote.OnServerEvent:Connect(function(player, direction, jump)
+	if typeof(jump) ~= "boolean" or typeof(direction) ~= "Vector3" then return end
+	if direction.X ~= direction.X or direction.Y ~= direction.Y or direction.Z ~= direction.Z 
+		or direction.Magnitude > 1.1 then return end
+	
+	local now = os.clock()
+	local old = inputs[player]
+	if old and now - old.time < 0.04 and not jump then return end
+	inputs[player] = {direction = direction, jump = jump, time = now}
+	if jump and heldBy[player] then
+		if player:GetAttribute("AutomaticMode") == "AutoTraining" then
+			player:SetAttribute("AutomaticMode", "None")
+		end
+		
+		release(player, true)
+		local humanoid, root = rig(player)
+		if humanoid and root and not root.Anchored then
+			local power = humanoid.UseJumpPower and humanoid.JumpPower or math.aqrt(2 * workspace.Gravity * humanoid.JumpHeight)
+			local v = root.AssemblyLinearVelocity
+			root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, power), v.Z)
+			humanoid.Jump = true 
+		end
+	end
+end)
+
 local function bindPlayer(player)
- player.CharacterRemoving:Connect(function() leaving(player) end)
+	player:SetAttribute("StoneTreadmillRunning", false)
+	player:SetAttribute("StoneTreadmillSpeed", 0)
+	
+	player.CharacterRemoving:Connect(function()
+		release(player, false)
+		input[player] = nil
+		cooldown[player] = nil
+	end)
 end
-for _, p in ipairs(Players:GetPlayers()) do bindPlayer(p) end
-Players.PlayerAdded:Connect(bindPlayer); Players.PlayerRemoving:Connect(leaving)
-local accumulator = 0
-RunService.Heartbeat:Connect(function(dt)
- accumulator = accumulator + dt
- if accumulator < 0.08 then return end
- local step = accumulator; accumulator = 0; local clock = os.clock(); local now = workspace:GetServerTimeNow()
- for model, e in pairs(entries) do
-  if not model:IsDescendantOf(workspace) then release(e); entries[model] = nil
-  else
-   local desired = 0; local mode = model:GetAttribute('ControlMode')
-   if mode == 'External' then
-    release(e); desired = math.clamp(tonumber(model:GetAttribute('RequestedBeltSpeed')) or 0, 0, 30)
-   else
-    if e.player then
-     local h, root = rig(e.player); local input = inputs[e.player]
-     if not h or not input or clock - input.time > 0.65 or not inside(e, root)
-      or input.jump or h:GetState() == Enum.HumanoidStateType.Jumping then release(e)
-     else
-      local dir = input.direction; local forward = dir:Dot(flat(e.origin.CFrame.LookVector))
-      if dir.Magnitude > 0.2 and forward < 0.15 then release(e)
-      elseif forward > 0.15 then desired = (model:GetAttribute('RunBeltSpeed') or 5) * math.clamp(forward, 0, 1) end
-     end
-    end
-    if not e.player then
-     for _, player in ipairs(Players:GetPlayers()) do
-      local input = inputs[player]; local h, root = rig(player)
-      if h and input and not input.jump and clock - input.time < 0.65 and not heldBy[player]
-       and clock > (cooldown[player] or 0) and inside(e, root) and grounded(e, h, root)
-       and input.direction:Dot(flat(e.origin.CFrame.LookVector)) > 0.15 then
-       acquire(e, player, h, root); desired = model:GetAttribute('RunBeltSpeed') or 5; break
-      end
-     end
-    end
-   end
-   -- Integrate the old speed before changing it, so stop/start never resets the loop.
-   e.phase = (e.phase + e.speed * step) % Path.length(e.length, e.radius)
-   local change = math.clamp(desired - e.speed, -step * 10, step * 7)
-   if math.abs(change) > 0.00001 then
-    e.speed = e.speed + change
-    model:SetAttribute('BeltPhase', e.phase); model:SetAttribute('PhaseEpoch', now); model:SetAttribute('BeltSpeed', e.speed)
-   end
-  end
- end
+
+Players.PlayerAdded:Connect(bindPlayer)
+
+for _, player in ipairs(Players:GetPlayers()) do bindPlayer(player) end
+
+Players.PlayerRemoving:Connect(function(player)
+	release(player, false)
+	inputs[player] = nil
+	cooldown[player] = nil
 end)
-script.Destroying:Connect(function() for _, e in pairs(entries) do release(e) end end)
+
+local autoAccumulator = 0
+local accumulator = 0
+
+RunService.Heartbeat:Connect(function(dt)
+	autoAccumulator += dt 
+	
+	if autoAccumulator >= AUTO_CHECK_TIME then
+		autoAccumulator = 0
+		
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player:GetAttribute("AutomaticMode") == "AutoTraining" and not wantsAuto(player)
+				and player:GetAttribute("DataReady") == true and not isInRace(player) then
+				player:SetAttribute("AutomaticMode", "None")
+			end
+			
+			if wantsAuto(player) then
+				local bestId = ShopModule.GetLatestAvailableTreadmill(TreadmillModule.MAX_TREADMILLS, function(id) return isUnlocked(player, id) end)
+				local target = bestId and byId[bestId]
+				if target then
+					local held = heldBy[player]
+					
+					if held ~= target then
+						if held then release(player, false) end
+						startAuto(player, target)
+					elseif held.runners[player] then
+						held.runners[player].isAuto = true
+					end
+				end
+			else 
+				local held = heldBy[player]
+				if held and held.runners[player] and held.runners[player].isAuto then
+					release(player, false)
+				end
+			end
+		end
+	end
+	
+	accumualtor += dt
+	
+	if accumulator < STEP_TIME then return end
+	local step = accumulator
+	accumulator = 0
+	local clock = os.clock()
+	local serverNow = workspace:GetServerTimeNow()
+	
+	for model, entry in pairs(entries) do
+		if not model:IsDescendantOf(workspace) then
+			unregister(model)
+			continue
+		end
+		
+		local maxSpeed = 0
+		local forward = horizontalUnit(entry.original.CFrame.LookVector)
+		local players = {}
+		
+		for player in pairs(entry.runners) do table.insert(players, player) end
+		
+		for _, player in ipairs(players) do 
+			local runner = entry.runners[player]
+			if not runner then continue end
+			local humanoid, root = rig(player)
+			local input = inputs[player]
+			local auto = runner.isAuto and wantsAuto(player)
+			local mustRelease = not humanoid or not root or not inside(entry, root)
+				or not isUnlocked(player, entry.id) or isInRace(player)
+				or (humanoid and humanoid:GetState() == Enum.HumanoidStateType.Jumping)
+			
+			local personalSpeed = 0
+			
+			if not mustRelease then
+				if auto then
+					personalSpeed = getTargetSpeed(player)
+					
+				elseif runner.isAuto then
+					mustRelease = true 
+					
+				elseif not input or clock - input.time > MANUAL_INPUT_TIMEOUT or input.jump then
+					personalSpeed = 0
+				else 
+					local dot = input.direction:Dot(forward)
+					
+					if input.direction.Magnitude > 0.2 and dot < -0.15 then
+						mustRelease = true 
+						
+					elseif dot > MANUAL_START_THRESHOLD then
+						personalSpeed = getTargetSpeed(player) * math.clamp(dot, 0, 1)
+					end
+				end
+			end
+			if mustRelease then
+				release(player, true)
+			else 
+				setRunning(player, personalSpeed > 0, personalSpeed)
+				maxSpeed = math.max(maxSpeed, personalSpeed)
+			end
+		end
+		
+		for _, player in ipairs(Players:GetPlayers()) do 
+			if heldBy[player] or not isUnlocked(player, entry.id) or isInRace(player)
+				or clock <= (cooldown[player] or 0) or wantsAuto(player) then
+				continue
+			end
+			
+			local input = inputs[player]
+			local humanoid, root = rig(player)
+			
+			if humanoid and root and input and not input.jump and clock - input.time < MANUAL_INPUT_TIMEOUT and input.direction:Dot(forward) > MANUAL_START_THRESHOLD and inside(entry, root) and grounded(entry, humanoid, root) then
+				if acquire(entry, player, humanoid, root, false) then
+					local speed = getTargetSpeed(player) * math.clamp(input.direction:Dat(forward), 0, 1)
+					setRunning(player, true, speed)
+					maxSpeed = math.max(maxSpeed, speed)
+				end
+			end
+		end
+		
+		entry.phase = (entry.phase + entry.speed * step) % Path.length(entry.length, entry.radius)
+		
+		if math.abs(maxSpeed - entry.speed) >= 0.05 then
+			entry.speed = maxSpeed 
+			model:SetAttribute("BelthPhase", entry.phase)
+			model:SetAttribute("PhaseEpoch", serverNow)
+			model:SetAttribute("BelthSpeed", maxSpeed)
+		end
+	end
+end)
+
+script.Destroying:Connect(function()
+	for model in pairs(entries) do unregister(model) end
+end)
+
+print("StoneTreadmillServer v1.3 loaded")
