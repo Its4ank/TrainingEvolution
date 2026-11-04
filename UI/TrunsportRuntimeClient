@@ -171,7 +171,7 @@ local function updateTransport(player, dt)
 	local speed = horizontalVelocity.Magnitude
 	
 	--// Treadmill movement
-	local onTreadmill = player:GetAttibute("StoneTreadmillRunnning") == true and player:GetAttribute("StoneTreadmillHelp") ~= nil
+	local onTreadmill = player:GetAttribute("StoneTreadmillRunning") == true and player:GetAttribute("StoneTreadmillHeld") ~= nil
 	
 	if onTreadmill then
 		local treadmillSpeed = math.max(0, tonumber(player:GetAttribute("StoneTreadmillSpeed")) or 0)
