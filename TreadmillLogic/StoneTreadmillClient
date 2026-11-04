@@ -29,7 +29,7 @@ local function characterAdded(c)
 	local animate = c:WaitForChild("Animate", 10)
 	if character ~= c or not animator or not animate then return end
 	
-	local folder = animate:FindFirstChild("run") or animate:FindFirstChild("Walk")
+	local folder = animate:FindFirstChild("run") or animate:FindFirstChild("walk")
 	local animation = folder and folder:FindFirstChildWhichIsA("Animation", true)
 	
 	if animation then
@@ -58,7 +58,7 @@ local function register(model)
 	local currentGeneration = generation[model]
 	
 	task.spawn(function()
-		if not model:GetAttribute("SetupCompleted") then return end
+		if not model:GetAttribute("SetupComplete") then return end
 		
 		local origin = model:WaitForChild("BeltOrigin", 10)
 		local belt = model:WaitForChild("Belt", 10)
@@ -87,7 +87,7 @@ local function register(model)
 		}
 		
 		for _, part in ipairs(model:GetDescendants()) do
-			if part:IsA("BasePart") and part:GetAttribute("RollOffset") ~= nil then
+			if part:IsA("BasePart") and part:GetAttribute("RollerOffset") ~= nil then
 				table.insert(entry.rollers, part)
 			end
 		end
@@ -132,12 +132,12 @@ RunService.RenderStepped:Connect(function(dt)
 				if roller.Parent then
 					table.insert(parts, roller)
 					local offset = roller:GetAttribute("RearRoller") and CFrame.new(0, 0, -entry.length) or CFrame.new()
-					table.insert(cframes, origin * offset * CFrame.Angles(phase / entry.radius, 0, 0) * roller:GetAttribute("RollerOfset"))
+					table.insert(cframes, origin * offset * CFrame.Angles(phase / entry.radius, 0, 0) * roller:GetAttribute("RollerOffset"))
 				end
 			end
 			
 			if #parts > 0 then
-				workspace:BulkMoveTo(parts, cframes, Enum.BultMoveMode.FireCFrameChanged)
+				workspace:BulkMoveTo(parts, cframes, Enum.BulkMoveMode.FireCFrameChanged)
 			end
 		else 
 			entries[model] = nil
