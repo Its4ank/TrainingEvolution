@@ -40,7 +40,7 @@ local function rig(player)
 end
 
 local function horizontalUnit(direction)
-	local vektor = Vector3.new(direction.X, 0, direction.Z)
+	local vector = Vector3.new(direction.X, 0, direction.Z)
 	return vector.Magnitude > 0.001 and vector.Unit or Vector3.zero
 end
 
@@ -135,9 +135,29 @@ local function grounded(entry, humanoid, root)
 	local params = RaycastParams.new()
 	
 	params.FilterType = Enum.RaycastFilterType.Include
-	parms.FilterDescendantsInstances = {entry.deck}
+	params.FilterDescendantsInstances = {entry.deck}
 	
 	return workspace:Raycast(root.Position, Vector3.new(0, -rootHeight(humanoid, root) - 1.2, 0), params) ~= nil
+end
+
+local function isSpotFree(entry, root)
+	local position = entry.origin.CFrame:PointToObjectSpace(root.Position)
+	
+	for otherPlayer in pairs(entry.runners) do
+		local _, otherRoot = rig(otherPlayer)
+		
+		if otherRoot then
+			local otherPosition = entry.origin.CFrame:PointToObjectSpace(otherRoot.Position)
+			local dx = position.X - otherPosition.X
+			local dz = position.Z - otherPosition.Z
+			local distanceSquared = dx * dx + dz * dz
+			
+			if distanceSquared < MIN_LANE_SPACING ^ 2 then
+				return false 
+			end
+		end
+	end
+	return true 
 end
 
 local function acquire(entry, player, humanoid, root, isAuto)
@@ -163,7 +183,7 @@ local function acquire(entry, player, humanoid, root, isAuto)
 	position.Name = "TM_HoldPosition"
 	position.Mode = Enum.PositionAlignmentMode.OneAttachment
 	position.Attachment0 = attachment
-	position.ApplyAtCenterOsMass = true 
+	position.ApplyAtCenterOfMass = true 
 	position.Position = foot + Vector3.new(0, rootHeight(humanoid, root), 0)
 	position.MaxForce = math.max(100000, root.AssemblyMass * 50000)
 	position.MaxVelocity = 50
@@ -177,9 +197,9 @@ local function acquire(entry, player, humanoid, root, isAuto)
 	orientation.CFrame = CFrame.lookAt(Vector3.zero, horizontalUnit(entry.origin.CFrame.LookVector))
 	orientation.MaxTorque = 1000000
 	orientation.Responsiveness = 60
-	orisntation.Parent = root 
+	orientation.Parent = root 
 	
-	entry.runner[player] = {
+	entry.runners[player] = {
 		isAuto = isAuto == true,
 		hold = {
 			instances = {position, orientation, attachment},
@@ -246,7 +266,7 @@ local function startAuto(player, entry)
 	local lane, localZ = findAutoSpot(entry)
 	if lane == nil then return end
 	
-	local pos = entry.origin.CFrame:PointToWorldSpace(Vector3.new(lane, entry.radius + entry.slotTop + rootHeight(humanoid, root) + 0.2, localZ))
+	local pos = entry.origin.CFrame:PointToWorldSpace(Vector3.new(lane, entry.radius + entry.slatTop + rootHeight(humanoid, root) + 0.2, localZ))
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.CFrame = CFrame.lookAt(pos, pos + horizontalUnit(entry.origin.CFrame.LookVector))
 	
@@ -283,19 +303,19 @@ local function register(model)
 	local entry = {
 		id = id, model = model, origin = origin, deck = deck,
 		length = length, radius = radius, width = width, slatTop = slatTop,
-		runner = {}, speed = 0, phase = 0,
+		runners = {}, speed = 0, phase = 0,
 	}
 	
 	entries[model], byId[id] = entry, entry 
-	model:SetAttribute("Treadmill", id)
+	model:SetAttribute("TreadmillId", id)
 	
-	if model:GetAttribute("holdRunner") == nil then
+	if model:GetAttribute("HoldRunner") == nil then
 		model:SetAttribute("HoldRunner", true)
 	end
 	
 	model:SetAttribute("BeltSpeed", 0)
 	model:SetAttribute("BeltPhase", 0)
-	model:SetAttribute("PhaseEpoch", workspace:GetServiceTimeNow())
+	model:SetAttribute("PhaseEpoch", workspace:GetServerTimeNow())
 	
 	print("[Treadmill] Registered", model.Name, "width:", width)
 end
@@ -333,7 +353,7 @@ inputRemote.OnServerEvent:Connect(function(player, direction, jump)
 		release(player, true)
 		local humanoid, root = rig(player)
 		if humanoid and root and not root.Anchored then
-			local power = humanoid.UseJumpPower and humanoid.JumpPower or math.aqrt(2 * workspace.Gravity * humanoid.JumpHeight)
+			local power = humanoid.UseJumpPower and humanoid.JumpPower or math.sqrt(2 * workspace.Gravity * humanoid.JumpHeight)
 			local v = root.AssemblyLinearVelocity
 			root.AssemblyLinearVelocity = Vector3.new(v.X, math.max(v.Y, power), v.Z)
 			humanoid.Jump = true 
@@ -347,7 +367,7 @@ local function bindPlayer(player)
 	
 	player.CharacterRemoving:Connect(function()
 		release(player, false)
-		input[player] = nil
+		inputs[player] = nil
 		cooldown[player] = nil
 	end)
 end
@@ -399,7 +419,7 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 	
-	accumualtor += dt
+	accumulator += dt
 	
 	if accumulator < STEP_TIME then return end
 	local step = accumulator
@@ -414,7 +434,7 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 		
 		local maxSpeed = 0
-		local forward = horizontalUnit(entry.original.CFrame.LookVector)
+		local forward = horizontalUnit(entry.origin.CFrame.LookVector)
 		local players = {}
 		
 		for player in pairs(entry.runners) do table.insert(players, player) end
@@ -468,9 +488,9 @@ RunService.Heartbeat:Connect(function(dt)
 			local input = inputs[player]
 			local humanoid, root = rig(player)
 			
-			if humanoid and root and input and not input.jump and clock - input.time < MANUAL_INPUT_TIMEOUT and input.direction:Dot(forward) > MANUAL_START_THRESHOLD and inside(entry, root) and grounded(entry, humanoid, root) then
+			if humanoid and root and input and not input.jump and clock - input.time < MANUAL_INPUT_TIMEOUT and input.direction:Dot(forward) > MANUAL_START_THRESHOLD and inside(entry, root) and grounded(entry, humanoid, root)  and isSpotFree(entry, root) then
 				if acquire(entry, player, humanoid, root, false) then
-					local speed = getTargetSpeed(player) * math.clamp(input.direction:Dat(forward), 0, 1)
+					local speed = getTargetSpeed(player) * math.clamp(input.direction:Dot(forward), 0, 1)
 					setRunning(player, true, speed)
 					maxSpeed = math.max(maxSpeed, speed)
 				end
@@ -481,9 +501,9 @@ RunService.Heartbeat:Connect(function(dt)
 		
 		if math.abs(maxSpeed - entry.speed) >= 0.05 then
 			entry.speed = maxSpeed 
-			model:SetAttribute("BelthPhase", entry.phase)
+			model:SetAttribute("BeltPhase", entry.phase)
 			model:SetAttribute("PhaseEpoch", serverNow)
-			model:SetAttribute("BelthSpeed", maxSpeed)
+			model:SetAttribute("BeltSpeed", maxSpeed)
 		end
 	end
 end)
