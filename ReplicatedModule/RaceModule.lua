@@ -60,7 +60,15 @@ RaceModule.UI = {
 	},
 	
 	Bars = {
-		RewardLevelMaxScale = 0.93,
+		RewardLevelStartPosition = UDim2.new(-0.95, 0, 0.19, 0),
+		RewardLevelEndPosition = UDim2.new(0.015, 0, 0.19, 0),
+		
+		RoadLevelStartPosition = UDim2.new(-0.95, 0, 0.19, 0),
+		RoadLevelEndPosition = UDim2.new(0.015, 0, 0.19, 0),
+		
+		StageLevelStartPosition = UDim2.new(-0.95, 0, 0.19, 0),
+		StageLevelEndPosition = UDim2.new(0.015, 0, 0.19, 0),
+		
 		RoadLevelMaxScale = 0.93,
 		StageLevelMaxScale = 0.922,
 		StageRequirementMaxScale = 0.796,
@@ -1059,23 +1067,26 @@ function RaceModule.GetRewardBarPosition(stage, roadLevel, rewardIndex)
 end
 
 --// Размеры полосок UI
-function RaceModule.GetRoadLevelBarScale(roadLevel)
-	roadLevel = clampRoadLevel(roadLevel)
+function RaceModule.GetRoadLevelBarPosition(roadLevel)
+	local progress = math.clamp((tonumber(roadLevel) or 0) / RaceModule.Settings.MaxRoadLevel, 0, 1)
 	
-	return RaceModule.UI.Bars.RoadLevelMaxScale * (roadLevel / RaceModule.Settings.MaxRoadLevel)
+	return RaceModule.UI.Bars.RoadLevelStartPosition:Lerp(RaceModule.UI.Bars.RoadLevelEndPosition, progress)
 end
 
-function RaceModule.GetStageLevelBarScale(stage)
-	stage = clampStage(stage)
+function RaceModule.GetStageLevelBarPosition(stage)
+	local progress = math.clamp((tonumber(stage) or 0) / RaceModule.Settings.MaxStage, 0, 1)
 	
-	return RaceModule.UI.Bars.StageLevelMaxScale * (stage / RaceModule.Settings.MaxStage)
+	return RaceModule.UI.Bars.StageLevelStartPosition:Lerp(RaceModule.UI.Bars.StageLevelEndPosition, progress)
 end
 
-function RaceModule.GetRewardLevelBarScale(stage, rewardLevel)
+function RaceModule.GetRewardLevelBarPosition(stage, rewardLevel)
 	local localLevel = RaceModule.GetLocalRewardLevel(stage, rewardLevel)
 	
-	return RaceModule.UI.Bars.RewardLevelMaxScale 
-		* (localLevel / RaceModule.Settings.RewardLevelsPerStage)
+	local progress = math.clamp(localLevel / RaceModule.Settings.RewardLevelsPerStage, 0, 1)
+	local startPosition = RaceModule.UI.Bars.RewardLevelStartPosition
+	local endPosition = RaceModule.UI.Bars.RewardLevelEndPosition
+	
+	return startPosition:Lerp(endPosition, progress)
 end
 
 function RaceModule.GetStageRequirementBarScale(progress)
