@@ -270,14 +270,10 @@ local function getRebirthCost(currentRebirths, currentEnergy)
 	return RebirthModule.GetRebirthCost(currentRebirths, currentEnergy, ShopModule.GetRebirthAward(player, 1))
 end
 
-local function getMaxRebirthAmount(
-	currentRebirths,
-	currentEnergy
-)
-	return RebirthModule.GetMaxRebirthAmount(
-		currentRebirths,
-		currentEnergy
-	)
+local function getMaxRebirthAmount(currentRebirths, currentEnergy)
+	local rebirthPerPurchase = ShopModule.GetRebirthAward(player, 1)
+	
+	return RebirthModule.GetMaxRebirthAmount(currentRebirths, currentEnergy, rebirthPerPurchase)
 end
 
 local function getSelectedAmount()
@@ -845,8 +841,10 @@ maxRebirthPass.Changed:Connect(
 )
 
 local equippedPasses = player:WaitForChild("PlayerData"):WaitForChild("EquippedGamepasses")
+
 local autoEquipped = equippedPasses:WaitForChild("AutoRebirthPass")
 local maxEquipped = equippedPasses:WaitForChild("MaxRebirthPass")
+local rebirthEquipped = equippedPasses:WaitForChild("RebirthPass")
 
 local function onRebirthPassChanged()
 	local autoAllowed = hasAutoRebirthPass()
@@ -862,6 +860,7 @@ end
 
 autoEquipped.Changed:Connect(onRebirthPassChanged)
 maxEquipped.Changed:Connect(onRebirthPassChanged)
+rebirthEquipped.Changed:Connect(updateRebirthUI)
 
 -- Max Rebirth необходимо обновлять постоянно,
 -- потому что доступное количество зависит от Energy.
