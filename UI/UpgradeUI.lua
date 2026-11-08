@@ -118,6 +118,34 @@ local function collectLevelFrames()
 	end
 end
 
+local function copyGemCostIcons()
+	local sourceIcon = nil
+	
+	for _, levelFrame in ipairs(levelFrames) do
+		local upButton = levelFrame:FindFirstChild("UpgLvlUpButton")
+		local icon = upButton and upButton:FindFirstChild("GemCostIcon")
+		
+		if icon then
+			sourceIcon = icon 
+			break
+		end
+	end
+	
+	if not sourceIcon then
+		warn("UPGRADE UI: GemCostIcon not found")
+		return
+	end
+	
+	for _, levelFrame in ipairs(levelFrames) do
+		local upButton = levelFrame:FindFirstChild("UpgLvlUpButton")
+		
+		if not upButton:FindFirstChild("GemCostIcon") then
+			local iconClone = sourceIcon:Clone()
+			iconClone.Parent = upButton 
+		end
+	end
+end
+
 print("UPGRADE UI: level frames collected", #levelFrames)
 
 --// получаем обьекты каждого слота
@@ -505,6 +533,7 @@ gemsValue:GetPropertyChangedSignal("Value"):Connect(updateGemsLabel)
 upgWarningLabel.Visible = false
 
 collectLevelFrames()
+copyGemCostIcons()
 collectLevelControls()
 
 setupLevelFrameButtons()
