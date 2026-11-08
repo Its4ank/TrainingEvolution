@@ -24,6 +24,15 @@ local eggHost = eggFolder:WaitForChild("EggHost")
 local eggAutoDelMenu = eggHost:WaitForChild("EggAutoDelMenu")
 local tapTutorial = eggFolder:WaitForChild("TapTutorial")
 
+--// Auto Stop OpenButton
+local autoStopOpenButton = eggFolder:WaitForChild("AutoStopOpenButton")
+local eggAutoStopLabel = autoStopOpenButton:WaitForChild("EggAutoStopLabel")
+
+local AUTO_STOP_BUTTON_IMAGES = {
+	Select = "rbxassetid://130954197767732",
+	Default = "rbxassetid://120585005049586",
+}
+
 local raceGui = eggFolder.Parent.Parent
 MenuManager.init(raceGui)
 MenuManager.register("Egg", eggHost)
@@ -132,6 +141,18 @@ local function setImage(object, image)
 		object.Image = image
 	end
 end
+
+--// Auto Stop Button State
+local function updateAutoStopButtonState(isEnabled)
+	local state = isEnabled and "Select" or "Default"
+	
+	eggAutoStoplabel.Text = isEnabled and " On Auto" or "Off Auto"
+	
+	setImage(autoStopOpenButton, AUTO_STOP_BUTTON_IMAGES[state])
+end
+
+autoStopOpenButton.Visible = false
+updateAutoStopButtonState(false)
 
 local function isInsideZone(rootPart, zoneModel)
 	if not rootPart or not zoneModel then return false end 
@@ -568,12 +589,6 @@ local function resetHatchHost(host, amount)
 			objects.AutoDeleteLabel.Text = ""
 		end 
 	end 
-
-	local stopButton = host:FindFirstChild("AutoOpenButton")
-
-	if stopButton then
-		setImage(stopButton, EggModule.GetAutoStopImage(autoHatching and "Selected" or "Default"))
-	end
 end
 
 --// Egg shake
@@ -916,12 +931,25 @@ local function playAutoBatch(response)
 	task.wait(hatchDuration(AUTO_RESULT_TIME))
 end
 
+local function requestAutoStop()
+	if not autoHatching or autoStopRequested then return end 
+	
+	autoStopRequested = true 
+	updateAutoStopButtonState(false)
+end
+
+autoStopOpenButton.Activated:Connect(requestAutoStop)
+
 local function runAutoHatch()
 	if autoHatching then return end
 
 	autoHatching = true
 	autoStopRequested = false
 	uiBusy = true
+	
+	--// Show Auto Stop button
+	updateAutoStopButtonState(true)
+	autoStopOpenButton.Visible = true
 
 	eggHost.Visible = false
 
@@ -958,14 +986,11 @@ local function runAutoHatch()
 
 		autoHatching = false
 		autoStopRequested = false
+		
+		--// Show Auto Stop button
+		updateAutoStopButtonState(false)
+		autoStopOpenButton.Visible = false
 
-		if currentHatchHost then
-			local stopButton = currentHatchHost:FindFirstChild("AutoOpenButton")
-
-			if stopButton then
-				setImage(stopButton, EggModule.GetAutoStopImage("Default"))
-			end
-		end
 		closeHatch()
 	end)
 end
@@ -1051,25 +1076,6 @@ end)
 hatchHostTrio.Activated:Connect(function()
 	if not autoHatching then handleManualTap() end
 end)
-
---// Auto stop buttons
-local function setupAutoStopButton(host)
-	local button = host:FindFirstChild("AutoOpenButton")
-	if not button or not button:IsA("GuiButton") then return end 
-
-	button.Activated:Connect(function()
-		if not autoHatching then return end
-
-		autoStopRequested = true
-		autoHatching = false 
-
-		setImage(button, EggModule.GetAutoStopImage("Default"))
-	end)
-end
-
-setupAutoStopButton(hatchHostSingle)
-setupAutoStopButton(hatchHostDuo)
-setupAutoStopButton(hatchHostTrio)
 
 --// Luck info
 luckInfoButton.Activated:Connect(function()
@@ -1180,8 +1186,7 @@ RunService.RenderStepped:Connect(function()
 			insideEggZone = false 
 			
 			if autoHatching then
-				autoStopRequested = true
-				autoHatching = false 
+				requestAutoStop()
 			end
 			
 			if hatchState == "Idle" then
@@ -1208,16 +1213,7 @@ RunService.RenderStepped:Connect(function()
 			
 			-- Stop Auto hatch after the current paid batch
 			if autoHatching then 
-				autoStopRequested = true
-				autoHatching = false
-				
-				if currentHatchHost then
-					local stopButton = currentHatchHost:FindFirstChild("AutoOpenButton")
-					
-					if stopButton then
-						setImage(stopButton, EggModule.GetAutoStopImage("Default"))
-					end
-				end
+				requestAutoStop()
 			end
 			
 			if hatchState == "Idle" then 
