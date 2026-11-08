@@ -146,7 +146,7 @@ end
 local function updateAutoStopButtonState(isEnabled)
 	local state = isEnabled and "Select" or "Default"
 	
-	eggAutoStoplabel.Text = isEnabled and " On Auto" or "Off Auto"
+	eggAutoStopLabel.Text = isEnabled and "On Auto" or "Off Auto"
 	
 	setImage(autoStopOpenButton, AUTO_STOP_BUTTON_IMAGES[state])
 end
