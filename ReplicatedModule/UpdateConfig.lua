@@ -1,6 +1,6 @@
 local UpdateConfig = {}
 
-UpdateConfig.CurrentUpdate = "1.1"
+UpdateConfig.CurrentUpdate = "1.3"
 
 UpdateConfig.Updates = {
 	["1.0"] = {
@@ -16,6 +16,11 @@ UpdateConfig.Updates = {
 	["1.2"] = {
 		ButtonName = "UPD2Button",
 		FrameName = "ScrollingUPD2",
+	},
+	
+	["1.3"] = {
+		ButtonName = "UPD2Button",
+		FrameName = "ScrollingUPD3",
 	},
 }
 
