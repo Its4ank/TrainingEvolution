@@ -22,11 +22,6 @@ EggModule.AutoDeleteImages = {
 	Selected = "rbxassetid://108923555840576",
 }
 
-EggModule.AutoStopImages = {
-	Default = "rbxassetid://130954197767732",
-	Selected = "rbxassetid://120585005049586",
-}
-
 --// Egg hatch animation images
 EggModule.EggAnimationImages = {
 	Egg1 = {
@@ -168,10 +163,6 @@ end
 --// UI images
 function EggModule.GetAutoDeleteImage(state)
 	return EggModule.AutoDeleteImages[state] or EggModule.AutoDeleteImages.Default
-end
-
-function EggModule.GetAutoStopImage(state)
-	return EggModule.AutoStopImages[state] or EggModule.AutoStopImages.Default
 end
 
 function EggModule.GetAnimationImage(eggName, stageName)
