@@ -301,6 +301,7 @@ local energyFrame = findUI(trainerMenu, "EnergyFrame")
 local moneyIcon = findUI(trainerMenu, "MoneyIcon")
 local moneyBoostLabel = findUI(trainerMenu, "MoneyBoostLabel")
 local moneyFrame = findUI(trainerMenu, "MoneyFrame")
+local moneyFrame2 = findUI(trainerMenu, "MoneyFrame2")
 local petPowerFrame = findUI(trainerMenu, "PetPowerFrame")
 local petPowerBoost1 = findUI(trainerMenu, "Pet/PowerBoost1")
 local petPowerLabel1 = findUI(trainerMenu, "Pet/PowerLabel1")
@@ -818,6 +819,7 @@ local function updateBoostSection(trainerName, stage, level)
 	
 	energyFrame.Visible = false
 	moneyFrame.Visible = false
+	moneyFrame2.Visible = false
 	petPowerFrame.Visible = false
 	
 	if trainerName == "LedyTrainer" then 
@@ -832,6 +834,7 @@ local function updateBoostSection(trainerName, stage, level)
 	elseif trainerName == "BellaTrainer" then 
 		moneyIcon.Size = SELECTED_BOOST_SIZE
 		moneyFrame.Visible = true
+		moneyFrame2.Visible = true
 		
 		setBoostLabelText( 
 			moneyBoostLabel, 
