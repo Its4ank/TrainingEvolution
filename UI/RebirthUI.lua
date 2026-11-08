@@ -571,11 +571,7 @@ local function updateInfoFrame()
 		-- Порог энергии для следующего количества.
 		-- Например, доступно +10:
 		-- показываем прогресс до +11.
-		local nextMaxThreshold =
-			getRebirthCost(
-				currentRebirths,
-				maxAmount + 1
-			)
+		local nextMaxThreshold = getRebirthCost(currentRebirths, math.max(maxAmount, 1))
 
 		requirEnergyLabel.Text =
 			FormatModule.FormatNumber(currentEnergy)
