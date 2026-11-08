@@ -197,7 +197,10 @@ local summaryUpgradeRewards = upgradeDetailsButton:WaitForChild("UpgRewardNumber
 --// Reward detail references
 local rewUpgBonus = frameRewardDetail:WaitForChild("RewUpgBonus")
 local rewUpgLevel = frameRewardDetail:WaitForChild("RewUpgLevel")
-local rewLvlBar = frameRewardDetail:WaitForChild("RewLvlBar")
+
+local rewBarWindow = frameRewardDetail:WaitForChild("RewBarWindow")
+local rewLvlBar = rewBarWindow:WaitForChild("RewLvlBar")
+
 local rewCurNumber = frameRewardDetail:WaitForChild("RewCurNumber")
 
 local rewCurUpgMoney = frameRewardDetail:WaitForChild("RewCurUpgMoney")
@@ -212,7 +215,9 @@ local rewNextUpgXP = frameRewardDetail:WaitForChild("RewNextUpgXp")
 local roadUpgradeButton = frameUpgradeDetail:WaitForChild("UpgradeButton")
 local roadUpgradePrice = roadUpgradeButton:WaitForChild("UpgPrice")
 local roadLevelNumber = frameUpgradeDetail:WaitForChild("UpgLvlNumber")
-local roadLevelBar = frameUpgradeDetail:WaitForChild("UpgLvlBar")
+
+local upgBarWindow = frameUpgradeDetail:WaitForChild("UpgBarWindow")
+local roadLevelBar = upgBarWindow:WaitForChild("UpgLvlBar")
 
 local currentRewardNumber = frameUpgradeDetail:WaitForChild("UpgCurRewNumber")
 local nextRewardNumber = frameUpgradeDetail:WaitForChild("UpgNextRewNumber")
@@ -223,7 +228,10 @@ local nextDistanceNumber = frameUpgradeDetail:WaitForChild("UpgNextDisNumber")
 local stageMenuOpen = frameStageDetail:WaitForChild("StageMenuOpen")
 local detailStageBonus = frameStageDetail:WaitForChild("StaStageBonus")
 local detailStageLevel = frameStageDetail:WaitForChild("StaLvlNumber")
-local detailStageBar = frameStageDetail:WaitForChild("StaLvlBar")
+
+local staBarWindow = frameStageDetail:WaitForChild("StaBarWindow")
+local detailStageBar = staBarWindow:WaitForChild("StaLvlBar")
+
 local detailStageName = frameStageDetail:WaitForChild("StaStageName")
 local detailStageIcon = frameStageDetail:WaitForChild("StaStageIcon")
 
@@ -732,7 +740,7 @@ updateRewardDetail = function()
 	setText(rewUpgLevel, localRewardLevel .. "/5")
 	setText(rewCurNumber, "R" .. selectedRewardIndex)
 	
-	setBarScale(rewLvlBar, RaceModule.GetRewardLevelBarScale(stageValue.Value, rewardLevelValue.Value))
+	rewLvlBar.Position = RaceModule.GetRewardLevelBarPosition(stageValue.Value, rewardLevelValue.Value)
 	
 	setText(rewCurUpgMoney, "+" .. FormatModule.FormatNumber(current.Money or 0))
 	setText(rewCurUpgGems, FormatModule.FormatNumber((current.GemChance or 0) * 100) .. "% / +" .. FormatModule.FormatNumber(current.Gems or 0))
@@ -878,7 +886,8 @@ local function updateRoadUpgradeDetail()
 	local preview = RaceModule.GetNextProgressionPreview(stage, level)
 	
 	setText(roadLevelNumber, level .. "/5")
-	setBarScale(roadLevelBar, RaceModule.GetRoadLevelBarScale(level))
+	
+	roadLevelBar.Position = RaceModule.GetRoadLevelBarPosition(level)
 	
 	setText(currentRewardNumber, rewardCount)
 	setText(currentDistanceNumber, formatDistance(trackDistance))
@@ -920,7 +929,8 @@ local function updateStageInformation()
 	setText(detailStageBonus, formatMultiplier(stageBonus))
 	setText(detailStageLevel, stage .. "/5")
 	setText(detailStageName, stageName)
-	setBarScale(detailStageBar, RaceModule.GetStageLevelBarScale(stage))
+	
+	detailStageBar.Position = RaceModule.GetStageLevelBarPosition(stage)
 	
 	setText(rewMultNumber, formatMultiplier(RaceModule.GetRewardBonus(rewardLevelValue.Value)))
 	setText(summaryUpgradeLevel, level .. "/5")
@@ -1095,9 +1105,15 @@ if leaveButton and leaveButton:IsA("GuiButton") then
 	end)
 end
 
+print("To close")
+
 raceMenuClose.MouseButton1Click:Connect(function()
+	print("Close1")
 	MenuManager.close("Race")
+	print("Close2")
 end)
+
+print("after close")
 
 rewardDetailsButton.MouseButton1Click:Connect(function()
 	openDetail("Reward")
